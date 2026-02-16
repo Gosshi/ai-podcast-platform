@@ -1,0 +1,76 @@
+import { failRun, finishRun, startRun } from "../_shared/jobRuns.ts";
+import { jsonResponse } from "../_shared/http.ts";
+import { fetchEpisodeById, updateEpisode } from "../_shared/episodes.ts";
+
+type RequestBody = {
+  episodeDate?: string;
+  idempotencyKey?: string;
+  episodeId?: string;
+};
+
+Deno.serve(async (req) => {
+  if (req.method !== "POST") {
+    return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
+  }
+
+  const body = (await req.json().catch(() => ({}))) as RequestBody;
+  const episodeDate = body.episodeDate ?? new Date().toISOString().slice(0, 10);
+  const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
+
+  if (!body.episodeId) {
+    return jsonResponse({ ok: false, error: "episodeId is required" }, 400);
+  }
+
+  const runId = await startRun("tts-en", {
+    step: "tts-en",
+    episodeDate,
+    idempotencyKey,
+    episodeId: body.episodeId
+  });
+
+  try {
+    const episode = await fetchEpisodeById(body.episodeId);
+
+    if (episode.audio_url) {
+      await finishRun(runId, {
+        step: "tts-en",
+        episodeDate,
+        idempotencyKey,
+        episodeId: episode.id,
+        noOp: true,
+        reason: "audio_exists"
+      });
+
+      return jsonResponse({ ok: true, episodeId: episode.id, noOp: true });
+    }
+
+    await updateEpisode(episode.id, { status: "generating" });
+    const audioUrl = `mock://audio/${episode.id}.en.mp3`;
+    const updated = await updateEpisode(episode.id, {
+      audio_url: audioUrl,
+      duration_sec: 120,
+      status: "ready"
+    });
+
+    await finishRun(runId, {
+      step: "tts-en",
+      episodeDate,
+      idempotencyKey,
+      episodeId: updated.id,
+      noOp: false,
+      audioUrl
+    });
+
+    return jsonResponse({ ok: true, episodeId: updated.id, audioUrl, status: updated.status });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await failRun(runId, message, {
+      step: "tts-en",
+      episodeDate,
+      idempotencyKey,
+      episodeId: body.episodeId
+    });
+
+    return jsonResponse({ ok: false, error: message }, 500);
+  }
+});
