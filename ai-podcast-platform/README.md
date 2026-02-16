@@ -12,7 +12,9 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 1. `.env.example` を参考に `.env.local` を作成
 2. 依存関係をインストール: `npm install`
 3. 開発サーバー起動: `npm run dev`
-4. Supabase ローカル設定を確認: `supabase status`
+4. Supabase ローカル起動: `supabase start`
+5. Supabase ローカル設定を確認: `supabase status`
+6. Migration 適用: `supabase db reset --local --yes`
 
 ## Project Layout
 - `app/`: Next.js App Router
@@ -28,6 +30,10 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - This repository is **staging only**.
 - All background jobs must be **idempotent**.
 - Every job execution must be logged to `job_runs`.
+
+## DB Notes
+- Migration は `supabase/migrations/` に SQL で追加する
+- 公開判定は `episodes.status='published'` かつ `published_at IS NOT NULL`
 
 ## Jobs Orchestration
 - Functions: `daily-generate`, `plan-topics`, `write-script-ja`, `tts-ja`, `adapt-script-en`, `tts-en`, `publish`
