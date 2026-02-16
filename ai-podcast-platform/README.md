@@ -34,3 +34,22 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 ## DB Notes
 - Migration は `supabase/migrations/` に SQL で追加する
 - 公開判定は `episodes.status='published'` かつ `published_at IS NOT NULL`
+
+## Jobs Orchestration
+- Functions: `daily-generate`, `plan-topics`, `write-script-ja`, `tts-ja`, `adapt-script-en`, `tts-en`, `publish`
+- `daily-generate` は上記を spec 順で実行する orchestrator
+- `publish` は `episodes.status='published'` と `published_at=now()` を必ず設定
+
+### Manual Run (curl)
+1. `supabase start`
+2. `supabase functions serve --env-file .env.local`
+3. `curl -i -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H \"Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY\" -H \"Content-Type: application/json\" -d '{\"episodeDate\":\"2026-02-16\"}'`
+
+### Scheduler (staging)
+- Supabase Dashboard > Schedules で `daily-generate` を `POST` 実行
+- body は `{\"episodeDate\":\"YYYY-MM-DD\"}` 形式（省略時は当日）
+
+### Idempotency / Re-run
+- `job_runs` は insert-only。各実行は必ず新しい `job_runs` 行を作成
+- 各ステップは no-op 条件を持つ（例: `tts-*` は `audio_url` 既存ならスキップ）
+- 失敗時は `job_runs.status='failed'` と `job_runs.error` を残す
