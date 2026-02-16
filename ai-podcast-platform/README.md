@@ -28,3 +28,20 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - This repository is **staging only**.
 - All background jobs must be **idempotent**.
 - Every job execution must be logged to `job_runs`.
+
+## Stripe Webhook (Staging Test)
+- 実装先: `app/api/stripe/webhook/route.ts`
+- 対象イベント: `payment_intent.succeeded`
+- 冪等キー: `tips.provider_payment_id`（Stripe PaymentIntent ID）
+
+### Local Test with Stripe CLI
+1. Stripe CLIでWebhook転送を開始
+   - `stripe listen --forward-to localhost:3000/api/stripe/webhook`
+2. 別ターミナルでNext.jsを起動
+   - `npm run dev`
+3. テストイベント送信
+   - `stripe trigger payment_intent.succeeded`
+4. 期待結果
+   - 正常時は `tips` に1行追加される
+   - 同一 PaymentIntent の再送時は `tips` は増えず、重複として no-op になる
+   - 署名不正時は `400 invalid_signature` を返す
