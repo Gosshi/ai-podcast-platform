@@ -28,3 +28,18 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - This repository is **staging only**.
 - All background jobs must be **idempotent**.
 - Every job execution must be logged to `job_runs`.
+
+## Stripe Webhook (MVP)
+- Endpoint: `/api/stripe/webhook`
+- Handled event: `payment_intent.succeeded`
+- Idempotency key: `tips.provider_payment_id` (UNIQUE)
+
+### Required Env
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+
+### Local Test (Stripe CLI)
+1. `npm run dev`
+2. `stripe listen --forward-to localhost:3000/api/stripe/webhook`
+3. `stripe trigger payment_intent.succeeded`
+4. 同一 PaymentIntent の再送で `tips` が増えないことを確認（UNIQUE衝突は no-op）
