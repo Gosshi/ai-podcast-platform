@@ -42,8 +42,9 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 
 ### Manual Run (curl)
 1. `supabase start`
-2. `supabase functions serve --env-file .env.local`
-3. `curl -i -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H \"Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY\" -H \"Content-Type: application/json\" -d '{\"episodeDate\":\"2026-02-16\"}'`
+2. `supabase functions serve --env-file .env.local --no-verify-jwt`
+3. `curl -i -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H \"Content-Type: application/json\" -d '{\"episodeDate\":\"2026-02-16\"}'`
+4. ローカル検証専用として `--no-verify-jwt` を使用。staging では通常どおり Authorization を付けて実行する。
 
 ### Scheduler (staging)
 - Supabase Dashboard > Schedules で `daily-generate` を `POST` 実行
