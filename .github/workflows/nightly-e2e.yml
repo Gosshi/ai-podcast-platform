@@ -1,0 +1,37 @@
+name: Nightly Local E2E
+
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+jobs:
+  nightly-e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+
+      - name: Start Supabase
+        run: supabase start
+
+      - name: Reset local DB
+        run: supabase db reset --local --yes
+
+      - name: Run local e2e
+        run: bash scripts/e2e-local.sh
