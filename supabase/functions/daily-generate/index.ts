@@ -20,19 +20,20 @@ const orderedSteps = [
   "publish"
 ] as const;
 
-const getFunctionsBaseUrl = (): string => {
-  const explicit = Deno.env.get("SUPABASE_FUNCTIONS_URL");
+const getFunctionsBaseUrl = (requestUrl: string): string => {
+  const explicit = Deno.env.get("FUNCTIONS_BASE_URL") ?? Deno.env.get("SUPABASE_FUNCTIONS_URL");
   if (explicit) return explicit;
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  if (!supabaseUrl) {
-    throw new Error("SUPABASE_URL or SUPABASE_FUNCTIONS_URL is required");
+  if (supabaseUrl) {
+    return `${supabaseUrl}/functions/v1`;
   }
 
-  return `${supabaseUrl}/functions/v1`;
+  return `${new URL(requestUrl).origin}/functions/v1`;
 };
 
 const invokeStep = async (
+  functionsBaseUrl: string,
   step: (typeof orderedSteps)[number],
   payload: Record<string, unknown>
 ): Promise<InvokeResult> => {
@@ -41,7 +42,7 @@ const invokeStep = async (
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is required");
   }
 
-  const response = await fetch(`${getFunctionsBaseUrl()}/${step}`, {
+  const response = await fetch(`${functionsBaseUrl}/${step}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -76,33 +77,34 @@ Deno.serve(async (req) => {
   });
 
   try {
-    const plan = await invokeStep("plan-topics", { episodeDate, idempotencyKey });
+    const functionsBaseUrl = getFunctionsBaseUrl(req.url);
+    const plan = await invokeStep(functionsBaseUrl, "plan-topics", { episodeDate, idempotencyKey });
 
-    const writeJa = await invokeStep("write-script-ja", {
+    const writeJa = await invokeStep(functionsBaseUrl, "write-script-ja", {
       episodeDate,
       idempotencyKey,
       topic: plan.topic
     });
 
-    const ttsJa = await invokeStep("tts-ja", {
+    const ttsJa = await invokeStep(functionsBaseUrl, "tts-ja", {
       episodeDate,
       idempotencyKey,
       episodeId: writeJa.episodeId
     });
 
-    const adaptEn = await invokeStep("adapt-script-en", {
+    const adaptEn = await invokeStep(functionsBaseUrl, "adapt-script-en", {
       episodeDate,
       idempotencyKey,
       masterEpisodeId: writeJa.episodeId
     });
 
-    const ttsEn = await invokeStep("tts-en", {
+    const ttsEn = await invokeStep(functionsBaseUrl, "tts-en", {
       episodeDate,
       idempotencyKey,
       episodeId: adaptEn.episodeId
     });
 
-    const publish = await invokeStep("publish", {
+    const publish = await invokeStep(functionsBaseUrl, "publish", {
       episodeDate,
       idempotencyKey,
       episodeIdJa: ttsJa.episodeId,

@@ -10,7 +10,7 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 
 ## Setup
 1. `.env.example` を参考に `.env.local` を作成
-2. 依存関係をインストール: `npm install`
+2. 依存関係をインストール: `npm ci`
 3. 開発サーバー起動: `npm run dev`
 4. Supabase ローカル起動: `supabase start`
 5. Supabase ローカル設定を確認: `supabase status`
@@ -42,7 +42,7 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 
 ### Manual Run (curl)
 1. `supabase start`
-2. `supabase functions serve --env-file .env.local --no-verify-jwt`
+2. `supabase functions serve --no-verify-jwt`
 3. `curl -i -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H \"Content-Type: application/json\" -d '{\"episodeDate\":\"2026-02-16\"}'`
 4. ローカル検証専用として `--no-verify-jwt` を使用。staging では通常どおり Authorization を付けて実行する。
 
@@ -69,3 +69,23 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 2. `stripe listen --forward-to localhost:3000/api/stripe/webhook`
 3. `stripe trigger payment_intent.succeeded`
 4. 同一 PaymentIntent の再送で `tips` が増えないことを確認（UNIQUE衝突は no-op）
+
+## Letters API (MVP)
+- Endpoint: `POST /api/letters`
+- Body: `{ "displayName": "...", "text": "..." }`
+- Inserts into `letters(display_name, text, created_at)`
+
+### Local Test (curl)
+1. `npm run dev`
+2. `curl -i -X POST http://127.0.0.1:3000/api/letters -H "Content-Type: application/json" -d '{"displayName":"local-user","text":"hello"}'`
+3. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c "select display_name,text,created_at from public.letters order by created_at desc limit 5;"`
+
+## Episodes UI (MVP)
+- Page: `/episodes`
+- Displays: `title`, `lang`, `published_at`
+- Reads published rows from Supabase (`episodes.status='published'` and `published_at is not null`)
+
+## Local Acceptance Script
+- `scripts/e2e-local.sh` が MVP Acceptance の主要チェックを自動判定します。
+- 実行: `bash scripts/e2e-local.sh`
+- 成功時: `[RESULT] PASS (...)`
