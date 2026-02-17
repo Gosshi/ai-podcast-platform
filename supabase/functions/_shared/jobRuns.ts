@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "./supabaseAdmin.ts";
+import { supabaseAdmin } from "./supabaseAdmin";
 
 export const startRun = async (
   jobType: string,
