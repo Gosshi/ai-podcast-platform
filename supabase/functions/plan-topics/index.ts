@@ -1,5 +1,5 @@
-import { failRun, finishRun, startRun } from "../_shared/jobRuns";
-import { jsonResponse } from "../_shared/http";
+import { failRun, finishRun, startRun } from "../_shared/jobRuns.ts";
+import { jsonResponse } from "../_shared/http.ts";
 
 type RequestBody = {
   episodeDate?: string;

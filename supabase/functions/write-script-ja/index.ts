@@ -1,10 +1,10 @@
-import { failRun, finishRun, startRun } from "../_shared/jobRuns";
-import { jsonResponse } from "../_shared/http";
+import { failRun, finishRun, startRun } from "../_shared/jobRuns.ts";
+import { jsonResponse } from "../_shared/http.ts";
 import {
   findJapaneseEpisodeByTitle,
   insertJapaneseEpisode,
   updateEpisode
-} from "../_shared/episodes";
+} from "../_shared/episodes.ts";
 
 type RequestBody = {
   episodeDate?: string;
