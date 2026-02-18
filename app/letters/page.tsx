@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 
 type FieldErrors = Partial<Record<"display_name" | "text", string>>;
@@ -47,6 +48,7 @@ export default function LettersPage() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [submittedLetterId, setSubmittedLetterId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const remainingText = useMemo(() => TEXT_MAX - text.length, [text.length]);
@@ -55,6 +57,7 @@ export default function LettersPage() {
     event.preventDefault();
     setSubmitError(null);
     setSuccessMessage(null);
+    setSubmittedLetterId(null);
 
     const currentErrors = validate(displayName, text);
     if (Object.keys(currentErrors).length > 0) {
@@ -98,6 +101,7 @@ export default function LettersPage() {
       setDisplayName("");
       setText("");
       setErrors({});
+      setSubmittedLetterId(payload.letter.id);
       setSuccessMessage("お便りを受け付けました。ありがとうございます。");
     } catch {
       setSubmitError("投稿に失敗しました。時間をおいて再度お試しください。");
@@ -115,6 +119,11 @@ export default function LettersPage() {
         <section aria-live="polite">
           <p>{successMessage}</p>
           <p>投げ銭があると優先的に取り上げられる場合があります。</p>
+          {submittedLetterId ? (
+            <p>
+              <Link href={`/letters/${submittedLetterId}/tip`}>このお便りを優先で読んでほしい（チップ支払い）</Link>
+            </p>
+          ) : null}
         </section>
       ) : null}
 

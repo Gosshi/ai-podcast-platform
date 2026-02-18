@@ -94,6 +94,59 @@ const run = async (): Promise<void> => {
   assert(secondBody.duplicate === true, "second webhook call should be duplicate no-op");
   assert(insertedPayments.size === 1, `tips insert should be idempotent, got ${insertedPayments.size}`);
 
+  const withoutMetadataPayload = await loadFixture("payment_intent_succeeded_without_metadata.json");
+  const withoutMetadataSignature = signPayload(withoutMetadataPayload);
+
+  const withoutMetadataResponse = await handleStripeWebhook(
+    new Request("http://localhost/api/stripe/webhook", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "stripe-signature": withoutMetadataSignature
+      },
+      body: withoutMetadataPayload
+    }),
+    deps
+  );
+  const withoutMetadataBody = (await withoutMetadataResponse.json()) as Record<string, unknown>;
+
+  assert(
+    withoutMetadataResponse.status === 200,
+    `without-metadata webhook status should be 200, got ${withoutMetadataResponse.status}`
+  );
+  assert(withoutMetadataBody.ok === true, "without-metadata webhook call should return ok=true");
+  assert(
+    insertedTips[1]?.letter_id === null,
+    `without-metadata webhook call should store null letter_id, got ${insertedTips[1]?.letter_id ?? "undefined"}`
+  );
+
+  const invalidMetadataPayload = await loadFixture("payment_intent_succeeded_invalid_letter_id.json");
+  const invalidMetadataSignature = signPayload(invalidMetadataPayload);
+
+  const invalidMetadataResponse = await handleStripeWebhook(
+    new Request("http://localhost/api/stripe/webhook", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "stripe-signature": invalidMetadataSignature
+      },
+      body: invalidMetadataPayload
+    }),
+    deps
+  );
+  const invalidMetadataBody = (await invalidMetadataResponse.json()) as Record<string, unknown>;
+
+  assert(
+    invalidMetadataResponse.status === 200,
+    `invalid-metadata webhook status should be 200, got ${invalidMetadataResponse.status}`
+  );
+  assert(invalidMetadataBody.ok === true, "invalid-metadata webhook call should return ok=true");
+  assert(
+    insertedTips[2]?.letter_id === null,
+    `invalid-metadata webhook call should store null letter_id, got ${insertedTips[2]?.letter_id ?? "undefined"}`
+  );
+  assert(insertedPayments.size === 3, `three unique payment intents should be stored, got ${insertedPayments.size}`);
+
   const ignoredPayload = await loadFixture("invoice_paid.json");
   const ignoredSignature = signPayload(ignoredPayload);
 
@@ -113,7 +166,7 @@ const run = async (): Promise<void> => {
   assert(ignoredResponse.status === 200, `ignored webhook status should be 200, got ${ignoredResponse.status}`);
   assert(ignoredBody.ok === true, "ignored webhook call should return ok=true");
   assert(ignoredBody.ignored === true, "ignored webhook call should return ignored=true");
-  assert(insertedPayments.size === 1, "ignored webhook should not insert tips");
+  assert(insertedPayments.size === 3, "ignored webhook should not insert tips");
 
   console.log("stripe webhook fixtures passed");
 };

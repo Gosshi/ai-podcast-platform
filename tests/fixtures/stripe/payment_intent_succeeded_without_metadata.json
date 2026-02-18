@@ -1,0 +1,14 @@
+{
+  "id": "evt_fixture_payment_intent_succeeded_without_metadata",
+  "object": "event",
+  "type": "payment_intent.succeeded",
+  "data": {
+    "object": {
+      "id": "pi_fixture_002",
+      "object": "payment_intent",
+      "amount_received": 200,
+      "currency": "jpy",
+      "metadata": {}
+    }
+  }
+}

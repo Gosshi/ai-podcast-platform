@@ -63,9 +63,17 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - Idempotency key: `tips.provider_payment_id` (UNIQUE)
 - `payment_intent.metadata.letter_id` があれば `tips.letter_id` に保存（UUIDのみ採用）
 
+## Letter Tip Checkout (MVP)
+- Page: `/letters/[id]/tip`
+- Endpoint: `POST /api/stripe/checkout`
+- Body: `{ "letter_id": "<UUID>", "amount": 200|500|1000 }`
+- Checkout Session 作成時に `metadata.letter_id` と `payment_intent_data.metadata.letter_id` を設定
+- レスポンスで `url` を返し、クライアントを Stripe Checkout へリダイレクト
+
 ### Required Env
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
+- `APP_BASE_URL` (optional; 未設定時は request origin を利用)
 
 ### Local Test (Stripe CLI)
 1. `npm run dev`
