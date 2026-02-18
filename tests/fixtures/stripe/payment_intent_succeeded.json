@@ -7,7 +7,10 @@
       "id": "pi_fixture_001",
       "object": "payment_intent",
       "amount_received": 500,
-      "currency": "jpy"
+      "currency": "jpy",
+      "metadata": {
+        "letter_id": "11111111-1111-4111-8111-111111111111"
+      }
     }
   }
 }

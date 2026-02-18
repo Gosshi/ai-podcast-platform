@@ -22,6 +22,9 @@ type RequestBody = {
   letters?: {
     display_name?: string;
     text?: string;
+    tip_amount?: number | null;
+    tip_currency?: string | null;
+    tip_provider_payment_id?: string | null;
   }[];
 };
 
@@ -34,7 +37,9 @@ type ScriptTrendItem = {
 
 type ScriptLetter = {
   displayName: string;
-  text: string;
+  summarizedText: string;
+  tipAmount: number | null;
+  tipCurrency: string | null;
 };
 
 const MAX_TREND_ITEMS = 3;
@@ -93,13 +98,40 @@ const normalizeTrendItems = (trendItems: RequestBody["trendItems"]): ScriptTrend
 };
 
 const normalizeLetters = (letters: RequestBody["letters"]): ScriptLetter[] => {
+  const summarizeLetterText = (text: string): string => {
+    const sanitized = sanitizeNarrationText(text);
+    if (!sanitized) {
+      return "応援メッセージをいただきました。";
+    }
+
+    const MAX_SUMMARY_CHARS = 80;
+    return sanitized.length <= MAX_SUMMARY_CHARS
+      ? sanitized
+      : `${sanitized.slice(0, MAX_SUMMARY_CHARS).trimEnd()}…`;
+  };
+
   return (letters ?? [])
     .filter((letter) => Boolean(letter?.display_name && letter?.text))
     .slice(0, MAX_LETTERS)
     .map((letter) => ({
       displayName: (letter?.display_name ?? "").trim(),
-      text: (letter?.text ?? "").trim()
+      summarizedText: summarizeLetterText(letter?.text ?? ""),
+      tipAmount: typeof letter?.tip_amount === "number" ? letter.tip_amount : null,
+      tipCurrency: typeof letter?.tip_currency === "string" ? letter.tip_currency : null
     }));
+};
+
+const formatTipAmount = (tipAmount: number | null, tipCurrency: string | null): string | null => {
+  if (tipAmount === null || Number.isNaN(tipAmount) || tipAmount < 0) {
+    return null;
+  }
+
+  const currency = (tipCurrency ?? "jpy").toLowerCase();
+  if (currency === "jpy") {
+    return `${tipAmount.toLocaleString("ja-JP")}円`;
+  }
+
+  return `${(tipAmount / 100).toFixed(2)} ${currency.toUpperCase()}`;
 };
 
 const buildJapaneseScript = (params: {
@@ -129,8 +161,13 @@ const buildJapaneseScript = (params: {
       : `[LETTERS CORNER]
 ${params.letters
   .map(
-    (letter, index) =>
-      `- お便り${index + 1}（${letter.displayName}）: ${letter.text}\n- ひとこと返信: メッセージありがとうございます。番組づくりの参考にします。`
+    (letter, index) => {
+      const tipAmount = formatTipAmount(letter.tipAmount, letter.tipCurrency);
+      const thanksLine = tipAmount
+        ? `- ${letter.displayName}さん、（${tipAmount}）ありがとうございます！\n`
+        : "";
+      return `${thanksLine}- お便り${index + 1}（${letter.displayName}）: ${letter.summarizedText}\n- ひとこと返信: メッセージありがとうございます。次回以降の番組づくりにも活かします。`;
+    }
   )
   .join("\n")}`;
 
