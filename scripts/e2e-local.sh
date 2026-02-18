@@ -148,6 +148,17 @@ assert_contains() {
   fi
 }
 
+assert_not_contains() {
+  local label="$1"
+  local haystack="$2"
+  local needle="$3"
+  if grep -Fq -- "$needle" <<<"$haystack"; then
+    fail "$label"
+  else
+    pass "$label"
+  fi
+}
+
 assert_command "npm ci" npm ci --cache "$NPM_CONFIG_CACHE"
 assert_command "npm run build" npm run build
 
@@ -256,6 +267,28 @@ assert_contains "letters api insert" "$LETTERS_RESPONSE" "\"ok\":true"
 
 LETTERS_COUNT="$(psql_query "select count(*) from public.letters where display_name='local-e2e' and text='${LETTER_TEXT}' and created_at is not null;")"
 assert_count_ge "letters table accepts inserts with created_at" "$LETTERS_COUNT" 1
+
+log "reject letter with ng word"
+NG_RESPONSE_STATUS="$(curl -sS -o "$TMP_DIR/letters-ng.json" -w "%{http_code}" -X POST "http://127.0.0.1:3000/api/letters" -H "Content-Type: application/json" -d "{\"displayName\":\"local-e2e-ng\",\"text\":\"死ねと言われて悲しかった\"}")"
+NG_RESPONSE_BODY="$(cat "$TMP_DIR/letters-ng.json")"
+assert_count_eq "letters api rejects ng word with 400" "$NG_RESPONSE_STATUS" 400
+assert_contains "letters api ng word returns validation_error" "$NG_RESPONSE_BODY" "\"validation_error\""
+
+NG_INSERTED_COUNT="$(psql_query "select count(*) from public.letters where display_name='local-e2e-ng';")"
+assert_count_eq "letters api ng word is not inserted" "$NG_INSERTED_COUNT" 0
+
+log "verify daily-generate skips blocked letters"
+psql_query "update public.letters set is_used=true where is_used=false and is_blocked=false;" >/dev/null
+BLOCKED_LETTER_ID="$(psql_query "insert into public.letters (display_name, text, moderation_status, is_used, is_blocked, blocked_reason) values ('blocked-e2e', '絶対に儲かる株を買えば100%勝てる', 'pending', false, true, 'manual_e2e_blocked') returning id;" | head -n 1)"
+SAFE_LETTER_ID="$(psql_query "insert into public.letters (display_name, text, moderation_status, is_used, is_blocked) values ('safe-e2e', '最近の配信も楽しみにしています。', 'pending', false, false) returning id;" | head -n 1)"
+
+DAILY_3="$(run_daily_generate_with_retry)"
+assert_contains "daily-generate pipeline #3" "$DAILY_3" "\"ok\":true"
+assert_contains "daily-generate uses unblocked letter" "$DAILY_3" "$SAFE_LETTER_ID"
+assert_not_contains "daily-generate does not use blocked letter" "$DAILY_3" "$BLOCKED_LETTER_ID"
+
+BLOCKED_USED_COUNT="$(psql_query "select count(*) from public.letters where id='${BLOCKED_LETTER_ID}' and is_used=true;")"
+assert_count_eq "blocked letter remains unused" "$BLOCKED_USED_COUNT" 0
 
 MISSING_SIG_STATUS="$(curl -sS -o "$TMP_DIR/stripe-missing-signature.json" -w "%{http_code}" -X POST "http://127.0.0.1:3000/api/stripe/webhook" -H "Content-Type: application/json" -d "{}")"
 MISSING_SIG_BODY="$(cat "$TMP_DIR/stripe-missing-signature.json")"
