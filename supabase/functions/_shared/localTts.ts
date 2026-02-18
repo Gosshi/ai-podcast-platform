@@ -104,14 +104,17 @@ const resolveLegacyApiUrl = (): string | null => {
   return baseUrl.toString();
 };
 
+const hasExplicitApiUrl = (): boolean => {
+  return Boolean(resolveConfiguredApiUrl() ?? resolveLegacyApiUrl());
+};
+
 const resolveApiUrlCandidates = (): string[] => {
-  const candidates = [
-    cachedReachableTtsApiUrl,
-    resolveConfiguredApiUrl(),
-    resolveLegacyApiUrl(),
-    DEFAULT_TTS_API_URL,
-    ...FALLBACK_TTS_API_URLS
-  ].filter((value): value is string => Boolean(value));
+  const configured = resolveConfiguredApiUrl();
+  const legacy = resolveLegacyApiUrl();
+  const candidates = (configured || legacy
+    ? [cachedReachableTtsApiUrl, configured, legacy]
+    : [cachedReachableTtsApiUrl, DEFAULT_TTS_API_URL, ...FALLBACK_TTS_API_URLS]
+  ).filter((value): value is string => Boolean(value));
   return Array.from(new Set(candidates));
 };
 
@@ -211,6 +214,10 @@ export const synthesizeEpisodeAudio = async (
         if (isClientError(error.status)) {
           throw error;
         }
+        if (error.responsePayload && Object.keys(error.responsePayload).length > 0) {
+          // Endpoint reached and returned structured JSON error; avoid duplicate synthesis retries.
+          throw error;
+        }
         lastError = error;
         continue;
       }
@@ -225,6 +232,9 @@ export const synthesizeEpisodeAudio = async (
           message: `TTS API request timed out after ${TTS_API_TIMEOUT_MS}ms`,
           apiUrl
         });
+        if (hasExplicitApiUrl()) {
+          throw lastError;
+        }
         continue;
       }
 
