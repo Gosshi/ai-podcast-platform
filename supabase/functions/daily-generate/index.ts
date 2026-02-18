@@ -735,6 +735,7 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       ok: true,
+      runId,
       episodeDate,
       idempotencyKey,
       trendItems,
@@ -760,6 +761,6 @@ Deno.serve(async (req) => {
       orderedSteps
     });
 
-    return jsonResponse({ ok: false, error: message }, 500);
+    return jsonResponse({ ok: false, error: message, runId }, 500);
   }
 });

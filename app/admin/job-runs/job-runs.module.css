@@ -1,0 +1,170 @@
+.page {
+  padding: 24px;
+  display: grid;
+  gap: 16px;
+}
+
+.caption {
+  margin: 0;
+  color: #4b5563;
+}
+
+.filter {
+  margin: 0;
+}
+
+.errorText {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.card {
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.groupList {
+  display: grid;
+  gap: 14px;
+}
+
+.runCard {
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.runCardFailed {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.14);
+}
+
+.runHeader h2 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.runHeader p {
+  margin: 2px 0;
+}
+
+.relatedEpisodes {
+  margin: 10px 0;
+  font-size: 0.95rem;
+}
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 720px;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  padding: 8px;
+  vertical-align: top;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.statusSuccess {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.statusRunning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.statusFailed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.errorCell {
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 340px;
+}
+
+.payloadPre {
+  margin: 8px 0 0;
+  padding: 10px;
+  background: #111827;
+  color: #f3f4f6;
+  border-radius: 8px;
+  overflow: auto;
+  font-size: 0.8rem;
+}
+
+.retryControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.retryLabel {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.retryControls input,
+.retryControls button {
+  font: inherit;
+  padding: 6px 10px;
+}
+
+.retryControls button {
+  border: 1px solid #111827;
+  background: #111827;
+  color: #ffffff;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.retryControls button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.retrySuccess {
+  margin: 10px 0 0;
+  color: #166534;
+  font-weight: 600;
+}
+
+.retryError {
+  margin: 10px 0 0;
+  color: #991b1b;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 16px;
+  }
+
+  .table {
+    min-width: 640px;
+  }
+}

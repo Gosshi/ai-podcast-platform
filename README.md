@@ -100,6 +100,19 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - Displays: `title`, `lang`, `published_at`
 - Reads published rows from Supabase (`episodes.status='published'` and `published_at is not null`)
 
+## Ops Audit UI (Local)
+- Page: `/admin/job-runs`
+- `job_runs` を実行単位（`daily-generate` run）でグルーピング表示
+- 失敗 run を強調表示し、各 step の `status / error / elapsed` を確認可能
+- `Recent Episodes` と `Related Runs` で episode と run の紐付きを確認可能
+
+### Retry daily-generate (Local-only)
+- `/admin/job-runs` の `Retry daily-generate` ボタンで `daily-generate` を再実行
+- server route: `POST /api/admin/retry-daily-generate`
+- route は local 実行前提（`NODE_ENV=development` または `ENABLE_OPS_RETRY=true`）
+- local 以外や環境変数不足では `Disabled` 応答を返す（dry-run/disabled）
+- 実行結果として `success/failed` と `run_id` を UI に表示
+
 ## Local Acceptance Script
 - `scripts/e2e-local.sh` が MVP Acceptance の主要チェックを自動判定します。
 - 実行: `bash scripts/e2e-local.sh`
