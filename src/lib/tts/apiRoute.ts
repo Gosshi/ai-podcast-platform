@@ -40,7 +40,7 @@ const FORMAT_TO_CONTENT_TYPE: Record<TtsAudioFormat, string> = {
 };
 
 const SUPPORTED_FORMATS = new Set<TtsAudioFormat>(["mp3", "opus", "aac", "flac", "wav", "pcm"]);
-const serviceRoleClient = createServiceRoleClient();
+let cachedServiceRoleClient: ReturnType<typeof createServiceRoleClient> | null = null;
 
 class TtsApiError extends Error {
   readonly status: number;
@@ -97,7 +97,25 @@ const sanitizeSpeed = (value: unknown): number | undefined => {
   return Math.min(4, Math.max(0.25, value));
 };
 
+const getServiceRoleClient = (): ReturnType<typeof createServiceRoleClient> => {
+  if (cachedServiceRoleClient) {
+    return cachedServiceRoleClient;
+  }
+
+  try {
+    cachedServiceRoleClient = createServiceRoleClient();
+    return cachedServiceRoleClient;
+  } catch {
+    throw new TtsApiError(
+      500,
+      "supabase_service_role_missing",
+      "SUPABASE service role is not configured"
+    );
+  }
+};
+
 const fetchEpisodeScript = async (episodeId: string, lang: TtsLang): Promise<string> => {
+  const serviceRoleClient = getServiceRoleClient();
   const { data, error } = await serviceRoleClient
     .from("episodes")
     .select("script")
