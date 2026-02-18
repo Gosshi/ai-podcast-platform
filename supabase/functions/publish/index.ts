@@ -1,6 +1,10 @@
 import { failRun, finishRun, startRun } from "../_shared/jobRuns.ts";
 import { jsonResponse } from "../_shared/http.ts";
-import { fetchEpisodeById, updateEpisode } from "../_shared/episodes.ts";
+import {
+  fetchEpisodeById,
+  findPublishedEpisodeByJstDate,
+  updateEpisode
+} from "../_shared/episodes.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -36,6 +40,44 @@ Deno.serve(async (req) => {
 
     if (!ja.audio_url || !en.audio_url) {
       throw new Error("audio_url must exist for both ja/en episodes before publish");
+    }
+
+    const [publishedJaForDate, publishedEnForDate] = await Promise.all([
+      findPublishedEpisodeByJstDate({
+        episodeDate,
+        lang: "ja",
+        excludeEpisodeId: ja.id
+      }),
+      findPublishedEpisodeByJstDate({
+        episodeDate,
+        lang: "en",
+        excludeEpisodeId: en.id
+      })
+    ]);
+
+    if (publishedJaForDate || publishedEnForDate) {
+      await finishRun(runId, {
+        step: "publish",
+        episodeDate,
+        idempotencyKey,
+        episodeIdJa: ja.id,
+        episodeIdEn: en.id,
+        noOp: true,
+        reason: "already_published_for_jst_date",
+        existingPublishedEpisodeIdJa: publishedJaForDate?.id ?? null,
+        existingPublishedEpisodeIdEn: publishedEnForDate?.id ?? null
+      });
+
+      return jsonResponse({
+        ok: true,
+        episodeDate,
+        episodeIdJa: ja.id,
+        episodeIdEn: en.id,
+        noOp: true,
+        reason: "already_published_for_jst_date",
+        existingPublishedEpisodeIdJa: publishedJaForDate?.id ?? null,
+        existingPublishedEpisodeIdEn: publishedEnForDate?.id ?? null
+      });
     }
 
     const nowIso = new Date().toISOString();

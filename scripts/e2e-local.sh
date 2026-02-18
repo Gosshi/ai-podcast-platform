@@ -216,9 +216,13 @@ fi
 
 JA_PUBLISHED_COUNT="$(psql_query "select count(*) from public.episodes where lang='ja' and status='published' and published_at is not null;")"
 EN_PUBLISHED_LINKED_COUNT="$(psql_query "select count(*) from public.episodes en join public.episodes ja on en.master_id = ja.id where en.lang='en' and en.status='published' and en.published_at is not null and ja.lang='ja';")"
+JA_TITLE_COUNT="$(psql_query "select count(*) from public.episodes where lang='ja' and title='Staging Topic ${EPISODE_DATE} (JA)';")"
+EN_TITLE_COUNT="$(psql_query "select count(*) from public.episodes where lang='en' and title='Staging Topic ${EPISODE_DATE} (EN)';")"
 
 assert_count_ge "episodes.ja published rows" "$JA_PUBLISHED_COUNT" 1
 assert_count_ge "episodes.en published rows linked to ja" "$EN_PUBLISHED_LINKED_COUNT" 1
+assert_count_eq "no duplicate ja episode for same date title" "$JA_TITLE_COUNT" 1
+assert_count_eq "no duplicate en episode for same date title" "$EN_TITLE_COUNT" 1
 
 EXPECTED_JOB_TYPES=("daily-generate" "plan-topics" "write-script-ja" "tts-ja" "adapt-script-en" "tts-en" "publish")
 for job_type in "${EXPECTED_JOB_TYPES[@]}"; do

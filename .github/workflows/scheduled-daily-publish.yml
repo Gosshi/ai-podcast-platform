@@ -1,0 +1,94 @@
+name: Scheduled Daily Publish
+
+on:
+  schedule:
+    - cron: "0 22 * * *"
+  workflow_dispatch:
+
+jobs:
+  scheduled-daily-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Set episode date (JST)
+        run: echo "EPISODE_DATE_JST=$(TZ=Asia/Tokyo date +%F)" >> "$GITHUB_ENV"
+
+      - name: Invoke daily-generate
+        id: invoke
+        env:
+          FUNCTIONS_BASE_URL: ${{ secrets.SUPABASE_FUNCTIONS_BASE_URL }}
+          SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p logs
+          response_file="logs/daily-generate-response.json"
+          endpoint="${FUNCTIONS_BASE_URL%/}/daily-generate"
+
+          set +e
+          http_code="$(curl -sS -o "$response_file" -w "%{http_code}" \
+            -X POST "$endpoint" \
+            -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"episodeDate\":\"$EPISODE_DATE_JST\"}")"
+          curl_exit=$?
+          set -e
+
+          if [ "$curl_exit" -ne 0 ]; then
+            echo '{"ok":false,"error":"curl_failed"}' > "$response_file"
+            echo "http_code=000" >> "$GITHUB_OUTPUT"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "run_id=" >> "$GITHUB_OUTPUT"
+            cat "$response_file"
+            exit 1
+          fi
+
+          if jq -e '.ok == true' "$response_file" >/dev/null 2>&1; then
+            ok=true
+          else
+            ok=false
+          fi
+
+          run_id="$(jq -r '.runId // empty' "$response_file" 2>/dev/null || true)"
+
+          echo "http_code=$http_code" >> "$GITHUB_OUTPUT"
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
+          cat "$response_file"
+
+          if [ "$http_code" -ge 400 ] || [ "$ok" != "true" ]; then
+            exit 1
+          fi
+
+      - name: Write workflow summary
+        if: always()
+        run: |
+          {
+            echo "## Scheduled Daily Publish"
+            echo "- Trigger: ${{ github.event_name }}"
+            echo "- Episode date (JST): $EPISODE_DATE_JST"
+            echo "- HTTP status: ${{ steps.invoke.outputs.http_code || 'N/A' }}"
+            echo "- Response ok: ${{ steps.invoke.outputs.ok || 'N/A' }}"
+            echo "- runId: ${{ steps.invoke.outputs.run_id || 'N/A' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Failure diagnostics
+        if: failure()
+        run: |
+          echo "::group::daily-generate failure diagnostics"
+          echo "trigger=${{ github.event_name }}"
+          echo "episode_date_jst=$EPISODE_DATE_JST"
+          echo "http_status=${{ steps.invoke.outputs.http_code || 'unknown' }}"
+          echo "response_body:"
+          cat logs/daily-generate-response.json || true
+          echo "::endgroup::"
+
+      - name: Upload daily-generate logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scheduled-daily-publish-logs-${{ github.run_id }}
+          path: logs/daily-generate-response.json
+          if-no-files-found: warn
+          retention-days: 14
