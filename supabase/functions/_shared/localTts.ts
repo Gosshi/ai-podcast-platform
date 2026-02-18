@@ -3,7 +3,6 @@ type TtsLang = "ja" | "en";
 type SynthesizeEpisodeAudioInput = {
   episodeId: string;
   lang: TtsLang;
-  text: string;
   audioVersion?: string;
 };
 
@@ -18,6 +17,8 @@ type TtsApiResponse = {
   format?: string;
   fallbackReason?: string | null;
   error?: string;
+  errorType?: string;
+  message?: string;
 };
 
 const DEFAULT_TTS_API_URL = "http://host.docker.internal:3000/api/tts";
@@ -25,8 +26,30 @@ const FALLBACK_TTS_API_URLS = [
   "http://172.17.0.1:3000/api/tts",
   "http://gateway.docker.internal:3000/api/tts"
 ];
+export const TTS_API_TIMEOUT_MS = 45_000;
 
 let cachedReachableTtsApiUrl: string | null = null;
+
+export class TtsRequestError extends Error {
+  readonly status: number;
+  readonly errorType: string;
+  readonly responsePayload: Record<string, unknown> | null;
+  readonly apiUrl: string;
+
+  constructor(params: {
+    status: number;
+    errorType: string;
+    message: string;
+    apiUrl: string;
+    responsePayload?: Record<string, unknown> | null;
+  }) {
+    super(params.message);
+    this.status = params.status;
+    this.errorType = params.errorType;
+    this.apiUrl = params.apiUrl;
+    this.responsePayload = params.responsePayload ?? null;
+  }
+}
 
 const normalizeAbsoluteUrl = (raw: string | null | undefined): URL | null => {
   const value = raw?.trim();
@@ -92,11 +115,26 @@ const resolveApiUrlCandidates = (): string[] => {
   return Array.from(new Set(candidates));
 };
 
-const resolveErrorMessage = (status: number, payload: TtsApiResponse): string => {
-  if (payload.error) {
-    return payload.error;
-  }
-  return `tts_http_${status}`;
+const normalizeApiError = (status: number, payload: TtsApiResponse): { errorType: string; message: string } => {
+  const errorType =
+    typeof payload.errorType === "string"
+      ? payload.errorType
+      : typeof payload.error === "string"
+        ? payload.error
+        : `tts_http_${status}`;
+
+  const message =
+    typeof payload.message === "string"
+      ? payload.message
+      : typeof payload.error === "string"
+        ? payload.error
+        : `tts request failed with status ${status}`;
+
+  return { errorType, message };
+};
+
+const isClientError = (status: number): boolean => {
+  return status >= 400 && status < 500 && status !== 408 && status !== 429;
 };
 
 export const synthesizeEpisodeAudio = async (
@@ -111,11 +149,6 @@ export const synthesizeEpisodeAudio = async (
   format: string | null;
   fallbackReason: string | null;
 }> => {
-  const script = input.text.trim();
-  if (!script) {
-    throw new Error("episode script is empty");
-  }
-
   const localTtsApiKey = Deno.env.get("LOCAL_TTS_API_KEY");
   let lastError: Error | null = null;
 
@@ -130,14 +163,31 @@ export const synthesizeEpisodeAudio = async (
         body: JSON.stringify({
           episodeId: input.episodeId,
           lang: input.lang,
-          text: script,
           audioVersion: input.audioVersion
-        })
+        }),
+        signal: AbortSignal.timeout(TTS_API_TIMEOUT_MS)
       });
 
       const payload = (await response.json().catch(() => ({}))) as TtsApiResponse;
-      if (!response.ok || payload.ok !== true || typeof payload.audioUrl !== "string") {
-        throw new Error(resolveErrorMessage(response.status, payload));
+      if (!response.ok) {
+        const { errorType, message } = normalizeApiError(response.status, payload);
+        throw new TtsRequestError({
+          status: response.status,
+          errorType,
+          message,
+          apiUrl,
+          responsePayload: payload as Record<string, unknown>
+        });
+      }
+
+      if (payload.ok !== true || typeof payload.audioUrl !== "string") {
+        throw new TtsRequestError({
+          status: 502,
+          errorType: "tts_invalid_response",
+          message: "TTS API returned invalid response",
+          apiUrl,
+          responsePayload: payload as Record<string, unknown>
+        });
       }
 
       cachedReachableTtsApiUrl = apiUrl;
@@ -157,9 +207,42 @@ export const synthesizeEpisodeAudio = async (
         fallbackReason: typeof payload.fallbackReason === "string" ? payload.fallbackReason : null
       };
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
+      if (error instanceof TtsRequestError) {
+        if (isClientError(error.status)) {
+          throw error;
+        }
+        lastError = error;
+        continue;
+      }
+
+      if (
+        (error instanceof DOMException && (error.name === "AbortError" || error.name === "TimeoutError")) ||
+        (error instanceof Error && error.name === "AbortError")
+      ) {
+        lastError = new TtsRequestError({
+          status: 504,
+          errorType: "tts_api_timeout",
+          message: `TTS API request timed out after ${TTS_API_TIMEOUT_MS}ms`,
+          apiUrl
+        });
+        continue;
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+      lastError = new TtsRequestError({
+        status: 502,
+        errorType: "tts_api_request_failed",
+        message,
+        apiUrl
+      });
     }
   }
 
-  throw lastError ?? new Error("tts_request_failed");
+  throw lastError ??
+    new TtsRequestError({
+      status: 502,
+      errorType: "tts_request_failed",
+      message: "No reachable TTS API endpoint",
+      apiUrl: resolveApiUrlCandidates()[0] ?? DEFAULT_TTS_API_URL
+    });
 };

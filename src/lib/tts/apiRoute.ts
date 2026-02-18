@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import {
   localTtsProvider,
   openAiTtsProvider,
@@ -21,6 +22,10 @@ type RequestBody = {
   instructions?: unknown;
 };
 
+type EpisodeScriptRow = {
+  script: string | null;
+};
+
 const EPISODE_ID_PATTERN = /^[0-9a-fA-F-]{8,64}$/;
 const AUDIO_VERSION_PATTERN = /^[a-z0-9]{3,64}$/;
 const MAX_TEXT_LENGTH = 12000;
@@ -35,12 +40,37 @@ const FORMAT_TO_CONTENT_TYPE: Record<TtsAudioFormat, string> = {
 };
 
 const SUPPORTED_FORMATS = new Set<TtsAudioFormat>(["mp3", "opus", "aac", "flac", "wav", "pcm"]);
+let cachedServiceRoleClient: ReturnType<typeof createServiceRoleClient> | null = null;
+
+class TtsApiError extends Error {
+  readonly status: number;
+  readonly errorType: string;
+
+  constructor(status: number, errorType: string, message: string) {
+    super(message);
+    this.status = status;
+    this.errorType = errorType;
+  }
+}
 
 const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json" }
   });
+};
+
+const jsonErrorResponse = (errorType: string, message: string, status: number): Response => {
+  return jsonResponse(
+    {
+      ok: false,
+      errorType,
+      message,
+      // Backward-compat: existing callers may still inspect `error`.
+      error: errorType
+    },
+    status
+  );
 };
 
 const hasValidApiKey = (request: Request): boolean => {
@@ -67,15 +97,60 @@ const sanitizeSpeed = (value: unknown): number | undefined => {
   return Math.min(4, Math.max(0.25, value));
 };
 
+const getServiceRoleClient = (): ReturnType<typeof createServiceRoleClient> => {
+  if (cachedServiceRoleClient) {
+    return cachedServiceRoleClient;
+  }
+
+  try {
+    cachedServiceRoleClient = createServiceRoleClient();
+    return cachedServiceRoleClient;
+  } catch {
+    throw new TtsApiError(
+      500,
+      "supabase_service_role_missing",
+      "SUPABASE service role is not configured"
+    );
+  }
+};
+
+const fetchEpisodeScript = async (episodeId: string, lang: TtsLang): Promise<string> => {
+  const serviceRoleClient = getServiceRoleClient();
+  const { data, error } = await serviceRoleClient
+    .from("episodes")
+    .select("script")
+    .eq("id", episodeId)
+    .eq("lang", lang)
+    .maybeSingle<EpisodeScriptRow>();
+
+  if (error) {
+    throw new TtsApiError(500, "episode_lookup_failed", "Failed to load episode");
+  }
+
+  if (!data) {
+    throw new TtsApiError(404, "episode_not_found", "Episode not found");
+  }
+
+  const script = typeof data.script === "string" ? data.script.trim() : "";
+  if (!script) {
+    throw new TtsApiError(400, "script_missing", "Episode script is empty");
+  }
+
+  return script;
+};
+
 const parseBody = async (request: Request): Promise<{
   episodeId: string;
   audioVersion: string | null;
   synthesizeInput: SynthesizeInput;
 }> => {
-  const raw = (await request.json().catch(() => ({}))) as RequestBody;
+  const raw = (await request.json().catch(() => {
+    throw new TtsApiError(400, "invalid_json", "Request body must be valid JSON");
+  })) as RequestBody;
+
   const episodeId = typeof raw.episodeId === "string" ? raw.episodeId.trim() : "";
   const lang = raw.lang === "ja" || raw.lang === "en" ? raw.lang : null;
-  const text = typeof raw.text === "string" ? raw.text.trim() : "";
+  let text = typeof raw.text === "string" ? raw.text.trim() : "";
   const audioVersion = typeof raw.audioVersion === "string" ? raw.audioVersion.trim().toLowerCase() : null;
   const voice = typeof raw.voice === "string" && raw.voice.trim() ? raw.voice.trim() : undefined;
   const instructions =
@@ -86,19 +161,21 @@ const parseBody = async (request: Request): Promise<{
   const speed = sanitizeSpeed(raw.speed);
 
   if (!EPISODE_ID_PATTERN.test(episodeId)) {
-    throw new Error("invalid_episode_id");
+    throw new TtsApiError(400, "invalid_episode_id", "episodeId is invalid");
   }
   if (!lang) {
-    throw new Error("invalid_lang");
+    throw new TtsApiError(400, "invalid_lang", "lang must be ja or en");
   }
+
   if (!text) {
-    throw new Error("text_required");
+    text = await fetchEpisodeScript(episodeId, lang);
   }
+
   if (text.length > MAX_TEXT_LENGTH) {
-    throw new Error("text_too_long");
+    throw new TtsApiError(400, "text_too_long", "text exceeds maximum length");
   }
   if (audioVersion && !AUDIO_VERSION_PATTERN.test(audioVersion)) {
-    throw new Error("invalid_audio_version");
+    throw new TtsApiError(400, "invalid_audio_version", "audioVersion is invalid");
   }
 
   return {
@@ -117,10 +194,10 @@ const parseBody = async (request: Request): Promise<{
 
 const ensureLocalProviderAvailable = (): void => {
   if (process.platform !== "darwin") {
-    throw new Error("local_tts_requires_macos");
+    throw new TtsApiError(501, "local_tts_requires_macos", "Local TTS is only available on macOS");
   }
   if (!isLocalTtsEnabled()) {
-    throw new Error("local_tts_disabled");
+    throw new TtsApiError(501, "local_tts_disabled", "Local TTS is disabled");
   }
 };
 
@@ -195,18 +272,21 @@ const synthesizeWithProvider = async (
 
 export async function handleTtsRequest(request: Request): Promise<Response> {
   if (request.method !== "POST") {
-    return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
+    return jsonErrorResponse("method_not_allowed", "Method not allowed", 405);
   }
   if (!hasValidApiKey(request)) {
-    return jsonResponse({ ok: false, error: "unauthorized" }, 401);
+    return jsonErrorResponse("unauthorized", "Unauthorized", 401);
   }
 
   let payload: { episodeId: string; audioVersion: string | null; synthesizeInput: SynthesizeInput };
   try {
     payload = await parseBody(request);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "invalid_request";
-    return jsonResponse({ ok: false, error: message }, 400);
+    if (error instanceof TtsApiError) {
+      return jsonErrorResponse(error.errorType, error.message, error.status);
+    }
+
+    return jsonErrorResponse("invalid_request", "Invalid request", 400);
   }
 
   const requestedProvider = resolveConfiguredTtsProvider();
@@ -254,8 +334,21 @@ export async function handleTtsRequest(request: Request): Promise<Response> {
       fallbackReason
     });
   } catch (error) {
+    if (error instanceof TtsApiError) {
+      return jsonErrorResponse(error.errorType, error.message, error.status);
+    }
+
     const message = error instanceof Error ? error.message : "tts_failed";
-    const status = message === "local_tts_requires_macos" || message === "local_tts_disabled" ? 501 : 500;
-    return jsonResponse({ ok: false, error: message }, status);
+    if (message === "local_tts_requires_macos") {
+      return jsonErrorResponse("local_tts_requires_macos", "Local TTS is only available on macOS", 501);
+    }
+    if (message === "local_tts_disabled") {
+      return jsonErrorResponse("local_tts_disabled", "Local TTS is disabled", 501);
+    }
+    if (message === "openai_tts_timeout") {
+      return jsonErrorResponse("openai_tts_timeout", "OpenAI TTS request timed out", 504);
+    }
+
+    return jsonErrorResponse("tts_failed", message, 500);
   }
 }
