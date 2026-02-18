@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { getMessages } from "@/src/lib/i18n/messages";
+import type { Locale } from "@/src/lib/i18n/locale";
 import styles from "./job-runs.module.css";
 
 type RetryResponse = {
@@ -25,10 +27,19 @@ const isRetryResponse = (value: unknown): value is RetryResponse => {
   );
 };
 
-export default function RetryDailyGeneratePanel({ defaultEpisodeDate }: { defaultEpisodeDate: string }) {
+export default function RetryDailyGeneratePanel({
+  defaultEpisodeDate,
+  locale
+}: {
+  defaultEpisodeDate: string;
+  locale: Locale;
+}) {
   const [episodeDate, setEpisodeDate] = useState(defaultEpisodeDate);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RetryResponse | null>(null);
+
+  const messageSet = getMessages(locale);
+  const t = messageSet.jobRuns;
 
   const onRetry = async () => {
     setLoading(true);
@@ -61,7 +72,7 @@ export default function RetryDailyGeneratePanel({ defaultEpisodeDate }: { defaul
         episodeDate,
         runId: null,
         status: 0,
-        error: error instanceof Error ? error.message : "request_failed"
+        error: error instanceof Error ? error.message : messageSet.common.unknownError
       });
     } finally {
       setLoading(false);
@@ -70,12 +81,12 @@ export default function RetryDailyGeneratePanel({ defaultEpisodeDate }: { defaul
 
   return (
     <section className={styles.card}>
-      <h2>Retry</h2>
-      <p className={styles.caption}>ローカル検証向けに `daily-generate` を再実行します。</p>
+      <h2>{t.retryTitle}</h2>
+      <p className={styles.caption}>{t.retryCaption}</p>
 
       <div className={styles.retryControls}>
         <label className={styles.retryLabel} htmlFor="episode-date-input">
-          Episode Date
+          {t.episodeDate}
         </label>
         <input
           id="episode-date-input"
@@ -84,17 +95,17 @@ export default function RetryDailyGeneratePanel({ defaultEpisodeDate }: { defaul
           onChange={(event) => setEpisodeDate(event.target.value)}
         />
         <button type="button" onClick={onRetry} disabled={loading || !episodeDate}>
-          {loading ? "Retrying..." : "Retry daily-generate"}
+          {loading ? t.retrying : t.retryButton}
         </button>
       </div>
 
       {result ? (
         <p className={result.ok ? styles.retrySuccess : styles.retryError}>
           {result.ok
-            ? `Success: daily-generate invoked (run_id=${result.runId ?? "-"}, status=${result.status})`
+            ? `${t.successPrefix}: ${t.invokedLabel} (run_id=${result.runId ?? "-"}, status=${result.status})`
             : result.disabled
-              ? `Disabled: ${result.error ?? "retry endpoint is disabled"}`
-              : `Failed: ${result.error ?? "daily-generate invocation failed"} (status=${result.status}, run_id=${result.runId ?? "-"})`}
+              ? `${t.disabledPrefix}: ${result.error ?? t.retryDisabledFallback}`
+              : `${t.failedPrefix}: ${result.error ?? t.retryFailedFallback} (status=${result.status}, run_id=${result.runId ?? "-"})`}
         </p>
       ) : null}
     </section>
