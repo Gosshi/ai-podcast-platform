@@ -1,7 +1,12 @@
 import { failRun, finishRun, startRun } from "../_shared/jobRuns.ts";
 import { jsonResponse } from "../_shared/http.ts";
 import { fetchEpisodeById, updateEpisode } from "../_shared/episodes.ts";
-import { buildAudioVersion, hasVersionedAudioUrl } from "../_shared/audioVersion.ts";
+import {
+  buildAudioVersion,
+  hasVersionedAudioUrl,
+  resolveConfiguredTtsProvider,
+  resolveTtsSignatureConfig
+} from "../_shared/audioVersion.ts";
 import { synthesizeEpisodeAudio } from "../_shared/localTts.ts";
 
 type RequestBody = {
@@ -13,10 +18,6 @@ type RequestBody = {
 const buildForcedAudioVersion = (baseVersion: string): string => {
   const revision = Date.now().toString(36);
   return `${baseVersion}${revision}`.slice(0, 64);
-};
-
-const resolveRequestedProvider = (): "openai" | "local" => {
-  return Deno.env.get("TTS_PROVIDER")?.trim().toLowerCase() === "openai" ? "openai" : "local";
 };
 
 Deno.serve(async (req) => {
@@ -42,7 +43,8 @@ Deno.serve(async (req) => {
   try {
     const episode = await fetchEpisodeById(body.episodeId);
     const script = episode.script ?? episode.title ?? "";
-    const baseAudioVersion = await buildAudioVersion(script);
+    const ttsConfig = resolveTtsSignatureConfig("en");
+    const baseAudioVersion = await buildAudioVersion(script, ttsConfig);
     const forceLocalTts = Deno.env.get("LOCAL_TTS_ENABLED") === "1";
     const audioVersion = forceLocalTts ? buildForcedAudioVersion(baseAudioVersion) : baseAudioVersion;
     const hasCurrentVersionAudio = hasVersionedAudioUrl({
@@ -60,9 +62,12 @@ Deno.serve(async (req) => {
         episodeId: episode.id,
         noOp: true,
         reason: "audio_exists_for_version",
-        tts_provider: "cached",
-        model: null,
-        voice: null
+        audioVersion: baseAudioVersion,
+        tts_provider: ttsConfig.provider,
+        model: ttsConfig.model,
+        voice: ttsConfig.voice,
+        format: ttsConfig.format,
+        speed: ttsConfig.speed
       });
 
       return jsonResponse({ ok: true, episodeId: episode.id, noOp: true });
@@ -88,24 +93,32 @@ Deno.serve(async (req) => {
       idempotencyKey,
       episodeId: updated.id,
       noOp: false,
+      audioVersion,
       audioUrl,
       tts_provider: synthesized.provider,
       requested_provider: synthesized.requestedProvider,
       model: synthesized.model,
       voice: synthesized.voice,
       format: synthesized.format,
+      speed: ttsConfig.speed,
       fallback_reason: synthesized.fallbackReason
     });
 
     return jsonResponse({ ok: true, episodeId: updated.id, audioUrl, status: updated.status });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const ttsConfig = resolveTtsSignatureConfig("en");
     await failRun(runId, message, {
       step: "tts-en",
       episodeDate,
       idempotencyKey,
       episodeId: body.episodeId,
-      requested_provider: resolveRequestedProvider()
+      requested_provider: resolveConfiguredTtsProvider(),
+      tts_provider: ttsConfig.provider,
+      model: ttsConfig.model,
+      voice: ttsConfig.voice,
+      format: ttsConfig.format,
+      speed: ttsConfig.speed
     });
 
     return jsonResponse({ ok: false, error: message }, 500);
