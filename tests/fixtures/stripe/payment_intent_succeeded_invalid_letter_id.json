@@ -1,0 +1,16 @@
+{
+  "id": "evt_fixture_payment_intent_succeeded_invalid_letter_id",
+  "object": "event",
+  "type": "payment_intent.succeeded",
+  "data": {
+    "object": {
+      "id": "pi_fixture_003",
+      "object": "payment_intent",
+      "amount_received": 1000,
+      "currency": "jpy",
+      "metadata": {
+        "letter_id": "not-a-uuid"
+      }
+    }
+  }
+}
