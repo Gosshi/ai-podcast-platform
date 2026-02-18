@@ -206,6 +206,26 @@ else
   fail "supabase functions serve"
 fi
 
+log "ingest trends with deterministic mock feeds"
+INGEST_RESPONSE="$(curl -sS -X POST "$FUNCTIONS_URL/ingest_trends_rss" -H "Content-Type: application/json" -d '{"limitPerSource":5,"mockFeeds":[{"sourceKey":"mock-tech-a","name":"Mock Tech A","url":"https://mock.local/a","weight":1.4,"category":"tech","theme":"test","xml":"<rss><channel><item><title>AI Startup Raises Funding</title><link>https://example.com/ai-startup?utm_source=test</link><description>Funding round summary</description></item><item><title>Edge Devices Get Smaller</title><link>https://example.com/edge-devices</link><description>Chip packaging update</description><pubDate>Tue, 17 Feb 2026 12:00:00 GMT</pubDate></item></channel></rss>"},{"sourceKey":"mock-tech-b","name":"Mock Tech B","url":"https://mock.local/b","weight":1.2,"category":"tech","theme":"test","xml":"<rss><channel><item><title>AI Startup Raises Funding!!!</title><link>https://example.com/ai-startup?utm_medium=test</link><description>Duplicate angle from another source</description></item></channel></rss>"}]}')"
+assert_contains "ingest_trends_rss returns ok" "$INGEST_RESPONSE" "\"ok\":true"
+assert_contains "ingest_trends_rss exposes fetchedCount" "$INGEST_RESPONSE" "\"fetchedCount\":"
+assert_contains "ingest_trends_rss exposes insertedCount" "$INGEST_RESPONSE" "\"insertedCount\":"
+assert_contains "ingest_trends_rss exposes dedupedCount" "$INGEST_RESPONSE" "\"dedupedCount\":"
+assert_contains "ingest_trends_rss exposes publishedAtFilledCount" "$INGEST_RESPONSE" "\"publishedAtFilledCount\":"
+
+TREND_TOTAL_COUNT="$(psql_query "select count(*) from public.trend_items;")"
+TREND_REPRESENTATIVE_COUNT="$(psql_query "select count(*) from public.trend_items where is_cluster_representative=true;")"
+TREND_CLUSTERED_COUNT="$(psql_query "select count(*) from public.trend_items where cluster_size > 1;")"
+TREND_PUBLISHED_SOURCE_COUNT="$(psql_query "select count(*) from public.trend_items where published_at is not null and published_at_source in ('rss','meta','fetched');")"
+TREND_PUBLISHED_FILLED_COUNT="$(psql_query "select count(*) from public.trend_items where published_at_source in ('meta','fetched');")"
+
+assert_count_ge "trend_items inserted from ingest" "$TREND_TOTAL_COUNT" 2
+assert_count_ge "trend_items representative rows" "$TREND_REPRESENTATIVE_COUNT" 2
+assert_count_ge "trend_items cluster_size reflects dedupe" "$TREND_CLUSTERED_COUNT" 1
+assert_count_ge "trend_items published_at_source set" "$TREND_PUBLISHED_SOURCE_COUNT" 2
+assert_count_ge "trend_items published_at filled via fallback" "$TREND_PUBLISHED_FILLED_COUNT" 1
+
 log "start next dev server"
 SELECTED_TTS_PROVIDER="${TTS_PROVIDER:-local}"
 SUPABASE_URL="$API_URL" \

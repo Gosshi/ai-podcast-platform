@@ -1,6 +1,7 @@
 import { failRun, finishRun, startRun } from "../_shared/jobRuns.ts";
 import { jsonResponse } from "../_shared/http.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
+import { parseCsvList } from "../_shared/trendsConfig.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -14,6 +15,8 @@ type TrendCandidateRow = {
   summary: string | null;
   score: number | null;
   published_at: string | null;
+  cluster_size: number | null;
+  is_cluster_representative: boolean | null;
   created_at: string | null;
   trend_sources:
     | {
@@ -35,6 +38,7 @@ type PlannedTrendItem = {
   source: string;
   score: number;
   publishedAt: string | null;
+  clusterSize: number;
 };
 
 type Topic = {
@@ -106,15 +110,6 @@ const fallbackTrendItems = [
   }
 ] as const;
 
-const parseCsvList = (rawValue: string | undefined, fallback: string[]): string[] => {
-  if (!rawValue) return fallback;
-  const values = rawValue
-    .split(",")
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
-  return values.length > 0 ? values : fallback;
-};
-
 const normalizeToken = (value: string): string => value.trim().toLowerCase();
 
 const resolveCategory = (row: TrendCandidateRow): string => {
@@ -184,7 +179,10 @@ const loadSelectedTrends = async (
 
   const { data, error } = await supabaseAdmin
     .from("trend_items")
-    .select("id, title, url, summary, score, published_at, created_at, trend_sources!inner(name,category)")
+    .select(
+      "id, title, url, summary, score, published_at, cluster_size, is_cluster_representative, created_at, trend_sources!inner(name,category)"
+    )
+    .eq("is_cluster_representative", true)
     .order("score", { ascending: false })
     .order("published_at", { ascending: false })
     .limit(200);
@@ -193,6 +191,7 @@ const loadSelectedTrends = async (
 
   const selected = ((data ?? []) as TrendCandidateRow[])
     .filter((row) => Boolean(row.id && row.title && row.url && row.score !== null))
+    .filter((row) => row.is_cluster_representative !== false)
     .filter((row) => {
       const dateValue = row.published_at ?? row.created_at;
       if (!dateValue) return false;
@@ -214,10 +213,12 @@ const loadSelectedTrends = async (
         `${compactText(row.title as string)} was highlighted in recent public reports and discussions.`,
       source: resolveSourceName(row),
       score: row.score as number,
-      publishedAt: row.published_at
+      publishedAt: row.published_at,
+      clusterSize: Math.max(row.cluster_size ?? 1, 1)
     }))
     .sort((left, right) => {
       if (right.score !== left.score) return right.score - left.score;
+      if (right.clusterSize !== left.clusterSize) return right.clusterSize - left.clusterSize;
       return (right.publishedAt ?? "").localeCompare(left.publishedAt ?? "");
     });
 
@@ -308,7 +309,8 @@ Deno.serve(async (req) => {
       id: item.id,
       title: item.title,
       score: item.score,
-      publishedAt: item.publishedAt
+      publishedAt: item.publishedAt,
+      clusterSize: item.clusterSize
     }));
 
     await finishRun(runId, {
