@@ -17,6 +17,11 @@ type TrendItem = {
   url: string;
 };
 
+type ScoredTrendItem = TrendItem & {
+  score: number;
+  publishedAt: string | null;
+};
+
 type TrendCandidateRow = {
   title: string | null;
   url: string | null;
@@ -141,6 +146,93 @@ const resolveCategory = (row: TrendCandidateRow): string => {
   return row.trend_sources?.category ?? "general";
 };
 
+const resolveHost = (url: string): string => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return url.trim().toLowerCase();
+  }
+};
+
+const normalizeTitle = (title: string): string => {
+  return title
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^\p{Letter}\p{Number}\s]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const tokenizeTitle = (title: string): Set<string> => {
+  const normalized = normalizeTitle(title);
+  if (!normalized) return new Set();
+  return new Set(
+    normalized
+      .split(" ")
+      .map((token) => token.trim())
+      .filter((token) => token.length > 0)
+  );
+};
+
+const jaccardSimilarity = (a: Set<string>, b: Set<string>): number => {
+  if (a.size === 0 || b.size === 0) return 0;
+
+  let intersection = 0;
+  for (const token of a) {
+    if (b.has(token)) {
+      intersection += 1;
+    }
+  }
+
+  const union = a.size + b.size - intersection;
+  return union === 0 ? 0 : intersection / union;
+};
+
+const pickHigherScore = (current: ScoredTrendItem, next: ScoredTrendItem): ScoredTrendItem => {
+  if (next.score !== current.score) {
+    return next.score > current.score ? next : current;
+  }
+
+  const nextPublished = next.publishedAt ?? "";
+  const currentPublished = current.publishedAt ?? "";
+  return nextPublished > currentPublished ? next : current;
+};
+
+const clusterTrendItems = (items: ScoredTrendItem[]): TrendItem[] => {
+  const byHost = new Map<string, ScoredTrendItem>();
+  for (const item of items) {
+    const host = resolveHost(item.url);
+    const existing = byHost.get(host);
+    if (!existing) {
+      byHost.set(host, item);
+      continue;
+    }
+    byHost.set(host, pickHigherScore(existing, item));
+  }
+
+  const hostDeduped = Array.from(byHost.values()).sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return (b.publishedAt ?? "").localeCompare(a.publishedAt ?? "");
+  });
+
+  const clusters: { representative: ScoredTrendItem; representativeTokens: Set<string> }[] = [];
+  for (const item of hostDeduped) {
+    const tokens = tokenizeTitle(item.title);
+    const matchedCluster = clusters.find(
+      (cluster) => jaccardSimilarity(tokens, cluster.representativeTokens) >= 0.6
+    );
+
+    if (!matchedCluster) {
+      clusters.push({ representative: item, representativeTokens: tokens });
+    }
+  }
+
+  return clusters.slice(0, MAX_TREND_ITEMS).map((cluster) => ({
+    title: cluster.representative.title,
+    url: cluster.representative.url
+  }));
+};
+
 const loadTopTrends = async (): Promise<TrendItem[]> => {
   const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const excludedCategories = new Set(
@@ -179,10 +271,12 @@ const loadTopTrends = async (): Promise<TrendItem[]> => {
     })
     .map((item) => ({
       title: item.title as string,
-      url: item.url as string
+      url: item.url as string,
+      score: item.score as number,
+      publishedAt: item.published_at
     }));
 
-  return trendItems.slice(0, MAX_TREND_ITEMS);
+  return clusterTrendItems(trendItems);
 };
 
 const resolveTrendItems = async (
