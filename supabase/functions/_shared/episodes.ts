@@ -13,6 +13,17 @@ export type Episode = {
   published_at: string | null;
 };
 
+const getJstDateRangeUtc = (episodeDate: string): { startIso: string; endIso: string } => {
+  const parsed = new Date(`${episodeDate}T00:00:00+09:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error("invalid episodeDate format; expected YYYY-MM-DD");
+  }
+
+  const start = parsed;
+  const end = new Date(parsed.getTime() + 24 * 60 * 60 * 1000);
+  return { startIso: start.toISOString(), endIso: end.toISOString() };
+};
+
 export const fetchEpisodeById = async (episodeId: string): Promise<Episode> => {
   const { data, error } = await supabaseAdmin
     .from("episodes")
@@ -82,6 +93,38 @@ export const findEnglishEpisodeByMasterId = async (
     .limit(1)
     .maybeSingle();
 
+  if (error) {
+    throw error;
+  }
+
+  return (data as Episode | null) ?? null;
+};
+
+export const findPublishedEpisodeByJstDate = async (params: {
+  episodeDate: string;
+  lang: "ja" | "en";
+  excludeEpisodeId?: string;
+}): Promise<Episode | null> => {
+  const { startIso, endIso } = getJstDateRangeUtc(params.episodeDate);
+
+  let query = supabaseAdmin
+    .from("episodes")
+    .select(
+      "id, master_id, lang, status, title, description, script, audio_url, duration_sec, published_at"
+    )
+    .eq("lang", params.lang)
+    .eq("status", "published")
+    .not("published_at", "is", null)
+    .gte("published_at", startIso)
+    .lt("published_at", endIso)
+    .order("published_at", { ascending: false })
+    .limit(1);
+
+  if (params.excludeEpisodeId) {
+    query = query.neq("id", params.excludeEpisodeId);
+  }
+
+  const { data, error } = await query.maybeSingle();
   if (error) {
     throw error;
   }

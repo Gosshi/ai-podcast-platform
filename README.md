@@ -49,13 +49,25 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 4. ローカル検証専用として `--no-verify-jwt` を使用。staging では通常どおり Authorization を付けて実行する。
 
 ### Scheduler (staging)
-- Supabase Dashboard > Schedules で `daily-generate` を `POST` 実行
-- body は `{\"episodeDate\":\"YYYY-MM-DD\"}` 形式（省略時は当日）
+- GitHub Actions: `.github/workflows/scheduled-daily-publish.yml`
+- cron: `0 22 * * *`（UTC 22:00 = JST 翌日 07:00）
+- `workflow_dispatch` で手動実行可能
+- 必要な Secrets:
+  - `SUPABASE_FUNCTIONS_BASE_URL`（例: `https://<project-ref>.supabase.co/functions/v1`）
+  - `SUPABASE_SERVICE_ROLE_KEY`
+- 実行時は `episodeDate` に JST 日付（`YYYY-MM-DD`）を渡して `daily-generate` を実行
+
+### 失敗時の確認手順（最小）
+1. GitHub Actions の `Scheduled Daily Publish` を開く
+2. `Failure diagnostics` step の `http_status` と `response_body` を確認
+3. Artifacts の `scheduled-daily-publish-logs-<run_id>` をダウンロードし、`daily-generate-response.json` を確認
+4. `runId` が出ている場合は `/admin/job-runs` または `job_runs` テーブルで該当 run の `status/error` を追跡
 
 ### Idempotency / Re-run
 - `job_runs` は insert-only。各実行は必ず新しい `job_runs` 行を作成
 - 各ステップは no-op 条件を持つ（例: `tts-*` は `audio_url` 既存ならスキップ）
 - 失敗時は `job_runs.status='failed'` と `job_runs.error` を残す
+- `publish` は JST日付単位で既存公開を検出し、同日重複公開を no-op で防止する
 
 ## Stripe Webhook (MVP)
 - Endpoint: `/api/stripe/webhook`
