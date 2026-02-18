@@ -34,6 +34,8 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 ## DB Notes
 - Migration は `supabase/migrations/` に SQL で追加する
 - 公開判定は `episodes.status='published'` かつ `published_at IS NOT NULL`
+- `daily-generate` は未読 `letters` のうち「`tips.letter_id` 付き」を最優先し、次に新着未読を最大2件まで採用
+- 採用済み `letters` は `is_used=true` に更新される
 
 ## Jobs Orchestration
 - Functions: `daily-generate`, `plan-topics`, `write-script-ja`, `tts-ja`, `adapt-script-en`, `tts-en`, `publish`
@@ -59,6 +61,7 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - Endpoint: `/api/stripe/webhook`
 - Handled event: `payment_intent.succeeded`
 - Idempotency key: `tips.provider_payment_id` (UNIQUE)
+- `payment_intent.metadata.letter_id` があれば `tips.letter_id` に保存（UUIDのみ採用）
 
 ### Required Env
 - `STRIPE_SECRET_KEY`
@@ -69,6 +72,10 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 2. `stripe listen --forward-to localhost:3000/api/stripe/webhook`
 3. `stripe trigger payment_intent.succeeded`
 4. 同一 PaymentIntent の再送で `tips` が増えないことを確認（UNIQUE衝突は no-op）
+
+### Manual Link (metadataなしの場合)
+1. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c "update public.tips set letter_id='<LETTER_UUID>' where provider_payment_id='<PAYMENT_INTENT_ID>' and letter_id is null;"`
+2. `daily-generate` 実行時に該当お便りが tip 優先で読み上げ対象になることを確認
 
 ## Letters API (MVP)
 - Endpoint: `POST /api/letters`

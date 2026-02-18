@@ -43,6 +43,21 @@ const jsonResponse = (body: Record<string, unknown>, status = 200): Response => 
   });
 };
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const parseOptionalLetterId = (metadata: Stripe.Metadata | null | undefined): string | null => {
+  const raw = metadata?.letter_id;
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const value = raw.trim();
+  if (!value) {
+    return null;
+  }
+  return UUID_RE.test(value) ? value : null;
+};
+
 const createRuntimeDeps = (): StripeWebhookDeps => {
   const stripe = new Stripe(getRequiredEnv("STRIPE_SECRET_KEY"));
   const supabaseUrl = getRequiredEnv("SUPABASE_URL");
@@ -88,13 +103,14 @@ export async function handleStripeWebhook(request: Request, deps: StripeWebhookD
 
   const paymentIntent = event.data.object as Stripe.PaymentIntent;
   const providerPaymentId = paymentIntent.id;
+  const letterId = parseOptionalLetterId(paymentIntent.metadata);
 
   const { error } = await deps.insertTip({
     provider: "stripe",
     provider_payment_id: providerPaymentId,
     amount: paymentIntent.amount_received,
     currency: paymentIntent.currency,
-    letter_id: null
+    letter_id: letterId
   });
 
   if (error) {

@@ -27,6 +27,7 @@ const signPayload = (payload: string): string => {
 
 const run = async (): Promise<void> => {
   const insertedPayments = new Set<string>();
+  const insertedTips: { provider_payment_id: string; letter_id: string | null }[] = [];
 
   const deps = {
     stripe,
@@ -43,6 +44,10 @@ const run = async (): Promise<void> => {
       }
 
       insertedPayments.add(tip.provider_payment_id);
+      insertedTips.push({
+        provider_payment_id: tip.provider_payment_id,
+        letter_id: tip.letter_id
+      });
       return { error: null };
     }
   };
@@ -66,6 +71,10 @@ const run = async (): Promise<void> => {
   assert(firstResponse.status === 200, `first webhook status should be 200, got ${firstResponse.status}`);
   assert(firstBody.ok === true, "first webhook call should return ok=true");
   assert(firstBody.duplicate !== true, "first webhook call should not be duplicate");
+  assert(
+    insertedTips[0]?.letter_id === "11111111-1111-4111-8111-111111111111",
+    `first webhook call should keep metadata letter_id, got ${insertedTips[0]?.letter_id ?? "null"}`
+  );
 
   const secondResponse = await handleStripeWebhook(
     new Request("http://localhost/api/stripe/webhook", {

@@ -43,14 +43,47 @@ type TrendCandidateRow = {
 };
 
 type LetterItem = {
+  id: string;
   display_name: string;
   text: string;
+  tip_amount: number | null;
+  tip_currency: string | null;
+  tip_provider_payment_id: string | null;
 };
 
 type LetterRow = {
+  id: string | null;
   display_name: string | null;
   text: string | null;
   moderation_status: string | null;
+  is_used: boolean | null;
+  created_at: string | null;
+};
+
+type TipLetterJoinRow = {
+  amount: number | null;
+  currency: string | null;
+  provider_payment_id: string | null;
+  created_at: string | null;
+  letter_id: string | null;
+  letters:
+    | {
+        id: string | null;
+        display_name: string | null;
+        text: string | null;
+        moderation_status: string | null;
+        is_used: boolean | null;
+        created_at: string | null;
+      }
+    | {
+        id: string | null;
+        display_name: string | null;
+        text: string | null;
+        moderation_status: string | null;
+        is_used: boolean | null;
+        created_at: string | null;
+      }[]
+    | null;
 };
 
 const orderedSteps = [
@@ -335,26 +368,118 @@ const loadTopTrends = async (): Promise<TrendItem[]> => {
   return clusterTrendItems(trendItems);
 };
 
-const loadRecentLetters = async (): Promise<LetterItem[]> => {
+const resolveJoinedLetterRow = (
+  row: TipLetterJoinRow
+): {
+  id: string | null;
+  display_name: string | null;
+  text: string | null;
+  moderation_status: string | null;
+  is_used: boolean | null;
+  created_at: string | null;
+} | null => {
+  if (!row.letters) return null;
+  if (Array.isArray(row.letters)) {
+    return row.letters[0] ?? null;
+  }
+  return row.letters;
+};
+
+const loadPrioritizedLetters = async (): Promise<LetterItem[]> => {
+  const { data: tipData, error: tipError } = await supabaseAdmin
+    .from("tips")
+    .select(
+      "amount, currency, provider_payment_id, created_at, letter_id, letters!inner(id, display_name, text, moderation_status, is_used, created_at)"
+    )
+    .not("letter_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (tipError) {
+    throw tipError;
+  }
+
+  const tipFirstMap = new Map<string, LetterItem>();
+  for (const row of (tipData ?? []) as TipLetterJoinRow[]) {
+    const letter = resolveJoinedLetterRow(row);
+    if (!letter?.id || !letter.display_name || !letter.text) {
+      continue;
+    }
+    if (letter.is_used === true || letter.moderation_status === "reject") {
+      continue;
+    }
+    if (tipFirstMap.has(letter.id)) {
+      continue;
+    }
+
+    tipFirstMap.set(letter.id, {
+      id: letter.id,
+      display_name: letter.display_name,
+      text: letter.text,
+      tip_amount: row.amount,
+      tip_currency: row.currency,
+      tip_provider_payment_id: row.provider_payment_id,
+    });
+  }
+
   const { data, error } = await supabaseAdmin
     .from("letters")
-    .select("display_name, text, moderation_status")
+    .select("id, display_name, text, moderation_status, is_used, created_at")
+    .eq("is_used", false)
     .neq("moderation_status", "reject")
     .order("created_at", { ascending: false })
-    .limit(MAX_LETTERS);
+    .limit(50);
 
   if (error) {
     throw error;
   }
 
-  const rows = ((data ?? []) as LetterRow[])
-    .filter((row) => Boolean(row.display_name && row.text))
-    .map((row) => ({
-      display_name: row.display_name as string,
-      text: row.text as string
-    }));
+  const unreadRows = ((data ?? []) as LetterRow[]).filter(
+    (row) => Boolean(row.id && row.display_name && row.text) && row.is_used !== true
+  );
 
-  return rows.reverse();
+  const result: LetterItem[] = [];
+  const usedIds = new Set<string>();
+
+  for (const letter of tipFirstMap.values()) {
+    if (result.length >= MAX_LETTERS) break;
+    result.push(letter);
+    usedIds.add(letter.id);
+  }
+
+  for (const row of unreadRows) {
+    if (result.length >= MAX_LETTERS) break;
+    const id = row.id as string;
+    if (usedIds.has(id)) continue;
+    result.push({
+      id,
+      display_name: row.display_name as string,
+      text: row.text as string,
+      tip_amount: null,
+      tip_currency: null,
+      tip_provider_payment_id: null
+    });
+    usedIds.add(id);
+  }
+
+  return result;
+};
+
+const markLettersAsUsed = async (letters: LetterItem[]): Promise<void> => {
+  const letterIds = letters.map((letter) => letter.id);
+  if (letterIds.length === 0) {
+    return;
+  }
+
+  const { error } = await supabaseAdmin
+    .from("letters")
+    .update({ is_used: true })
+    .in("id", letterIds)
+    .eq("is_used", false);
+
+  if (error) {
+    throw error;
+  }
 };
 
 const resolveTrendItems = async (
@@ -402,7 +527,7 @@ Deno.serve(async (req) => {
       episodeDate,
       idempotencyKey
     );
-    const letters = await loadRecentLetters().catch(() => []);
+    const letters = await loadPrioritizedLetters().catch(() => []);
 
     const plan = await invokeStep(functionsBaseUrl, "plan-topics", { episodeDate, idempotencyKey });
 
@@ -439,6 +564,8 @@ Deno.serve(async (req) => {
       episodeIdEn: ttsEn.episodeId
     });
 
+    await markLettersAsUsed(letters);
+
     await finishRun(runId, {
       step: "daily-generate",
       episodeDate,
@@ -446,6 +573,7 @@ Deno.serve(async (req) => {
       orderedSteps,
       trendItems,
       lettersCount: letters.length,
+      usedLetterIds: letters.map((letter) => letter.id),
       usedTrendFallback: usedFallback,
       outputs: {
         plan,
@@ -463,6 +591,7 @@ Deno.serve(async (req) => {
       idempotencyKey,
       trendItems,
       lettersCount: letters.length,
+      usedLetterIds: letters.map((letter) => letter.id),
       usedTrendFallback: usedFallback,
       outputs: {
         plan,
