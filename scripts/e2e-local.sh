@@ -94,6 +94,22 @@ wait_for_next() {
   return 1
 }
 
+run_daily_generate_with_retry() {
+  local max_retry=5
+  local i
+  local body=""
+  for ((i = 1; i <= max_retry; i++)); do
+    body="$(curl -sS -X POST "$FUNCTIONS_URL/daily-generate" -H "Content-Type: application/json" -d "{\"episodeDate\":\"$EPISODE_DATE\"}" || true)"
+    if grep -Fq "\"ok\":true" <<<"$body"; then
+      printf "%s" "$body"
+      return 0
+    fi
+    sleep 2
+  done
+  printf "%s" "$body"
+  return 1
+}
+
 psql_query() {
   local sql="$1"
   psql "$DB_URL" -v ON_ERROR_STOP=1 -At -c "$sql"
@@ -125,7 +141,7 @@ assert_contains() {
   local label="$1"
   local haystack="$2"
   local needle="$3"
-  if printf "%s" "$haystack" | grep -Fq "$needle"; then
+  if grep -Fq -- "$needle" <<<"$haystack"; then
     pass "$label"
   else
     fail "$label"
@@ -170,8 +186,8 @@ fi
 EPISODE_DATE="${EPISODE_DATE:-$(date +%F)}"
 
 log "execute daily-generate pipeline #1"
-DAILY_1="$(curl -sS -X POST "$FUNCTIONS_URL/daily-generate" -H "Content-Type: application/json" -d "{\"episodeDate\":\"$EPISODE_DATE\"}")"
-if printf "%s" "$DAILY_1" | grep -Fq "\"ok\":true"; then
+DAILY_1="$(run_daily_generate_with_retry)"
+if grep -Fq "\"ok\":true" <<<"$DAILY_1"; then
   pass "daily-generate pipeline #1"
 else
   printf "%s\n" "$DAILY_1" >&2
@@ -179,8 +195,8 @@ else
 fi
 
 log "execute daily-generate pipeline #2"
-DAILY_2="$(curl -sS -X POST "$FUNCTIONS_URL/daily-generate" -H "Content-Type: application/json" -d "{\"episodeDate\":\"$EPISODE_DATE\"}")"
-if printf "%s" "$DAILY_2" | grep -Fq "\"ok\":true"; then
+DAILY_2="$(run_daily_generate_with_retry)"
+if grep -Fq "\"ok\":true" <<<"$DAILY_2"; then
   pass "daily-generate pipeline #2"
 else
   printf "%s\n" "$DAILY_2" >&2
