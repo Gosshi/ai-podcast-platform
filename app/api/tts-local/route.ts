@@ -17,6 +17,7 @@ type RequestBody = {
 const EPISODE_ID_PATTERN = /^[0-9a-fA-F-]{8,64}$/;
 const AUDIO_VERSION_PATTERN = /^[a-z0-9]{3,64}$/;
 const MAX_TEXT_LENGTH = 12000;
+const JAPANESE_CHAR_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
 
 const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
   return new Response(JSON.stringify(body), {
@@ -78,38 +79,111 @@ const resolveVoice = (lang: TtsLang): string | null => {
   return trimmed ? trimmed : null;
 };
 
-let cachedAvailableVoices: Promise<Set<string>> | null = null;
+type VoiceCatalogItem = {
+  name: string;
+  locale: string;
+};
 
-const getAvailableVoices = async (): Promise<Set<string>> => {
+let cachedAvailableVoices: Promise<VoiceCatalogItem[]> | null = null;
+
+const getAvailableVoices = async (): Promise<VoiceCatalogItem[]> => {
   if (!cachedAvailableVoices) {
     cachedAvailableVoices = runCommandWithOutput("say", ["-v", "?"])
       .then(({ stdout }) => {
-        const voices = new Set<string>();
+        const voices: VoiceCatalogItem[] = [];
         for (const line of stdout.split(/\r?\n/)) {
-          const match = line.match(/^\s*(.+?)\s+[a-z]{2}_[A-Z]{2}\s+#/);
+          const match = line.match(/^\s*(.+?)\s+([a-z]{2}_[A-Z]{2})\s+#/);
           if (match) {
-            voices.add(match[1].trim());
+            voices.push({
+              name: match[1].trim(),
+              locale: match[2].trim()
+            });
           }
         }
         return voices;
       })
-      .catch(() => new Set<string>());
+      .catch(() => []);
   }
 
   return cachedAvailableVoices;
 };
 
 const resolveEnglishVoiceCandidates = async (): Promise<string[]> => {
+  const availableVoices = await getAvailableVoices();
+  const findInstalledVoice = (baseName: string): string | null => {
+    const normalized = baseName.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    const exact = availableVoices.find((voice) => voice.name === normalized);
+    if (exact) {
+      return exact.name;
+    }
+
+    const variant = availableVoices.find((voice) => voice.name.startsWith(`${normalized} (`));
+    return variant?.name ?? null;
+  };
+
   const configured =
     process.env.LOCAL_TTS_EN_VOICE?.trim() || process.env.LOCAL_TTS_VOICE_EN?.trim() || null;
-  if (configured) {
-    return Array.from(new Set([configured, "Alex", "Samantha"]));
+
+  const preferredBaseNames = [
+    configured,
+    "Samantha",
+    "Alex",
+    "Eddy",
+    "Flo"
+  ].filter((voice): voice is string => Boolean(voice));
+
+  const installedPreferred = preferredBaseNames
+    .map((voice) => findInstalledVoice(voice))
+    .filter((voice): voice is string => Boolean(voice));
+  if (installedPreferred.length > 0) {
+    return Array.from(new Set(installedPreferred));
   }
 
-  const availableVoices = await getAvailableVoices();
-  const primary = availableVoices.has("Alex") ? "Alex" : availableVoices.has("Samantha") ? "Samantha" : "Alex";
-  const fallback = primary === "Alex" ? "Samantha" : "Alex";
+  const anyEnglish = availableVoices
+    .filter((voice) => voice.locale.startsWith("en_"))
+    .map((voice) => voice.name);
+  if (anyEnglish.length > 0) {
+    return Array.from(new Set(anyEnglish));
+  }
+
+  if (configured) {
+    return [configured];
+  }
+
+  const primary = "Samantha";
+  const fallback = primary === "Samantha" ? "Alex" : "Samantha";
   return [primary, fallback];
+};
+
+const hasJapaneseText = (value: string): boolean => JAPANESE_CHAR_PATTERN.test(value);
+
+const sanitizeEnglishLineForTts = (line: string): string => {
+  const trimmed = line.trim();
+  if (!trimmed || !hasJapaneseText(trimmed)) {
+    return trimmed;
+  }
+
+  if (/^topic:/i.test(trimmed)) {
+    return "Topic: key story from Japanese-language media.";
+  }
+  if (/^- what happened:/i.test(trimmed)) {
+    return "- What happened: A notable update was reported in Japanese-language coverage.";
+  }
+  if (/^- why it is trending:/i.test(trimmed)) {
+    return "- Why it is trending: The topic drew broad attention in Japan.";
+  }
+  if (/^- quick take:/i.test(trimmed)) {
+    return "- Quick take: We avoid overconfident claims and follow verified updates.";
+  }
+  if (/^- source context:/i.test(trimmed)) {
+    return "- Source context: Japanese-language media.";
+  }
+
+  return "Details from Japanese-language sources are summarized in this segment.";
 };
 
 const sanitizeEnglishTextForTts = (text: string): string => {
@@ -117,7 +191,7 @@ const sanitizeEnglishTextForTts = (text: string): string => {
     .replace(/\r\n/g, "\n")
     .split("\n")
     .map((line) => {
-      const trimmed = line.trim();
+      const trimmed = sanitizeEnglishLineForTts(line);
       if (!trimmed) {
         return "";
       }
