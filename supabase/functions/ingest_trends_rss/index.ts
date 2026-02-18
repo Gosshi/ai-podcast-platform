@@ -7,6 +7,8 @@ type RequestBody = {
     sourceKey: string;
     name?: string;
     url?: string;
+    weight?: number;
+    category?: string;
     xml: string;
   }[];
 };
@@ -17,6 +19,8 @@ type TrendSource = {
   name: string;
   url: string;
   enabled: boolean;
+  weight: number;
+  category: string;
 };
 
 type ParsedItem = {
@@ -32,14 +36,44 @@ const DEFAULT_RSS_SOURCES = [
   {
     source_key: "nhk_news",
     name: "NHK News",
-    url: "https://www3.nhk.or.jp/rss/news/cat0.xml"
+    url: "https://www3.nhk.or.jp/rss/news/cat0.xml",
+    weight: 1,
+    category: "news"
   },
   {
     source_key: "gigazine",
     name: "GIGAZINE",
-    url: "https://gigazine.net/news/rss_2.0/"
+    url: "https://gigazine.net/news/rss_2.0/",
+    weight: 1.1,
+    category: "tech"
   }
 ] as const;
+
+const BASE_SIGNAL = 1;
+const FRESHNESS_HALF_LIFE_HOURS = 24;
+const MAX_FRESHNESS_WINDOW_HOURS = 48;
+
+const normalizeTitleForHash = (value: string): string => {
+  return value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[\p{P}\p{S}\s]+/gu, "");
+};
+
+const resolveFreshnessDecay = (publishedAt: string | null): number => {
+  const baseline = publishedAt ? new Date(publishedAt) : new Date();
+  if (Number.isNaN(baseline.getTime())) return 1;
+
+  const diffMs = Math.max(0, Date.now() - baseline.getTime());
+  const ageHours = Math.min(diffMs / (60 * 60 * 1000), MAX_FRESHNESS_WINDOW_HOURS);
+  return Math.exp((-Math.log(2) * ageHours) / FRESHNESS_HALF_LIFE_HOURS);
+};
+
+const calculateScore = (sourceWeight: number, publishedAt: string | null): number => {
+  const weight = Number.isFinite(sourceWeight) && sourceWeight > 0 ? sourceWeight : 1;
+  const freshnessDecay = resolveFreshnessDecay(publishedAt);
+  return weight * freshnessDecay * BASE_SIGNAL;
+};
 
 const normalizeDate = (value: string | null): string | null => {
   if (!value) return null;
@@ -185,7 +219,9 @@ const upsertSources = async (body: RequestBody): Promise<TrendSource[]> => {
           source_key: feed.sourceKey,
           name: feed.name ?? feed.sourceKey,
           url: feed.url ?? `mock://${feed.sourceKey}`,
-          enabled: true
+          enabled: true,
+          weight: feed.weight ?? 1,
+          category: feed.category ?? "general"
         }))
       : DEFAULT_RSS_SOURCES;
 
@@ -199,7 +235,7 @@ const upsertSources = async (body: RequestBody): Promise<TrendSource[]> => {
   const sourceKeys = sourceSeeds.map((source) => source.source_key);
   let query = supabaseAdmin
     .from("trend_sources")
-    .select("id, source_key, name, url, enabled")
+    .select("id, source_key, name, url, enabled, weight, category")
     .in("source_key", sourceKeys)
     .order("source_key", { ascending: true });
 
@@ -246,6 +282,9 @@ Deno.serve(async (req) => {
 
         for (const item of parsedItems) {
           const hash = await hashText(`${source.source_key}:${item.url}`);
+          const normalizedTitle = normalizeTitleForHash(item.title) || item.title.trim().toLowerCase();
+          const normalizedHash = await hashText(`${source.source_key}:${normalizedTitle}`);
+          const score = calculateScore(source.weight, item.publishedAt);
 
           const { error } = await supabaseAdmin.from("trend_items").insert({
             source_id: source.id,
@@ -253,7 +292,9 @@ Deno.serve(async (req) => {
             url: item.url,
             summary: item.summary,
             published_at: item.publishedAt,
-            hash
+            hash,
+            normalized_hash: normalizedHash,
+            score
           });
 
           if (error) {

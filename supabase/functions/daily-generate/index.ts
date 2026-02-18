@@ -17,6 +17,21 @@ type TrendItem = {
   url: string;
 };
 
+type TrendCandidateRow = {
+  title: string | null;
+  url: string | null;
+  score: number | null;
+  published_at: string | null;
+  trend_sources:
+    | {
+        category: string | null;
+      }
+    | {
+        category: string | null;
+      }[]
+    | null;
+};
+
 const orderedSteps = [
   "plan-topics",
   "write-script-ja",
@@ -25,6 +40,31 @@ const orderedSteps = [
   "tts-en",
   "publish"
 ] as const;
+
+const MAX_TREND_ITEMS = 3;
+
+const DEFAULT_EXCLUDED_SOURCE_CATEGORIES = [
+  "investment",
+  "stocks",
+  "fx",
+  "crypto",
+  "cryptocurrency",
+  "finance"
+];
+
+const DEFAULT_EXCLUDED_KEYWORDS = [
+  "投資",
+  "株",
+  "株式",
+  "fx",
+  "為替",
+  "暗号資産",
+  "仮想通貨",
+  "crypto",
+  "bitcoin",
+  "btc",
+  "eth"
+];
 
 const fallbackTrendItems: TrendItem[] = [
   {
@@ -81,28 +121,68 @@ const invokeStep = async (
   return body;
 };
 
+const parseCsvList = (rawValue: string | undefined, fallback: string[]): string[] => {
+  if (!rawValue) return fallback;
+  const values = rawValue
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  return values.length > 0 ? values : fallback;
+};
+
+const normalizeToken = (value: string): string => {
+  return value.trim().toLowerCase();
+};
+
+const resolveCategory = (row: TrendCandidateRow): string => {
+  if (Array.isArray(row.trend_sources)) {
+    return row.trend_sources[0]?.category ?? "general";
+  }
+  return row.trend_sources?.category ?? "general";
+};
+
 const loadTopTrends = async (): Promise<TrendItem[]> => {
   const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const excludedCategories = new Set(
+    parseCsvList(
+      Deno.env.get("TREND_EXCLUDED_CATEGORIES") ?? undefined,
+      DEFAULT_EXCLUDED_SOURCE_CATEGORIES
+    ).map(normalizeToken)
+  );
+  const excludedKeywords = parseCsvList(
+    Deno.env.get("TREND_EXCLUDED_KEYWORDS") ?? undefined,
+    DEFAULT_EXCLUDED_KEYWORDS
+  ).map(normalizeToken);
 
   const { data, error } = await supabaseAdmin
     .from("trend_items")
-    .select("title, url, created_at")
-    .gte("created_at", sinceIso)
-    .order("created_at", { ascending: false })
-    .limit(3);
+    .select("title, url, score, published_at, trend_sources!inner(category)")
+    .gte("published_at", sinceIso)
+    .order("score", { ascending: false })
+    .order("published_at", { ascending: false })
+    .limit(50);
 
   if (error) {
     throw error;
   }
 
-  const trendItems = ((data ?? []) as { title: string | null; url: string | null }[])
-    .filter((item) => Boolean(item.title && item.url))
+  const trendItems = ((data ?? []) as TrendCandidateRow[])
+    .filter((item) => Boolean(item.title && item.url && item.score !== null))
+    .filter((item) => {
+      const category = normalizeToken(resolveCategory(item));
+      if (excludedCategories.has(category)) {
+        return false;
+      }
+
+      const haystack = `${item.title ?? ""} ${item.url ?? ""}`.toLowerCase();
+      return !excludedKeywords.some((keyword) => haystack.includes(keyword));
+    })
     .map((item) => ({
       title: item.title as string,
       url: item.url as string
     }));
 
-  return trendItems.slice(0, 3);
+  return trendItems.slice(0, MAX_TREND_ITEMS);
 };
 
 const resolveTrendItems = async (
