@@ -92,8 +92,12 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 
 ## Trend Ingestion (RSS Foundation)
 - Function: `ingest_trends_rss`
-- DB tables: `trend_sources`, `trend_items` (`hash` UNIQUE), `trend_runs`
-- 重複記事は `trend_items.hash` の UNIQUE 衝突で no-op（insert-only）
+- DB tables: `trend_sources` (`weight`, `category`), `trend_items` (`hash` UNIQUE + `normalized_hash` UNIQUE), `trend_runs`
+- score 式: `trend_items.score = trend_sources.weight × freshness_decay × signal`（現状 `signal=1`）
+- `freshness_decay` は `published_at` の新しさで指数減衰（0-48hを評価）
+- 重複記事は `trend_items.hash` / `trend_items.normalized_hash` の UNIQUE 衝突で no-op（insert-only）
+- `daily-generate` は「直近24h」「カテゴリ/キーワード除外後」の `score` 上位3件を採用
+- 除外設定は `TREND_EXCLUDED_CATEGORIES`, `TREND_EXCLUDED_KEYWORDS`（カンマ区切り env）で上書き可能
 
 ### Local Run (deterministic)
 1. `supabase start`
