@@ -89,3 +89,16 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - `scripts/e2e-local.sh` が MVP Acceptance の主要チェックを自動判定します。
 - 実行: `bash scripts/e2e-local.sh`
 - 成功時: `[RESULT] PASS (...)`
+
+## Trend Ingestion (RSS Foundation)
+- Function: `ingest_trends_rss`
+- DB tables: `trend_sources`, `trend_items` (`hash` UNIQUE), `trend_runs`
+- 重複記事は `trend_items.hash` の UNIQUE 衝突で no-op（insert-only）
+
+### Local Run (deterministic)
+1. `supabase start`
+2. `supabase db reset --local --yes`
+3. `supabase functions serve --no-verify-jwt`
+4. `curl -i -X POST http://127.0.0.1:54321/functions/v1/ingest_trends_rss -H "Content-Type: application/json" -d '{"mockFeeds":[{"sourceKey":"local-rss","name":"Local RSS","url":"https://local.invalid/rss","xml":"<rss><channel><item><title>Topic A</title><link>https://example.com/a</link><description>A summary</description><pubDate>Tue, 17 Feb 2026 12:00:00 GMT</pubDate></item></channel></rss>"}]}'`
+5. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c "select count(*) from public.trend_items;"`
+6. `trend_items` が 1 以上、`trend_runs` に実行ログが追加されることを確認
