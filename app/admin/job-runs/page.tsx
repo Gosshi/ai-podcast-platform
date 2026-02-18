@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
+import { resolveLocale } from "@/src/lib/i18n/locale";
+import { getMessages } from "@/src/lib/i18n/messages";
 import RetryDailyGeneratePanel from "./RetryDailyGeneratePanel";
 import styles from "./job-runs.module.css";
 
@@ -33,7 +35,8 @@ type EpisodeRow = {
 };
 
 type SearchParams = {
-  status?: string;
+  status?: string | string[];
+  lang?: string | string[];
 };
 
 type RunGroup = {
@@ -75,11 +78,16 @@ const JOB_ORDER = [
 ] as const;
 const JOB_PRIORITY = new Map<string, number>(JOB_ORDER.map((job, index) => [job, index]));
 
-const formatDateTime = (value: string | null): string => {
+const readFirstParam = (value: string | string[] | undefined): string | undefined => {
+  if (Array.isArray(value)) return value[0];
+  return value;
+};
+
+const formatDateTime = (value: string | null, locale: "ja" | "en"): string => {
   if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("ja-JP", { hour12: false });
+  return date.toLocaleString(locale === "ja" ? "ja-JP" : "en-US", { hour12: false });
 };
 
 const formatElapsed = (startedAt: string | null, endedAt: string | null): string => {
@@ -358,7 +366,10 @@ export default async function JobRunsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const failedOnly = params.status === "failed";
+  const locale = resolveLocale(readFirstParam(params.lang));
+  const messageSet = getMessages(locale);
+  const t = messageSet.jobRuns;
+  const failedOnly = readFirstParam(params.status) === "failed";
   const { jobRuns, episodes, error } = await loadAuditData();
 
   const episodeById = new Map(episodes.map((episode) => [episode.id.toLowerCase(), episode]));
@@ -381,48 +392,63 @@ export default async function JobRunsPage({
 
   const defaultEpisodeDate = new Date().toISOString().slice(0, 10);
 
+  const buildHref = (status: "failed" | null): string => {
+    const query = new URLSearchParams();
+
+    if (status) {
+      query.set("status", status);
+    }
+
+    if (locale !== "ja") {
+      query.set("lang", locale);
+    }
+
+    const queryText = query.toString();
+    return queryText ? `/admin/job-runs?${queryText}` : "/admin/job-runs";
+  };
+
   return (
     <main className={styles.page}>
       {/* TODO: add auth guard before enabling outside local-only operation. */}
-      <h1>Job Runs Audit (Local)</h1>
-      <p className={styles.caption}>実行単位（daily-generate run）で step ログをまとめて監査できます。</p>
+      <h1>{t.pageTitle}</h1>
+      <p className={styles.caption}>{t.caption}</p>
 
       <p className={styles.filter}>
-        Filter: {failedOnly ? "failed only" : "all"} [
+        {t.filterPrefix}: {failedOnly ? t.filterFailedOnly : t.filterAll} [
         {" "}
-        {failedOnly ? <Link href="/admin/job-runs">show all</Link> : <Link href="/admin/job-runs?status=failed">failed only</Link>}
+        {failedOnly ? <Link href={buildHref(null)}>{t.showAll}</Link> : <Link href={buildHref("failed")}>{t.showFailedOnly}</Link>}
         ]
       </p>
 
-      <RetryDailyGeneratePanel defaultEpisodeDate={defaultEpisodeDate} />
+      <RetryDailyGeneratePanel defaultEpisodeDate={defaultEpisodeDate} locale={locale} />
 
-      {error ? <p className={styles.errorText}>Failed to load audit data: {error}</p> : null}
+      {error ? <p className={styles.errorText}>{t.loadErrorPrefix}: {error}</p> : null}
 
       <section className={styles.card}>
-        <h2>Recent Episodes</h2>
+        <h2>{t.recentEpisodes}</h2>
         {episodes.length === 0 ? (
-          <p>No episodes found.</p>
+          <p>{t.noEpisodes}</p>
         ) : (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Created</th>
-                  <th>Title</th>
-                  <th>Lang</th>
-                  <th>Status</th>
-                  <th>Published At</th>
-                  <th>Related Runs</th>
+                  <th>{t.created}</th>
+                  <th>{t.title}</th>
+                  <th>{t.lang}</th>
+                  <th>{t.status}</th>
+                  <th>{t.publishedAt}</th>
+                  <th>{t.relatedRuns}</th>
                 </tr>
               </thead>
               <tbody>
                 {episodes.map((episode) => (
                   <tr key={episode.id}>
-                    <td>{formatDateTime(episode.created_at)}</td>
+                    <td>{formatDateTime(episode.created_at, locale)}</td>
                     <td>{episode.title ?? "-"}</td>
                     <td>{episode.lang.toUpperCase()}</td>
                     <td>{episode.status}</td>
-                    <td>{formatDateTime(episode.published_at)}</td>
+                    <td>{formatDateTime(episode.published_at, locale)}</td>
                     <td>{runCountByEpisodeId.get(episode.id.toLowerCase()) ?? 0}</td>
                   </tr>
                 ))}
@@ -433,7 +459,7 @@ export default async function JobRunsPage({
       </section>
 
       {groupedRuns.length === 0 ? (
-        <p>No grouped runs found.</p>
+        <p>{t.noGroupedRuns}</p>
       ) : (
         <div className={styles.groupList}>
           {groupedRuns.map((group) => (
@@ -444,21 +470,21 @@ export default async function JobRunsPage({
               <header className={styles.runHeader}>
                 <div>
                   <h2>
-                    Run {group.rootRunId ? <code>{group.rootRunId}</code> : <span>(orphan group)</span>}
+                    {t.run} {group.rootRunId ? <code>{group.rootRunId}</code> : <span>{t.orphanGroup}</span>}
                   </h2>
                   <p>
-                    status=<strong>{group.status}</strong> / started={formatDateTime(group.startedAt)} / elapsed=
+                    {t.runStatus}=<strong>{group.status}</strong> / {t.started}={formatDateTime(group.startedAt, locale)} / {t.elapsed}=
                     {group.elapsedLabel}
                   </p>
                   <p>
-                    idempotencyKey={group.idempotencyKey ?? "-"} / episodeDate={group.episodeDate ?? "-"}
+                    {t.idempotencyKey}={group.idempotencyKey ?? "-"} / {t.episodeDate}={group.episodeDate ?? "-"}
                   </p>
                 </div>
               </header>
 
               {group.relatedEpisodes.length > 0 ? (
                 <p className={styles.relatedEpisodes}>
-                  Related Episodes: {" "}
+                  {t.relatedEpisodes}: {" "}
                   {group.relatedEpisodes
                     .map((episode) => `${episode.lang.toUpperCase()}:${episode.title ?? episode.id}`)
                     .join(" | ")}
@@ -469,12 +495,12 @@ export default async function JobRunsPage({
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th>Step</th>
-                      <th>Status</th>
-                      <th>Started</th>
-                      <th>Elapsed</th>
-                      <th>Error</th>
-                      <th>Details</th>
+                      <th>{t.step}</th>
+                      <th>{t.status}</th>
+                      <th>{t.started}</th>
+                      <th>{t.elapsed}</th>
+                      <th>{t.error}</th>
+                      <th>{t.details}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -494,12 +520,12 @@ export default async function JobRunsPage({
                             {step.status}
                           </span>
                         </td>
-                        <td>{formatDateTime(step.started_at)}</td>
+                        <td>{formatDateTime(step.started_at, locale)}</td>
                         <td>{formatElapsed(step.started_at, step.status === "running" ? null : step.ended_at)}</td>
                         <td className={styles.errorCell}>{step.error ?? "-"}</td>
                         <td>
                           <details>
-                            <summary>payload</summary>
+                            <summary>{t.payload}</summary>
                             <pre className={styles.payloadPre}>{formatPayload(step.payload)}</pre>
                           </details>
                         </td>
