@@ -39,8 +39,9 @@ Deno.serve(async (req) => {
       lang: "en",
       audioVersion
     });
+    const forceLocalTts = Deno.env.get("LOCAL_TTS_ENABLED") === "1";
 
-    if (episode.audio_url === expectedLocalAudioUrl) {
+    if (!forceLocalTts && episode.audio_url === expectedLocalAudioUrl) {
       await finishRun(runId, {
         step: "tts-en",
         episodeDate,
