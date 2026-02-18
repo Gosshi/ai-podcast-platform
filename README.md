@@ -124,7 +124,10 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
   - `LOCAL_TTS_BASE_URL` (default: `http://127.0.0.1:3000`)
   - `LOCAL_TTS_PATH` (default: `/api/tts-local`)
   - `LOCAL_TTS_API_KEY`（設定時は Edge Function から同キー送信が必須）
-  - `LOCAL_TTS_VOICE_JA`, `LOCAL_TTS_VOICE_EN`
+  - `LOCAL_TTS_VOICE_JA`
+  - `LOCAL_TTS_EN_VOICE`（英語voiceの最優先設定）
+  - `LOCAL_TTS_VOICE_EN`（後方互換。`LOCAL_TTS_EN_VOICE` 未設定時のみ使用）
+  - 英語voice未指定時は `Alex`、未導入時は `Samantha` に自動fallback
   - `ENABLE_LOCAL_TTS=true`（`NODE_ENV=development` でも有効）
 
 ## Ops Audit UI (Local)
