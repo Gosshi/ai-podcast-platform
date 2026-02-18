@@ -31,15 +31,16 @@ Deno.serve(async (req) => {
 
   try {
     const episode = await fetchEpisodeById(body.episodeId);
+    const expectedLocalAudioUrl = `/audio/${episode.id}.en.wav`;
 
-    if (episode.audio_url) {
+    if (episode.audio_url === expectedLocalAudioUrl) {
       await finishRun(runId, {
         step: "tts-en",
         episodeDate,
         idempotencyKey,
         episodeId: episode.id,
         noOp: true,
-        reason: "audio_exists"
+        reason: "local_audio_exists"
       });
 
       return jsonResponse({ ok: true, episodeId: episode.id, noOp: true });

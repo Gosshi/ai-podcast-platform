@@ -175,7 +175,11 @@ const parseBody = async (request: Request): Promise<{
   return { episodeId, lang, text };
 };
 
-const synthesizeWav = async (episodeId: string, lang: TtsLang, text: string): Promise<number> => {
+const synthesizeWav = async (
+  episodeId: string,
+  lang: TtsLang,
+  text: string
+): Promise<{ durationSec: number; voiceUsed: string | null }> => {
   const outputDir = path.join(process.cwd(), "public", "audio");
   await fs.mkdir(outputDir, { recursive: true });
 
@@ -185,6 +189,7 @@ const synthesizeWav = async (episodeId: string, lang: TtsLang, text: string): Pr
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "local-tts-"));
   const textPath = path.join(tempDir, `${episodeId}.${lang}.txt`);
   const aiffPath = path.join(tempDir, `${episodeId}.${lang}.aiff`);
+  let voiceUsed: string | null = null;
 
   try {
     const scriptForTts = lang === "en" ? sanitizeEnglishTextForTts(text) : text;
@@ -196,6 +201,7 @@ const synthesizeWav = async (episodeId: string, lang: TtsLang, text: string): Pr
       for (const voice of await resolveEnglishVoiceCandidates()) {
         try {
           await runCommand("say", ["-v", voice, ...baseSayArgs]);
+          voiceUsed = voice;
           lastError = null;
           break;
         } catch (error) {
@@ -211,11 +217,14 @@ const synthesizeWav = async (episodeId: string, lang: TtsLang, text: string): Pr
       if (voice) {
         try {
           await runCommand("say", ["-v", voice, ...baseSayArgs]);
+          voiceUsed = voice;
         } catch {
           await runCommand("say", baseSayArgs);
+          voiceUsed = "default";
         }
       } else {
         await runCommand("say", baseSayArgs);
+        voiceUsed = "default";
       }
     }
 
@@ -223,7 +232,10 @@ const synthesizeWav = async (episodeId: string, lang: TtsLang, text: string): Pr
 
     const stat = await fs.stat(outputPath);
     const payloadBytes = Math.max(0, stat.size - 44);
-    return Math.max(1, Math.round(payloadBytes / 44100));
+    return {
+      durationSec: Math.max(1, Math.round(payloadBytes / 44100)),
+      voiceUsed
+    };
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
   }
@@ -249,11 +261,17 @@ export async function POST(request: Request) {
   }
 
   try {
-    const durationSec = await synthesizeWav(payload.episodeId, payload.lang, payload.text);
+    const synthesized = await synthesizeWav(payload.episodeId, payload.lang, payload.text);
+    if (payload.lang === "en") {
+      console.info(
+        `[tts-local] lang=en episodeId=${payload.episodeId} voice=${synthesized.voiceUsed ?? "unknown"}`
+      );
+    }
     return jsonResponse({
       ok: true,
       audioUrl: `/audio/${payload.episodeId}.${payload.lang}.wav`,
-      durationSec
+      durationSec: synthesized.durationSec,
+      voiceUsed: synthesized.voiceUsed
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "local_tts_failed";
