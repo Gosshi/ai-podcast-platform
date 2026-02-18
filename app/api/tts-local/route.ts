@@ -43,10 +43,98 @@ const runCommand = async (command: string, args: string[]): Promise<void> => {
   });
 };
 
+const runCommandWithOutput = async (
+  command: string,
+  args: string[]
+): Promise<{ stdout: string; stderr: string }> => {
+  return await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+    const child = spawn(command, args);
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve({ stdout, stderr });
+        return;
+      }
+      reject(new Error(`${command} exited with code ${code}: ${stderr.trim()}`));
+    });
+  });
+};
+
 const resolveVoice = (lang: TtsLang): string | null => {
-  const value = lang === "ja" ? process.env.LOCAL_TTS_VOICE_JA : process.env.LOCAL_TTS_VOICE_EN;
+  const value = lang === "ja" ? process.env.LOCAL_TTS_VOICE_JA : process.env.LOCAL_TTS_EN_VOICE;
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
+};
+
+let cachedAvailableVoices: Promise<Set<string>> | null = null;
+
+const getAvailableVoices = async (): Promise<Set<string>> => {
+  if (!cachedAvailableVoices) {
+    cachedAvailableVoices = runCommandWithOutput("say", ["-v", "?"])
+      .then(({ stdout }) => {
+        const voices = new Set<string>();
+        for (const line of stdout.split(/\r?\n/)) {
+          const match = line.match(/^\s*(.+?)\s+[a-z]{2}_[A-Z]{2}\s+#/);
+          if (match) {
+            voices.add(match[1].trim());
+          }
+        }
+        return voices;
+      })
+      .catch(() => new Set<string>());
+  }
+
+  return cachedAvailableVoices;
+};
+
+const resolveEnglishVoiceCandidates = async (): Promise<string[]> => {
+  const configured =
+    process.env.LOCAL_TTS_EN_VOICE?.trim() || process.env.LOCAL_TTS_VOICE_EN?.trim() || null;
+  if (configured) {
+    return Array.from(new Set([configured, "Alex", "Samantha"]));
+  }
+
+  const availableVoices = await getAvailableVoices();
+  const primary = availableVoices.has("Alex") ? "Alex" : availableVoices.has("Samantha") ? "Samantha" : "Alex";
+  const fallback = primary === "Alex" ? "Samantha" : "Alex";
+  return [primary, fallback];
+};
+
+const sanitizeEnglishTextForTts = (text: string): string => {
+  const sanitizedLines = text
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        return "";
+      }
+      if (/^https?:\/\/\S+$/i.test(trimmed)) {
+        return "source link";
+      }
+
+      return line
+        .replace(/https?:\/\/\S+/gi, "source link")
+        .replace(/\p{Extended_Pictographic}+/gu, "")
+        .replace(/([!?.,;:])\1+/g, "$1")
+        .replace(/[-_=~*]{2,}/g, " ")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+    })
+    .filter((line, index, lines) => line.length > 0 || (index > 0 && lines[index - 1] !== ""));
+
+  const normalized = sanitizedLines.join("\n").trim();
+  return normalized || "source link";
 };
 
 const isEnabled = (): boolean => {
@@ -99,18 +187,36 @@ const synthesizeWav = async (episodeId: string, lang: TtsLang, text: string): Pr
   const aiffPath = path.join(tempDir, `${episodeId}.${lang}.aiff`);
 
   try {
-    await fs.writeFile(textPath, text, "utf8");
-    const voice = resolveVoice(lang);
+    const scriptForTts = lang === "en" ? sanitizeEnglishTextForTts(text) : text;
+    await fs.writeFile(textPath, scriptForTts, "utf8");
     const baseSayArgs = ["-f", textPath, "-o", aiffPath];
 
-    if (voice) {
-      try {
-        await runCommand("say", ["-v", voice, ...baseSayArgs]);
-      } catch {
-        await runCommand("say", baseSayArgs);
+    if (lang === "en") {
+      let lastError: Error | null = null;
+      for (const voice of await resolveEnglishVoiceCandidates()) {
+        try {
+          await runCommand("say", ["-v", voice, ...baseSayArgs]);
+          lastError = null;
+          break;
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+        }
+      }
+
+      if (lastError) {
+        throw lastError;
       }
     } else {
-      await runCommand("say", baseSayArgs);
+      const voice = resolveVoice(lang);
+      if (voice) {
+        try {
+          await runCommand("say", ["-v", voice, ...baseSayArgs]);
+        } catch {
+          await runCommand("say", baseSayArgs);
+        }
+      } else {
+        await runCommand("say", baseSayArgs);
+      }
     }
 
     await runCommand("afconvert", ["-f", "WAVE", "-d", "LEI16", aiffPath, outputPath]);
