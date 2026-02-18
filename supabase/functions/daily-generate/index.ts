@@ -57,6 +57,8 @@ type LetterRow = {
   text: string | null;
   moderation_status: string | null;
   is_used: boolean | null;
+  is_blocked: boolean | null;
+  blocked_reason: string | null;
   created_at: string | null;
 };
 
@@ -73,6 +75,8 @@ type TipLetterJoinRow = {
         text: string | null;
         moderation_status: string | null;
         is_used: boolean | null;
+        is_blocked: boolean | null;
+        blocked_reason: string | null;
         created_at: string | null;
       }
     | {
@@ -81,10 +85,22 @@ type TipLetterJoinRow = {
         text: string | null;
         moderation_status: string | null;
         is_used: boolean | null;
+        is_blocked: boolean | null;
+        blocked_reason: string | null;
         created_at: string | null;
       }[]
     | null;
 };
+
+type ScriptModerationResult =
+  | {
+      ok: true;
+      summary: string;
+    }
+  | {
+      ok: false;
+      reason: string;
+    };
 
 const orderedSteps = [
   "plan-topics",
@@ -97,6 +113,8 @@ const orderedSteps = [
 
 const MAX_TREND_ITEMS = 3;
 const MAX_LETTERS = 2;
+const MAX_LETTER_CANDIDATES = 20;
+const MAX_LETTER_SUMMARY_CHARS = 80;
 
 const DEFAULT_EXCLUDED_SOURCE_CATEGORIES = [
   "investment",
@@ -119,6 +137,19 @@ const DEFAULT_EXCLUDED_KEYWORDS = [
   "bitcoin",
   "btc",
   "eth"
+];
+
+const HARD_BLOCK_PATTERNS = [
+  /死ね|殺す|ぶっ殺|消えろ/u,
+  /fuck you|kill yourself|die\b/i,
+  /(差別|見下し|侮辱).*(しろ|するべき|当然)/u
+];
+
+const MEDICAL_INVESTMENT_ASSERTION_PATTERNS = [
+  /(絶対|必ず|確実|100%|guaranteed?).*(儲か|利益|勝て|上がる|下がる|投資|株|fx|crypto|bitcoin|btc|eth)/iu,
+  /(投資|株|fx|crypto|bitcoin|btc|eth).*(絶対|必ず|確実|100%|guaranteed?)/iu,
+  /(絶対|必ず|確実|100%|guaranteed?).*(治る|治せる|効く|完治|診断|薬|サプリ|病気|癌|がん)/iu,
+  /(医療|治療|薬|サプリ).*(絶対|必ず|確実|100%|guaranteed?)/iu
 ];
 
 const fallbackTrendItems: TrendItem[] = [
@@ -318,6 +349,60 @@ const clusterTrendItems = (items: ScoredTrendItem[]): TrendItem[] => {
   }));
 };
 
+const sanitizeNarrationText = (value: string): string => {
+  return value
+    .replace(/<[^>]+>/g, " ")
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/&#45;/g, "-")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const splitSentences = (value: string): string[] => {
+  return value
+    .split(/(?<=[。.!?！？])\s+/u)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+};
+
+const summarizeLetterText = (value: string): string => {
+  if (value.length <= MAX_LETTER_SUMMARY_CHARS) {
+    return value;
+  }
+  return `${value.slice(0, MAX_LETTER_SUMMARY_CHARS).trimEnd()}…`;
+};
+
+const moderateLetterForScript = (rawText: string): ScriptModerationResult => {
+  const sanitized = sanitizeNarrationText(rawText);
+  if (!sanitized) {
+    return { ok: false, reason: "empty_after_sanitize" };
+  }
+
+  if (HARD_BLOCK_PATTERNS.some((pattern) => pattern.test(sanitized))) {
+    return { ok: false, reason: "contains_attack_or_discrimination" };
+  }
+
+  const safeSentences = splitSentences(sanitized).filter(
+    (sentence) => !MEDICAL_INVESTMENT_ASSERTION_PATTERNS.some((pattern) => pattern.test(sentence))
+  );
+  if (safeSentences.length === 0) {
+    return { ok: false, reason: "contains_only_assertive_medical_or_investment_claims" };
+  }
+
+  const toneAdjusted = safeSentences
+    .join(" ")
+    .replace(/[!！]{2,}/g, "！")
+    .replace(/[?？]{2,}/g, "？")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!toneAdjusted) {
+    return { ok: false, reason: "empty_after_tone_adjustment" };
+  }
+
+  return { ok: true, summary: summarizeLetterText(toneAdjusted) };
+};
+
 const loadTopTrends = async (): Promise<TrendItem[]> => {
   const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const excludedCategories = new Set(
@@ -376,6 +461,8 @@ const resolveJoinedLetterRow = (
   text: string | null;
   moderation_status: string | null;
   is_used: boolean | null;
+  is_blocked: boolean | null;
+  blocked_reason: string | null;
   created_at: string | null;
 } | null => {
   if (!row.letters) return null;
@@ -389,7 +476,7 @@ const loadPrioritizedLetters = async (): Promise<LetterItem[]> => {
   const { data: tipData, error: tipError } = await supabaseAdmin
     .from("tips")
     .select(
-      "amount, currency, provider_payment_id, created_at, letter_id, letters!inner(id, display_name, text, moderation_status, is_used, created_at)"
+      "amount, currency, provider_payment_id, created_at, letter_id, letters!inner(id, display_name, text, moderation_status, is_used, is_blocked, blocked_reason, created_at)"
     )
     .not("letter_id", "is", null)
     .order("created_at", { ascending: false })
@@ -405,7 +492,11 @@ const loadPrioritizedLetters = async (): Promise<LetterItem[]> => {
     if (!letter?.id || !letter.display_name || !letter.text) {
       continue;
     }
-    if (letter.is_used === true || letter.moderation_status === "reject") {
+    if (
+      letter.is_used === true ||
+      letter.moderation_status === "reject" ||
+      letter.is_blocked === true
+    ) {
       continue;
     }
     if (tipFirstMap.has(letter.id)) {
@@ -424,8 +515,9 @@ const loadPrioritizedLetters = async (): Promise<LetterItem[]> => {
 
   const { data, error } = await supabaseAdmin
     .from("letters")
-    .select("id, display_name, text, moderation_status, is_used, created_at")
+    .select("id, display_name, text, moderation_status, is_used, is_blocked, blocked_reason, created_at")
     .eq("is_used", false)
+    .eq("is_blocked", false)
     .neq("moderation_status", "reject")
     .order("created_at", { ascending: false })
     .limit(50);
@@ -435,20 +527,23 @@ const loadPrioritizedLetters = async (): Promise<LetterItem[]> => {
   }
 
   const unreadRows = ((data ?? []) as LetterRow[]).filter(
-    (row) => Boolean(row.id && row.display_name && row.text) && row.is_used !== true
+    (row) =>
+      Boolean(row.id && row.display_name && row.text) &&
+      row.is_used !== true &&
+      row.is_blocked !== true
   );
 
   const result: LetterItem[] = [];
   const usedIds = new Set<string>();
 
   for (const letter of tipFirstMap.values()) {
-    if (result.length >= MAX_LETTERS) break;
+    if (result.length >= MAX_LETTER_CANDIDATES) break;
     result.push(letter);
     usedIds.add(letter.id);
   }
 
   for (const row of unreadRows) {
-    if (result.length >= MAX_LETTERS) break;
+    if (result.length >= MAX_LETTER_CANDIDATES) break;
     const id = row.id as string;
     if (usedIds.has(id)) continue;
     result.push({
@@ -463,6 +558,57 @@ const loadPrioritizedLetters = async (): Promise<LetterItem[]> => {
   }
 
   return result;
+};
+
+const markLettersAsBlocked = async (
+  blockedLetters: { id: string; reason: string }[]
+): Promise<void> => {
+  for (const blocked of blockedLetters) {
+    const { error } = await supabaseAdmin
+      .from("letters")
+      .update({
+        is_blocked: true,
+        blocked_reason: blocked.reason,
+        moderation_status: "reject"
+      })
+      .eq("id", blocked.id)
+      .eq("is_used", false);
+
+    if (error) {
+      throw error;
+    }
+  }
+};
+
+const prepareLettersForScript = async (
+  letters: LetterItem[]
+): Promise<{ letters: LetterItem[]; blockedIds: string[] }> => {
+  const acceptedLetters: LetterItem[] = [];
+  const blockedLetters: { id: string; reason: string }[] = [];
+
+  for (const letter of letters) {
+    const result = moderateLetterForScript(letter.text);
+    if (!result.ok) {
+      blockedLetters.push({ id: letter.id, reason: result.reason });
+      continue;
+    }
+
+    if (acceptedLetters.length < MAX_LETTERS) {
+      acceptedLetters.push({
+        ...letter,
+        text: result.summary
+      });
+    }
+  }
+
+  if (blockedLetters.length > 0) {
+    await markLettersAsBlocked(blockedLetters);
+  }
+
+  return {
+    letters: acceptedLetters,
+    blockedIds: blockedLetters.map((letter) => letter.id)
+  };
 };
 
 const markLettersAsUsed = async (letters: LetterItem[]): Promise<void> => {
@@ -527,7 +673,8 @@ Deno.serve(async (req) => {
       episodeDate,
       idempotencyKey
     );
-    const letters = await loadPrioritizedLetters().catch(() => []);
+    const letterCandidates = await loadPrioritizedLetters().catch(() => []);
+    const { letters, blockedIds } = await prepareLettersForScript(letterCandidates);
 
     const plan = await invokeStep(functionsBaseUrl, "plan-topics", { episodeDate, idempotencyKey });
 
@@ -574,6 +721,7 @@ Deno.serve(async (req) => {
       trendItems,
       lettersCount: letters.length,
       usedLetterIds: letters.map((letter) => letter.id),
+      blockedLetterIds: blockedIds,
       usedTrendFallback: usedFallback,
       outputs: {
         plan,
@@ -592,6 +740,7 @@ Deno.serve(async (req) => {
       trendItems,
       lettersCount: letters.length,
       usedLetterIds: letters.map((letter) => letter.id),
+      blockedLetterIds: blockedIds,
       usedTrendFallback: usedFallback,
       outputs: {
         plan,

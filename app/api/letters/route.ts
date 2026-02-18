@@ -9,11 +9,21 @@ type RequestBody = {
 };
 
 type ValidationErrors = Partial<Record<"display_name" | "text", string>>;
+type TextViolationCode =
+  | "ng_word"
+  | "url"
+  | "repeated_characters"
+  | "duplicate_lines"
+  | "excessive_symbols";
 
 const DISPLAY_NAME_MAX = 40;
 const TEXT_MAX = 700;
 const RATE_LIMIT_WINDOW_MS = 90 * 1000;
 const NG_WORDS = ["死ね", "殺す", "fuck", "shit", "viagra", "casino"];
+const URL_PATTERN = /https?:\/\/|www\./i;
+const REPEATED_CHARACTER_PATTERN = /(.)\1{7,}/u;
+const REPEATED_SYMBOL_PATTERN = /[!?！？。、.,~〜]{6,}/u;
+const SYMBOL_PATTERN = /[!?！？。、.,~〜@#$%^&*_=+|\\/<>[\]{}()]/g;
 
 const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
   return new Response(JSON.stringify(body), {
@@ -35,6 +45,58 @@ const includesNgWord = (value: string): boolean => {
   return NG_WORDS.some((word) => lowerValue.includes(word.toLowerCase()));
 };
 
+const hasDuplicateLines = (value: string): boolean => {
+  const lines = value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  if (lines.length < 3) {
+    return false;
+  }
+
+  return new Set(lines).size === 1;
+};
+
+const hasExcessiveSymbols = (value: string): boolean => {
+  const symbolMatches = value.match(SYMBOL_PATTERN) ?? [];
+  if (symbolMatches.length === 0) {
+    return false;
+  }
+
+  if (REPEATED_SYMBOL_PATTERN.test(value)) {
+    return true;
+  }
+
+  const symbolRatio = symbolMatches.length / value.length;
+  return value.length >= 20 && symbolRatio > 0.35;
+};
+
+const detectTextViolation = (value: string): TextViolationCode | null => {
+  if (includesNgWord(value)) return "ng_word";
+  if (URL_PATTERN.test(value)) return "url";
+  if (REPEATED_CHARACTER_PATTERN.test(value)) return "repeated_characters";
+  if (hasDuplicateLines(value)) return "duplicate_lines";
+  if (hasExcessiveSymbols(value)) return "excessive_symbols";
+  return null;
+};
+
+const toViolationMessage = (code: TextViolationCode): string => {
+  switch (code) {
+    case "ng_word":
+      return "本文に利用できない表現が含まれています";
+    case "url":
+      return "URLを含む本文は投稿できません";
+    case "repeated_characters":
+    case "duplicate_lines":
+      return "同一内容の連続投稿と判定されました。表現を変えて再投稿してください";
+    case "excessive_symbols":
+      return "記号が多すぎるため投稿できません";
+    default:
+      return "投稿内容を確認してください";
+  }
+};
+
 const validateInput = (displayName: string | null, text: string | null): ValidationErrors => {
   const errors: ValidationErrors = {};
 
@@ -50,8 +112,11 @@ const validateInput = (displayName: string | null, text: string | null): Validat
     errors.text = "お便り本文は必須です";
   } else if (text.length > TEXT_MAX) {
     errors.text = `本文は${TEXT_MAX}文字以内で入力してください`;
-  } else if (includesNgWord(text)) {
-    errors.text = "本文に利用できない表現が含まれています";
+  } else {
+    const violation = detectTextViolation(text);
+    if (violation) {
+      errors.text = toViolationMessage(violation);
+    }
   }
 
   return errors;
