@@ -44,11 +44,11 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 
 ### Manual Run (curl)
 1. `supabase start`
-2. `npm run dev -- --hostname 0.0.0.0`（`/api/tts-local` が `say` で `public/audio/*.wav` を生成。Edge Function から到達させるため 0.0.0.0 bind 必須）
+2. `npm run dev -- --hostname 0.0.0.0`（`/api/tts` が provider に応じて `public/audio/*` を生成。Edge Function から到達させるため 0.0.0.0 bind 必須）
 3. `supabase functions serve --env-file .env.local --no-verify-jwt`
 4. `curl -i -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H \"Content-Type: application/json\" -d '{\"episodeDate\":\"2026-02-16\"}'`
 5. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c "select id, lang, audio_url from public.episodes order by created_at desc limit 2;"`
-6. `audio_url` が `/audio/<episodeId>.<lang>.<audioVersion>.wav` なら `/episodes` で再生可能。
+6. `audio_url` が `/audio/<episodeId>.<lang>.<audioVersion>.<ext>` なら `/episodes` で再生可能。
 7. ローカル検証専用として `--no-verify-jwt` を使用。staging では通常どおり Authorization を付けて実行する。
 
 ### Scheduler (staging)
@@ -68,7 +68,7 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 
 ### Idempotency / Re-run
 - `job_runs` は insert-only。各実行は必ず新しい `job_runs` 行を作成
-- 各ステップは no-op 条件を持つ（例: `tts-*` は `audio_url` 既存ならスキップ）
+- 各ステップは no-op 条件を持つ（例: `tts-*` は同一 `audioVersion` の `audio_url` 既存ならスキップ）
 - `LOCAL_TTS_ENABLED=1` のとき `tts-ja` / `tts-en` は no-op 判定を無効化して毎回再合成する
 - 失敗時は `job_runs.status='failed'` と `job_runs.error` を残す
 - `publish` は JST日付単位で既存公開を検出し、同日重複公開を no-op で防止する
@@ -117,20 +117,30 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - Reads published rows from Supabase (`episodes.status='published'` and `published_at is not null`)
 - `audio_url` が `/audio/...` の場合、`public/audio` のローカル音声を `<audio>` タグで再生
 
-## Local TTS Fallback (macOS)
-- API route: `POST /api/tts-local`（Node runtime）
-- `say` + `afconvert` で WAV を生成し `public/audio/<episodeId>.<lang>.<audioVersion>.wav` に保存
-- `tts-ja` / `tts-en` は local fallback で `episodes.audio_url` を `/audio/<episodeId>.<lang>.<audioVersion>.wav` に更新
+## TTS Provider (OpenAI + local fallback)
+- API route: `POST /api/tts`（Node runtime, `/api/tts-local` は互換エイリアス）
+- `tts-ja` / `tts-en` は `/api/tts` を呼び、`episodes.audio_url` を `/audio/<episodeId>.<lang>.<audioVersion>.<ext>` に更新
+- `TTS_PROVIDER=openai` の場合は OpenAI `/v1/audio/speech` を使用し、失敗時は macOS local TTS（`say` + `afconvert`）へフォールバック
+- local provider は `say` + `afconvert` で WAV を生成し `public/audio` に保存
+- `/api/tts` は `LOCAL_TTS_API_KEY` 設定時に `x-local-tts-api-key` ヘッダ必須
 - 主要 env（任意）:
-  - `TTS_LOCAL_API_URL` (default: `http://host.docker.internal:3000/api/tts-local`)
-  - Edge Function は `TTS_LOCAL_API_URL` の後に `http://172.17.0.1:3000/api/tts-local` → `http://gateway.docker.internal:3000/api/tts-local` を順に試行し、最初に成功したURLをキャッシュ
+  - `TTS_PROVIDER` (`local` or `openai`, default: `local`)
+  - `OPENAI_API_KEY`（`TTS_PROVIDER=openai` で必須）
+  - `OPENAI_TTS_MODEL`（default: `tts-1`）
+  - `OPENAI_TTS_VOICE_JA`
+  - `OPENAI_TTS_VOICE_EN`
+  - `OPENAI_TTS_FORMAT`（`mp3|opus|aac|flac|wav|pcm`, default: `wav`）
+  - `OPENAI_TTS_SPEED`（`0.25`〜`4.0`）
+  - `OPENAI_TTS_INSTRUCTIONS_JA` / `OPENAI_TTS_INSTRUCTIONS_EN`（`gpt-4o-mini-tts` 時のみ有効）
+  - `TTS_API_URL` (default: `http://host.docker.internal:3000/api/tts`)
+  - `TTS_API_PATH`（default: `/api/tts`）
+  - `TTS_LOCAL_API_URL`（後方互換）
   - `LOCAL_TTS_BASE_URL` / `LOCAL_TTS_PATH`（後方互換）
   - `LOCAL_TTS_API_KEY`（設定時は Edge Function から同キー送信が必須）
-  - `LOCAL_TTS_ENABLED=1`（`tts-ja` / `tts-en` の no-op を無効化して毎回再合成）
+  - `LOCAL_TTS_ENABLED=1`（`tts-ja` / `tts-en` の no-op 判定を無効化して毎回再合成）
   - `LOCAL_TTS_VOICE_JA`
   - `LOCAL_TTS_EN_VOICE`（英語voiceの最優先設定）
   - `LOCAL_TTS_VOICE_EN`（後方互換。`LOCAL_TTS_EN_VOICE` 未設定時のみ使用）
-  - 英語voice未指定時は `Alex`、未導入時は `Samantha` に自動fallback
   - `ENABLE_LOCAL_TTS=true`（`NODE_ENV=development` でも有効）
 
 ## Ops Audit UI (Local)

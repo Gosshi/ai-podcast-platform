@@ -207,11 +207,19 @@ else
 fi
 
 log "start next dev server"
+SELECTED_TTS_PROVIDER="${TTS_PROVIDER:-local}"
 SUPABASE_URL="$API_URL" \
 SUPABASE_ANON_KEY="$ANON_KEY" \
 SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
 LOCAL_TTS_BASE_URL="http://127.0.0.1:3000" \
 ENABLE_LOCAL_TTS="true" \
+TTS_PROVIDER="$SELECTED_TTS_PROVIDER" \
+OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
+OPENAI_TTS_MODEL="${OPENAI_TTS_MODEL:-}" \
+OPENAI_TTS_VOICE_JA="${OPENAI_TTS_VOICE_JA:-}" \
+OPENAI_TTS_VOICE_EN="${OPENAI_TTS_VOICE_EN:-}" \
+OPENAI_TTS_FORMAT="${OPENAI_TTS_FORMAT:-}" \
+OPENAI_TTS_SPEED="${OPENAI_TTS_SPEED:-}" \
 STRIPE_SECRET_KEY="sk_test_local" \
 STRIPE_WEBHOOK_SECRET="whsec_local" \
 npm run dev >"$NEXT_LOG_FILE" 2>&1 &
@@ -270,6 +278,17 @@ for job_type in "${EXPECTED_JOB_TYPES[@]}"; do
   JOB_TYPE_COUNT="$(psql_query "select count(*) from public.job_runs where job_type='${job_type}';")"
   assert_count_ge "job_runs history for ${job_type}" "$JOB_TYPE_COUNT" 2
 done
+
+if [ "${E2E_OPENAI_PROVIDER:-0}" = "1" ]; then
+  if [ "$SELECTED_TTS_PROVIDER" != "openai" ]; then
+    pass "openai provider verification skipped (TTS_PROVIDER=${SELECTED_TTS_PROVIDER})"
+  elif [ -z "${OPENAI_API_KEY:-}" ]; then
+    pass "openai provider verification skipped (OPENAI_API_KEY missing)"
+  else
+    OPENAI_PROVIDER_RUN_COUNT="$(psql_query "select count(*) from public.job_runs where job_type in ('tts-ja','tts-en') and payload->>'tts_provider'='openai';")"
+    assert_count_ge "openai tts provider job_runs evidence" "$OPENAI_PROVIDER_RUN_COUNT" 2
+  fi
+fi
 
 log "force failed publish run to verify job_runs.error"
 curl -sS -X POST "$FUNCTIONS_URL/publish" -H "Content-Type: application/json" -d "{\"episodeDate\":\"$EPISODE_DATE\",\"episodeIdJa\":\"00000000-0000-0000-0000-000000000000\",\"episodeIdEn\":\"00000000-0000-0000-0000-000000000000\"}" >/dev/null
