@@ -11,9 +11,11 @@ type RequestBody = {
   episodeId?: unknown;
   lang?: unknown;
   text?: unknown;
+  audioVersion?: unknown;
 };
 
 const EPISODE_ID_PATTERN = /^[0-9a-fA-F-]{8,64}$/;
+const AUDIO_VERSION_PATTERN = /^[a-z0-9]{3,64}$/;
 const MAX_TEXT_LENGTH = 12000;
 
 const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
@@ -153,11 +155,13 @@ const parseBody = async (request: Request): Promise<{
   episodeId: string;
   lang: TtsLang;
   text: string;
+  audioVersion: string | null;
 }> => {
   const raw = (await request.json().catch(() => ({}))) as RequestBody;
   const episodeId = typeof raw.episodeId === "string" ? raw.episodeId.trim() : "";
   const lang = raw.lang === "ja" || raw.lang === "en" ? raw.lang : null;
   const text = typeof raw.text === "string" ? raw.text.trim() : "";
+  const audioVersion = typeof raw.audioVersion === "string" ? raw.audioVersion.trim().toLowerCase() : null;
 
   if (!EPISODE_ID_PATTERN.test(episodeId)) {
     throw new Error("invalid_episode_id");
@@ -171,19 +175,25 @@ const parseBody = async (request: Request): Promise<{
   if (text.length > MAX_TEXT_LENGTH) {
     throw new Error("text_too_long");
   }
+  if (audioVersion && !AUDIO_VERSION_PATTERN.test(audioVersion)) {
+    throw new Error("invalid_audio_version");
+  }
 
-  return { episodeId, lang, text };
+  return { episodeId, lang, text, audioVersion };
 };
 
 const synthesizeWav = async (
   episodeId: string,
   lang: TtsLang,
-  text: string
+  text: string,
+  audioVersion: string | null
 ): Promise<{ durationSec: number; voiceUsed: string | null }> => {
   const outputDir = path.join(process.cwd(), "public", "audio");
   await fs.mkdir(outputDir, { recursive: true });
 
-  const outputFileName = `${episodeId}.${lang}.wav`;
+  const outputFileName = audioVersion
+    ? `${episodeId}.${lang}.${audioVersion}.wav`
+    : `${episodeId}.${lang}.wav`;
   const outputPath = path.join(outputDir, outputFileName);
 
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "local-tts-"));
@@ -252,7 +262,7 @@ export async function POST(request: Request) {
     return jsonResponse({ ok: false, error: "local_tts_requires_macos" }, 501);
   }
 
-  let payload: { episodeId: string; lang: TtsLang; text: string };
+  let payload: { episodeId: string; lang: TtsLang; text: string; audioVersion: string | null };
   try {
     payload = await parseBody(request);
   } catch (error) {
@@ -261,15 +271,23 @@ export async function POST(request: Request) {
   }
 
   try {
-    const synthesized = await synthesizeWav(payload.episodeId, payload.lang, payload.text);
+    const synthesized = await synthesizeWav(
+      payload.episodeId,
+      payload.lang,
+      payload.text,
+      payload.audioVersion
+    );
     if (payload.lang === "en") {
       console.info(
         `[tts-local] lang=en episodeId=${payload.episodeId} voice=${synthesized.voiceUsed ?? "unknown"}`
       );
     }
+    const audioPath = payload.audioVersion
+      ? `/audio/${payload.episodeId}.${payload.lang}.${payload.audioVersion}.wav`
+      : `/audio/${payload.episodeId}.${payload.lang}.wav`;
     return jsonResponse({
       ok: true,
-      audioUrl: `/audio/${payload.episodeId}.${payload.lang}.wav`,
+      audioUrl: audioPath,
       durationSec: synthesized.durationSec,
       voiceUsed: synthesized.voiceUsed
     });

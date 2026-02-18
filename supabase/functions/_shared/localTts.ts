@@ -4,6 +4,7 @@ type SynthesizeLocalAudioInput = {
   episodeId: string;
   lang: LocalTtsLang;
   text: string;
+  audioVersion?: string;
 };
 
 type LocalTtsResponse = {
@@ -68,7 +69,8 @@ export const synthesizeLocalAudio = async (
         body: JSON.stringify({
           episodeId: input.episodeId,
           lang: input.lang,
-          text: script
+          text: script,
+          audioVersion: input.audioVersion
         })
       });
 

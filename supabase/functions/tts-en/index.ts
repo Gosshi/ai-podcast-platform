@@ -1,6 +1,7 @@
 import { failRun, finishRun, startRun } from "../_shared/jobRuns.ts";
 import { jsonResponse } from "../_shared/http.ts";
 import { fetchEpisodeById, updateEpisode } from "../_shared/episodes.ts";
+import { buildAudioVersion, buildLocalAudioUrl } from "../_shared/audioVersion.ts";
 import { synthesizeLocalAudio } from "../_shared/localTts.ts";
 
 type RequestBody = {
@@ -31,7 +32,13 @@ Deno.serve(async (req) => {
 
   try {
     const episode = await fetchEpisodeById(body.episodeId);
-    const expectedLocalAudioUrl = `/audio/${episode.id}.en.wav`;
+    const script = episode.script ?? episode.title ?? "";
+    const audioVersion = await buildAudioVersion(script);
+    const expectedLocalAudioUrl = buildLocalAudioUrl({
+      episodeId: episode.id,
+      lang: "en",
+      audioVersion
+    });
 
     if (episode.audio_url === expectedLocalAudioUrl) {
       await finishRun(runId, {
@@ -50,7 +57,8 @@ Deno.serve(async (req) => {
     const synthesized = await synthesizeLocalAudio({
       episodeId: episode.id,
       lang: "en",
-      text: episode.script ?? episode.title ?? ""
+      text: script,
+      audioVersion
     });
     const audioUrl = synthesized.audioUrl;
     const updated = await updateEpisode(episode.id, {
