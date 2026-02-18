@@ -1,26 +1,32 @@
-type LocalTtsLang = "ja" | "en";
+type TtsLang = "ja" | "en";
 
-type SynthesizeLocalAudioInput = {
+type SynthesizeEpisodeAudioInput = {
   episodeId: string;
-  lang: LocalTtsLang;
+  lang: TtsLang;
   text: string;
   audioVersion?: string;
 };
 
-type LocalTtsResponse = {
+type TtsApiResponse = {
   ok?: boolean;
   audioUrl?: string;
   durationSec?: number;
+  provider?: string;
+  requestedProvider?: string;
+  model?: string | null;
+  voice?: string | null;
+  format?: string;
+  fallbackReason?: string | null;
   error?: string;
 };
 
-const DEFAULT_LOCAL_TTS_API_URL = "http://host.docker.internal:3000/api/tts-local";
-const FALLBACK_LOCAL_TTS_API_URLS = [
-  "http://172.17.0.1:3000/api/tts-local",
-  "http://gateway.docker.internal:3000/api/tts-local"
+const DEFAULT_TTS_API_URL = "http://host.docker.internal:3000/api/tts";
+const FALLBACK_TTS_API_URLS = [
+  "http://172.17.0.1:3000/api/tts",
+  "http://gateway.docker.internal:3000/api/tts"
 ];
 
-let cachedReachableLocalTtsApiUrl: string | null = null;
+let cachedReachableTtsApiUrl: string | null = null;
 
 const normalizeAbsoluteUrl = (raw: string | null | undefined): URL | null => {
   const value = raw?.trim();
@@ -36,7 +42,7 @@ const normalizeAbsoluteUrl = (raw: string | null | undefined): URL | null => {
 };
 
 const resolvePath = (): string => {
-  const raw = Deno.env.get("LOCAL_TTS_PATH") ?? "/api/tts-local";
+  const raw = Deno.env.get("TTS_API_PATH") ?? Deno.env.get("LOCAL_TTS_PATH") ?? "/api/tts";
   return raw.startsWith("/") ? raw : `/${raw}`;
 };
 
@@ -56,7 +62,10 @@ const normalizeApiUrl = (raw: string | null | undefined, fallbackPath: string): 
 };
 
 const resolveConfiguredApiUrl = (): string | null => {
-  return normalizeApiUrl(Deno.env.get("TTS_LOCAL_API_URL"), resolvePath());
+  return normalizeApiUrl(
+    Deno.env.get("TTS_API_URL") ?? Deno.env.get("TTS_LOCAL_API_URL"),
+    resolvePath()
+  );
 };
 
 const resolveLegacyApiUrl = (): string | null => {
@@ -74,25 +83,34 @@ const resolveLegacyApiUrl = (): string | null => {
 
 const resolveApiUrlCandidates = (): string[] => {
   const candidates = [
-    cachedReachableLocalTtsApiUrl,
+    cachedReachableTtsApiUrl,
     resolveConfiguredApiUrl(),
     resolveLegacyApiUrl(),
-    DEFAULT_LOCAL_TTS_API_URL,
-    ...FALLBACK_LOCAL_TTS_API_URLS
+    DEFAULT_TTS_API_URL,
+    ...FALLBACK_TTS_API_URLS
   ].filter((value): value is string => Boolean(value));
   return Array.from(new Set(candidates));
 };
 
-const resolveErrorMessage = (status: number, payload: LocalTtsResponse): string => {
+const resolveErrorMessage = (status: number, payload: TtsApiResponse): string => {
   if (payload.error) {
     return payload.error;
   }
-  return `local_tts_http_${status}`;
+  return `tts_http_${status}`;
 };
 
-export const synthesizeLocalAudio = async (
-  input: SynthesizeLocalAudioInput
-): Promise<{ audioUrl: string; durationSec: number }> => {
+export const synthesizeEpisodeAudio = async (
+  input: SynthesizeEpisodeAudioInput
+): Promise<{
+  audioUrl: string;
+  durationSec: number;
+  provider: string;
+  requestedProvider: string;
+  model: string | null;
+  voice: string | null;
+  format: string | null;
+  fallbackReason: string | null;
+}> => {
   const script = input.text.trim();
   if (!script) {
     throw new Error("episode script is empty");
@@ -117,20 +135,31 @@ export const synthesizeLocalAudio = async (
         })
       });
 
-      const payload = (await response.json().catch(() => ({}))) as LocalTtsResponse;
+      const payload = (await response.json().catch(() => ({}))) as TtsApiResponse;
       if (!response.ok || payload.ok !== true || typeof payload.audioUrl !== "string") {
         throw new Error(resolveErrorMessage(response.status, payload));
       }
 
-      cachedReachableLocalTtsApiUrl = apiUrl;
+      cachedReachableTtsApiUrl = apiUrl;
       return {
         audioUrl: payload.audioUrl,
-        durationSec: typeof payload.durationSec === "number" ? payload.durationSec : 120
+        durationSec: typeof payload.durationSec === "number" ? payload.durationSec : 120,
+        provider: typeof payload.provider === "string" ? payload.provider : "local",
+        requestedProvider:
+          typeof payload.requestedProvider === "string"
+            ? payload.requestedProvider
+            : typeof payload.provider === "string"
+              ? payload.provider
+              : "local",
+        model: typeof payload.model === "string" ? payload.model : null,
+        voice: typeof payload.voice === "string" ? payload.voice : null,
+        format: typeof payload.format === "string" ? payload.format : null,
+        fallbackReason: typeof payload.fallbackReason === "string" ? payload.fallbackReason : null
       };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
     }
   }
 
-  throw lastError ?? new Error("local_tts_request_failed");
+  throw lastError ?? new Error("tts_request_failed");
 };

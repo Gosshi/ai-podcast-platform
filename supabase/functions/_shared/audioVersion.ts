@@ -27,3 +27,18 @@ export const buildLocalAudioUrl = (params: {
 }): string => {
   return `/audio/${params.episodeId}.${params.lang}.${params.audioVersion}.wav`;
 };
+
+export const hasVersionedAudioUrl = (params: {
+  episodeId: string;
+  lang: "ja" | "en";
+  audioVersion: string;
+  audioUrl: string | null;
+}): boolean => {
+  const value = params.audioUrl?.trim().toLowerCase();
+  if (!value) {
+    return false;
+  }
+
+  const prefix = `/audio/${params.episodeId.toLowerCase()}.${params.lang}.${params.audioVersion.toLowerCase()}.`;
+  return value.startsWith(prefix);
+};
