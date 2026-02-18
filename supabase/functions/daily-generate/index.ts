@@ -1,5 +1,6 @@
 import { failRun, finishRun, startRun } from "../_shared/jobRuns.ts";
 import { jsonResponse } from "../_shared/http.ts";
+import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -11,6 +12,11 @@ type InvokeResult = {
   [key: string]: unknown;
 };
 
+type TrendItem = {
+  title: string;
+  url: string;
+};
+
 const orderedSteps = [
   "plan-topics",
   "write-script-ja",
@@ -19,6 +25,21 @@ const orderedSteps = [
   "tts-en",
   "publish"
 ] as const;
+
+const fallbackTrendItems: TrendItem[] = [
+  {
+    title: "Fallback: Product update cadence",
+    url: "https://example.com/fallback/product-update"
+  },
+  {
+    title: "Fallback: Reliability improvements",
+    url: "https://example.com/fallback/reliability"
+  },
+  {
+    title: "Fallback: User feedback highlights",
+    url: "https://example.com/fallback/user-feedback"
+  }
+];
 
 const getFunctionsBaseUrl = (requestUrl: string): string => {
   const explicit = Deno.env.get("FUNCTIONS_BASE_URL") ?? Deno.env.get("SUPABASE_FUNCTIONS_URL");
@@ -34,7 +55,7 @@ const getFunctionsBaseUrl = (requestUrl: string): string => {
 
 const invokeStep = async (
   functionsBaseUrl: string,
-  step: (typeof orderedSteps)[number],
+  step: string,
   payload: Record<string, unknown>
 ): Promise<InvokeResult> => {
   const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -60,6 +81,52 @@ const invokeStep = async (
   return body;
 };
 
+const loadTopTrends = async (): Promise<TrendItem[]> => {
+  const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await supabaseAdmin
+    .from("trend_items")
+    .select("title, url, created_at")
+    .gte("created_at", sinceIso)
+    .order("created_at", { ascending: false })
+    .limit(3);
+
+  if (error) {
+    throw error;
+  }
+
+  const trendItems = ((data ?? []) as { title: string | null; url: string | null }[])
+    .filter((item) => Boolean(item.title && item.url))
+    .map((item) => ({
+      title: item.title as string,
+      url: item.url as string
+    }));
+
+  return trendItems.slice(0, 3);
+};
+
+const resolveTrendItems = async (
+  functionsBaseUrl: string,
+  episodeDate: string,
+  idempotencyKey: string
+): Promise<{ trendItems: TrendItem[]; usedFallback: boolean }> => {
+  try {
+    await invokeStep(functionsBaseUrl, "ingest_trends_rss", {
+      episodeDate,
+      idempotencyKey
+    });
+
+    const trendItems = await loadTopTrends();
+    if (trendItems.length === 0) {
+      return { trendItems: fallbackTrendItems, usedFallback: true };
+    }
+
+    return { trendItems, usedFallback: false };
+  } catch {
+    return { trendItems: fallbackTrendItems, usedFallback: true };
+  }
+};
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
@@ -78,12 +145,19 @@ Deno.serve(async (req) => {
 
   try {
     const functionsBaseUrl = getFunctionsBaseUrl(req.url);
+    const { trendItems, usedFallback } = await resolveTrendItems(
+      functionsBaseUrl,
+      episodeDate,
+      idempotencyKey
+    );
+
     const plan = await invokeStep(functionsBaseUrl, "plan-topics", { episodeDate, idempotencyKey });
 
     const writeJa = await invokeStep(functionsBaseUrl, "write-script-ja", {
       episodeDate,
       idempotencyKey,
-      topic: plan.topic
+      topic: plan.topic,
+      trendItems
     });
 
     const ttsJa = await invokeStep(functionsBaseUrl, "tts-ja", {
@@ -116,6 +190,8 @@ Deno.serve(async (req) => {
       episodeDate,
       idempotencyKey,
       orderedSteps,
+      trendItems,
+      usedTrendFallback: usedFallback,
       outputs: {
         plan,
         writeJa,
@@ -130,6 +206,8 @@ Deno.serve(async (req) => {
       ok: true,
       episodeDate,
       idempotencyKey,
+      trendItems,
+      usedTrendFallback: usedFallback,
       outputs: {
         plan,
         writeJa,
