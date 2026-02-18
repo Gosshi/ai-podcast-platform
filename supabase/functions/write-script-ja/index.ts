@@ -202,6 +202,19 @@ ${urls.length === 0 ? "- none" : urls.map((url) => `- ${url}`).join("\n")}`;
   ].join("\n\n");
 };
 
+const resolveTopicTitle = (rawTitle: string | undefined, episodeDate: string): string => {
+  const normalized = (rawTitle ?? "").trim();
+  if (!normalized) {
+    return `Daily Topic ${episodeDate}`;
+  }
+
+  if (/^staging topic\b/i.test(normalized)) {
+    return `Daily Topic ${episodeDate}`;
+  }
+
+  return normalized;
+};
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
@@ -210,11 +223,17 @@ Deno.serve(async (req) => {
   const body = (await req.json().catch(() => ({}))) as RequestBody;
   const episodeDate = body.episodeDate ?? new Date().toISOString().slice(0, 10);
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
-  const topicTitle = body.topic?.title ?? `Staging Topic ${episodeDate}`;
-  const bullets = body.topic?.bullets ?? ["MVP progress summary", "Behind the scenes", "Next build targets"];
+  const topicTitle = resolveTopicTitle(body.topic?.title, episodeDate);
+  const bullets = body.topic?.bullets ?? [
+    "トレンド要約1: 公開情報の更新を確認中です。",
+    "トレンド要約2: 継続観測が必要な論点を整理します。",
+    "トレンド要約3: 主要トピックの背景を短く振り返ります。",
+    "お便りコーナー: リスナーのお便りを紹介します。",
+    "次回予告: 次回の深掘り候補を案内します。"
+  ];
   const trendItems = normalizeTrendItems(body.trendItems);
   const letters = normalizeLetters(body.letters);
-  const title = `${topicTitle} (JA)`;
+  const title = `Daily Topic ${episodeDate} (JA)`;
   const description = `Japanese episode for ${episodeDate}`;
   const script = buildJapaneseScript({ topicTitle, bullets, trendItems, letters });
 
