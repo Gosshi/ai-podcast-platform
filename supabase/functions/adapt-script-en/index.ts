@@ -27,6 +27,7 @@ const MARKERS = [
 type Marker = (typeof MARKERS)[number];
 
 const markerSet = new Set<string>(MARKERS);
+const JAPANESE_CHAR_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
 
 const parseSections = (script: string | null): Record<Marker, string> => {
   const sections = Object.fromEntries(MARKERS.map((marker) => [marker, ""])) as Record<Marker, string>;
@@ -111,6 +112,65 @@ const extractUrls = (sourcesForUiSection: string): string[] => {
   return Array.from(urls);
 };
 
+const normalizeWhitespace = (value: string): string => value.replace(/\s+/g, " ").trim();
+
+const hasJapaneseText = (value: string): boolean => JAPANESE_CHAR_PATTERN.test(value);
+
+const toEnglishSourceLabel = (value: string): string => {
+  const normalized = normalizeWhitespace(value);
+  if (!normalized) {
+    return "Japanese media";
+  }
+
+  return hasJapaneseText(normalized) ? "Japanese media" : normalized;
+};
+
+const toEnglishTopicLine = (topic: string, source: string, index: number): string => {
+  const normalized = normalizeWhitespace(topic);
+  if (!normalized || hasJapaneseText(normalized)) {
+    return `${source} report: trend story ${index}`;
+  }
+
+  return normalized;
+};
+
+const toEnglishHappenedLine = (value: string, source: string): string => {
+  const normalized = normalizeWhitespace(value);
+  if (normalized && !hasJapaneseText(normalized)) {
+    return normalized;
+  }
+
+  const percent = normalized.match(/(\d+(?:\.\d+)?)\s*%/);
+  if (percent) {
+    return `${source} reported a change of about ${percent[1]} percent.`;
+  }
+
+  const year = normalized.match(/(20\d{2})/);
+  if (year) {
+    return `${source} reported a notable update in ${year[1]}.`;
+  }
+
+  return `${source} reported a notable update in Japanese-language coverage.`;
+};
+
+const toEnglishWhyLine = (value: string, source: string): string => {
+  const normalized = normalizeWhitespace(value);
+  if (normalized && !hasJapaneseText(normalized)) {
+    return normalized;
+  }
+
+  return `The topic gained traction in Japan and is being tracked by ${source}.`;
+};
+
+const toEnglishTakeLine = (value: string): string => {
+  const normalized = normalizeWhitespace(value);
+  if (normalized && !hasJapaneseText(normalized)) {
+    return normalized;
+  }
+
+  return "We avoid overconfident claims and keep following verified updates.";
+};
+
 const buildEnglishScript = (title: string, sections: Record<Marker, string>): string => {
   const trend1 = extractTrendBlock(sections["TREND 1"]);
   const trend2 = extractTrendBlock(sections["TREND 2"]);
@@ -124,12 +184,15 @@ Welcome back. This English edition keeps the same structure as the Japanese scri
 Today's theme is "${title}" and we focus on confirmed information only.`;
 
   const trendSections = [trend1, trend2, trend3].map(
-    (trend, index) => `[TREND ${index + 1}]
-Topic: ${trend.topic}
-- What happened: ${trend.happened}
-- Why it is trending: ${trend.why}
-- Quick take: ${trend.take}
-- Source context: ${trend.source}`
+    (trend, index) => {
+      const source = toEnglishSourceLabel(trend.source);
+      return `[TREND ${index + 1}]
+Topic: ${toEnglishTopicLine(trend.topic, source, index + 1)}
+- What happened: ${toEnglishHappenedLine(trend.happened, source)}
+- Why it is trending: ${toEnglishWhyLine(trend.why, source)}
+- Quick take: ${toEnglishTakeLine(trend.take)}
+- Source context: ${source}`;
+    }
   );
 
   const lettersSection =
@@ -152,7 +215,16 @@ That's the wrap for today. If you'd like us to cover a topic next time, send us 
 ${
   sourceRows.length === 0
     ? "- Source list is being prepared."
-    : sourceRows.map((row) => `- Outlet: ${row.outlet} / Title: ${row.title}`).join("\n")
+    : sourceRows
+        .map((row, index) => {
+          const outlet = toEnglishSourceLabel(row.outlet);
+          const titleValue = normalizeWhitespace(row.title);
+          const title = titleValue && !hasJapaneseText(titleValue)
+            ? titleValue
+            : `Top story ${index + 1} from Japanese-language coverage`;
+          return `- Outlet: ${outlet} / Title: ${title}`;
+        })
+        .join("\n")
 }`;
 
   const sourcesForUiSection = `[SOURCES_FOR_UI]
@@ -207,7 +279,7 @@ Deno.serve(async (req) => {
         description,
         script
       });
-    } else if (!en.script || en.status === "failed") {
+    } else if (!en.script || en.status === "failed" || en.script !== script) {
       await updateEpisode(en.id, { status: "generating" });
       en = await updateEpisode(en.id, {
         script,
