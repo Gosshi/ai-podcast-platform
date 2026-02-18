@@ -14,13 +14,25 @@ type LocalTtsResponse = {
   error?: string;
 };
 
-const resolveConfiguredBaseUrl = (): string | null => {
-  const explicit =
-    Deno.env.get("LOCAL_TTS_BASE_URL") ??
-    Deno.env.get("APP_BASE_URL") ??
-    Deno.env.get("NEXT_PUBLIC_APP_URL");
-  const normalized = explicit?.trim();
-  return normalized ? normalized.replace(/\/$/, "") : null;
+const DEFAULT_LOCAL_TTS_API_URL = "http://host.docker.internal:3000/api/tts-local";
+const FALLBACK_LOCAL_TTS_API_URLS = [
+  "http://172.17.0.1:3000/api/tts-local",
+  "http://gateway.docker.internal:3000/api/tts-local"
+];
+
+let cachedReachableLocalTtsApiUrl: string | null = null;
+
+const normalizeAbsoluteUrl = (raw: string | null | undefined): URL | null => {
+  const value = raw?.trim();
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
 };
 
 const resolvePath = (): string => {
@@ -28,14 +40,46 @@ const resolvePath = (): string => {
   return raw.startsWith("/") ? raw : `/${raw}`;
 };
 
-const resolveBaseUrlCandidates = (): string[] => {
-  const configured = resolveConfiguredBaseUrl();
-  const candidates = [
-    configured,
-    "http://127.0.0.1:3000",
-    "http://host.docker.internal:3000"
-  ].filter((value): value is string => Boolean(value));
+const normalizeApiUrl = (raw: string | null | undefined, fallbackPath: string): string | null => {
+  const url = normalizeAbsoluteUrl(raw);
+  if (!url) {
+    return null;
+  }
 
+  if (url.pathname === "/" || !url.pathname) {
+    url.pathname = fallbackPath;
+  }
+  if (url.pathname.length > 1) {
+    url.pathname = url.pathname.replace(/\/+$/, "");
+  }
+  return url.toString();
+};
+
+const resolveConfiguredApiUrl = (): string | null => {
+  return normalizeApiUrl(Deno.env.get("TTS_LOCAL_API_URL"), resolvePath());
+};
+
+const resolveLegacyApiUrl = (): string | null => {
+  const configuredBaseUrl =
+    Deno.env.get("LOCAL_TTS_BASE_URL") ??
+    Deno.env.get("APP_BASE_URL") ??
+    Deno.env.get("NEXT_PUBLIC_APP_URL");
+  const baseUrl = normalizeAbsoluteUrl(configuredBaseUrl);
+  if (!baseUrl) {
+    return null;
+  }
+  baseUrl.pathname = resolvePath();
+  return baseUrl.toString();
+};
+
+const resolveApiUrlCandidates = (): string[] => {
+  const candidates = [
+    cachedReachableLocalTtsApiUrl,
+    resolveConfiguredApiUrl(),
+    resolveLegacyApiUrl(),
+    DEFAULT_LOCAL_TTS_API_URL,
+    ...FALLBACK_LOCAL_TTS_API_URLS
+  ].filter((value): value is string => Boolean(value));
   return Array.from(new Set(candidates));
 };
 
@@ -54,13 +98,12 @@ export const synthesizeLocalAudio = async (
     throw new Error("episode script is empty");
   }
 
-  const routePath = resolvePath();
   const localTtsApiKey = Deno.env.get("LOCAL_TTS_API_KEY");
   let lastError: Error | null = null;
 
-  for (const baseUrl of resolveBaseUrlCandidates()) {
+  for (const apiUrl of resolveApiUrlCandidates()) {
     try {
-      const response = await fetch(`${baseUrl}${routePath}`, {
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -79,6 +122,7 @@ export const synthesizeLocalAudio = async (
         throw new Error(resolveErrorMessage(response.status, payload));
       }
 
+      cachedReachableLocalTtsApiUrl = apiUrl;
       return {
         audioUrl: payload.audioUrl,
         durationSec: typeof payload.durationSec === "number" ? payload.durationSec : 120
