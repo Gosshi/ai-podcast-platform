@@ -13,10 +13,13 @@ type InvokeResult = {
 };
 
 type TrendItem = {
+  id?: string;
   title: string;
   url: string;
   summary: string;
   source: string;
+  score?: number;
+  publishedAt?: string | null;
 };
 
 type ScoredTrendItem = TrendItem & {
@@ -101,6 +104,13 @@ type ScriptModerationResult =
       ok: false;
       reason: string;
     };
+
+type SelectedTrendAuditItem = {
+  id: string;
+  title: string;
+  score: number;
+  publishedAt: string | null;
+};
 
 const orderedSteps = [
   "plan-topics",
@@ -650,6 +660,61 @@ const resolveTrendItems = async (
   }
 };
 
+const toRecord = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+};
+
+const readPlanTrendItems = (plan: InvokeResult): TrendItem[] => {
+  const items = Array.isArray(plan.trendItems) ? plan.trendItems : [];
+
+  return items
+    .map((raw) => {
+      const record = toRecord(raw);
+      if (!record) return null;
+
+      const title = typeof record.title === "string" ? record.title.trim() : "";
+      if (!title) return null;
+
+      const url = typeof record.url === "string" ? record.url.trim() : "";
+      const summary = typeof record.summary === "string" ? record.summary.trim() : "";
+      const source = typeof record.source === "string" ? record.source.trim() : "";
+
+      return {
+        id: typeof record.id === "string" ? record.id : undefined,
+        title,
+        url,
+        summary: summary || `${title} was highlighted in recent public reports and discussions.`,
+        source: source || "unknown",
+        score: typeof record.score === "number" && Number.isFinite(record.score) ? record.score : undefined,
+        publishedAt: typeof record.publishedAt === "string" ? record.publishedAt : null
+      } satisfies TrendItem;
+    })
+    .filter((item): item is TrendItem => item !== null);
+};
+
+const readPlanSelectedTrendItems = (plan: InvokeResult): SelectedTrendAuditItem[] => {
+  const items = Array.isArray(plan.selectedTrendItems) ? plan.selectedTrendItems : [];
+
+  return items
+    .map((raw) => {
+      const record = toRecord(raw);
+      if (!record) return null;
+
+      const id = typeof record.id === "string" ? record.id.trim() : "";
+      const title = typeof record.title === "string" ? record.title.trim() : "";
+      const score = typeof record.score === "number" && Number.isFinite(record.score) ? record.score : NaN;
+      const publishedAt = typeof record.publishedAt === "string" ? record.publishedAt : null;
+
+      if (!id || !title || Number.isNaN(score)) return null;
+
+      return { id, title, score, publishedAt };
+    })
+    .filter((item): item is SelectedTrendAuditItem => item !== null);
+};
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
@@ -668,7 +733,7 @@ Deno.serve(async (req) => {
 
   try {
     const functionsBaseUrl = getFunctionsBaseUrl(req.url);
-    const { trendItems, usedFallback } = await resolveTrendItems(
+    const { trendItems: fallbackTrendCandidates, usedFallback: fallbackFromDaily } = await resolveTrendItems(
       functionsBaseUrl,
       episodeDate,
       idempotencyKey
@@ -677,6 +742,13 @@ Deno.serve(async (req) => {
     const { letters, blockedIds } = await prepareLettersForScript(letterCandidates);
 
     const plan = await invokeStep(functionsBaseUrl, "plan-topics", { episodeDate, idempotencyKey });
+    const plannedTrendItems = readPlanTrendItems(plan);
+    const selectedTrendItems = readPlanSelectedTrendItems(plan);
+    const trendItems = plannedTrendItems.length > 0 ? plannedTrendItems : fallbackTrendCandidates;
+    const usedTrendFallback =
+      typeof plan.usedTrendFallback === "boolean" ? plan.usedTrendFallback : fallbackFromDaily;
+    const trendFallbackReason =
+      typeof plan.trendFallbackReason === "string" ? plan.trendFallbackReason : null;
 
     const writeJa = await invokeStep(functionsBaseUrl, "write-script-ja", {
       episodeDate,
@@ -722,7 +794,9 @@ Deno.serve(async (req) => {
       lettersCount: letters.length,
       usedLetterIds: letters.map((letter) => letter.id),
       blockedLetterIds: blockedIds,
-      usedTrendFallback: usedFallback,
+      usedTrendFallback,
+      trendFallbackReason,
+      selectedTrendItems,
       outputs: {
         plan,
         writeJa,
@@ -742,7 +816,9 @@ Deno.serve(async (req) => {
       lettersCount: letters.length,
       usedLetterIds: letters.map((letter) => letter.id),
       blockedLetterIds: blockedIds,
-      usedTrendFallback: usedFallback,
+      usedTrendFallback,
+      trendFallbackReason,
+      selectedTrendItems,
       outputs: {
         plan,
         writeJa,

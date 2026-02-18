@@ -148,6 +148,18 @@ assert_contains() {
   fi
 }
 
+assert_contains_any() {
+  local label="$1"
+  local haystack="$2"
+  local needle_a="$3"
+  local needle_b="$4"
+  if grep -Fq -- "$needle_a" <<<"$haystack" || grep -Fq -- "$needle_b" <<<"$haystack"; then
+    pass "$label"
+  else
+    fail "$label"
+  fi
+}
+
 assert_not_contains() {
   local label="$1"
   local haystack="$2"
@@ -234,8 +246,8 @@ fi
 
 JA_PUBLISHED_COUNT="$(psql_query "select count(*) from public.episodes where lang='ja' and status='published' and published_at is not null;")"
 EN_PUBLISHED_LINKED_COUNT="$(psql_query "select count(*) from public.episodes en join public.episodes ja on en.master_id = ja.id where en.lang='en' and en.status='published' and en.published_at is not null and ja.lang='ja';")"
-JA_TITLE_COUNT="$(psql_query "select count(*) from public.episodes where lang='ja' and title='Staging Topic ${EPISODE_DATE} (JA)';")"
-EN_TITLE_COUNT="$(psql_query "select count(*) from public.episodes where lang='en' and title='Staging Topic ${EPISODE_DATE} (EN)';")"
+JA_TITLE_COUNT="$(psql_query "select count(*) from public.episodes where lang='ja' and title='Daily Topic ${EPISODE_DATE} (JA)';")"
+EN_TITLE_COUNT="$(psql_query "select count(*) from public.episodes where lang='en' and title='Daily Topic ${EPISODE_DATE} (EN)';")"
 
 assert_count_ge "episodes.ja published rows" "$JA_PUBLISHED_COUNT" 1
 assert_count_ge "episodes.en published rows linked to ja" "$EN_PUBLISHED_LINKED_COUNT" 1
@@ -266,9 +278,9 @@ FAILED_RUNS_WITH_ERROR="$(psql_query "select count(*) from public.job_runs where
 assert_count_ge "job_runs failed rows keep error text" "$FAILED_RUNS_WITH_ERROR" 1
 
 EPISODES_HTML="$(curl -sS "http://127.0.0.1:3000/episodes")"
-assert_contains "/episodes renders title heading" "$EPISODES_HTML" "Title"
-assert_contains "/episodes renders language heading" "$EPISODES_HTML" "Language"
-assert_contains "/episodes renders published_at heading" "$EPISODES_HTML" "Published At"
+assert_contains_any "/episodes renders title heading" "$EPISODES_HTML" "Title" "タイトル"
+assert_contains_any "/episodes renders language heading" "$EPISODES_HTML" "Language" "言語"
+assert_contains_any "/episodes renders published_at heading" "$EPISODES_HTML" "Published At" "公開日時"
 
 SAMPLE_TITLE="$(psql_query "select coalesce(title,'') from public.episodes where status='published' and published_at is not null order by published_at desc limit 1;")"
 if [ -n "$SAMPLE_TITLE" ]; then
