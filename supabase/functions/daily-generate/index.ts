@@ -1,6 +1,7 @@
 import { failRun, finishRun, startRun } from "../_shared/jobRuns.ts";
 import { jsonResponse } from "../_shared/http.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
+import { parseCsvList } from "../_shared/trendsConfig.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -22,17 +23,14 @@ type TrendItem = {
   publishedAt?: string | null;
 };
 
-type ScoredTrendItem = TrendItem & {
-  score: number;
-  publishedAt: string | null;
-};
-
 type TrendCandidateRow = {
   title: string | null;
   url: string | null;
   summary: string | null;
   score: number | null;
   published_at: string | null;
+  cluster_size: number | null;
+  is_cluster_representative: boolean | null;
   trend_sources:
     | {
         category: string | null;
@@ -110,6 +108,7 @@ type SelectedTrendAuditItem = {
   title: string;
   score: number;
   publishedAt: string | null;
+  clusterSize: number | null;
 };
 
 const orderedSteps = [
@@ -243,15 +242,6 @@ const invokeStep = async (
   throw new Error(`step_failed:${step}`);
 };
 
-const parseCsvList = (rawValue: string | undefined, fallback: string[]): string[] => {
-  if (!rawValue) return fallback;
-  const values = rawValue
-    .split(",")
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
-  return values.length > 0 ? values : fallback;
-};
-
 const normalizeToken = (value: string): string => {
   return value.trim().toLowerCase();
 };
@@ -268,95 +258,6 @@ const resolveSourceName = (row: TrendCandidateRow): string => {
     return row.trend_sources[0]?.name ?? "unknown";
   }
   return row.trend_sources?.name ?? "unknown";
-};
-
-const resolveHost = (url: string): string => {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
-  } catch {
-    return url.trim().toLowerCase();
-  }
-};
-
-const normalizeTitle = (title: string): string => {
-  return title
-    .normalize("NFKC")
-    .toLowerCase()
-    .replace(/[^\p{Letter}\p{Number}\s]+/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-};
-
-const tokenizeTitle = (title: string): Set<string> => {
-  const normalized = normalizeTitle(title);
-  if (!normalized) return new Set();
-  return new Set(
-    normalized
-      .split(" ")
-      .map((token) => token.trim())
-      .filter((token) => token.length > 0)
-  );
-};
-
-const jaccardSimilarity = (a: Set<string>, b: Set<string>): number => {
-  if (a.size === 0 || b.size === 0) return 0;
-
-  let intersection = 0;
-  for (const token of a) {
-    if (b.has(token)) {
-      intersection += 1;
-    }
-  }
-
-  const union = a.size + b.size - intersection;
-  return union === 0 ? 0 : intersection / union;
-};
-
-const pickHigherScore = (current: ScoredTrendItem, next: ScoredTrendItem): ScoredTrendItem => {
-  if (next.score !== current.score) {
-    return next.score > current.score ? next : current;
-  }
-
-  const nextPublished = next.publishedAt ?? "";
-  const currentPublished = current.publishedAt ?? "";
-  return nextPublished > currentPublished ? next : current;
-};
-
-const clusterTrendItems = (items: ScoredTrendItem[]): TrendItem[] => {
-  const byHost = new Map<string, ScoredTrendItem>();
-  for (const item of items) {
-    const host = resolveHost(item.url);
-    const existing = byHost.get(host);
-    if (!existing) {
-      byHost.set(host, item);
-      continue;
-    }
-    byHost.set(host, pickHigherScore(existing, item));
-  }
-
-  const hostDeduped = Array.from(byHost.values()).sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    return (b.publishedAt ?? "").localeCompare(a.publishedAt ?? "");
-  });
-
-  const clusters: { representative: ScoredTrendItem; representativeTokens: Set<string> }[] = [];
-  for (const item of hostDeduped) {
-    const tokens = tokenizeTitle(item.title);
-    const matchedCluster = clusters.find(
-      (cluster) => jaccardSimilarity(tokens, cluster.representativeTokens) >= 0.6
-    );
-
-    if (!matchedCluster) {
-      clusters.push({ representative: item, representativeTokens: tokens });
-    }
-  }
-
-  return clusters.slice(0, MAX_TREND_ITEMS).map((cluster) => ({
-    title: cluster.representative.title,
-    url: cluster.representative.url,
-    summary: cluster.representative.summary,
-    source: cluster.representative.source
-  }));
 };
 
 const sanitizeNarrationText = (value: string): string => {
@@ -428,7 +329,10 @@ const loadTopTrends = async (): Promise<TrendItem[]> => {
 
   const { data, error } = await supabaseAdmin
     .from("trend_items")
-    .select("title, url, summary, score, published_at, trend_sources!inner(name,category)")
+    .select(
+      "title, url, summary, score, published_at, cluster_size, is_cluster_representative, trend_sources!inner(name,category)"
+    )
+    .eq("is_cluster_representative", true)
     .gte("published_at", sinceIso)
     .order("score", { ascending: false })
     .order("published_at", { ascending: false })
@@ -440,6 +344,7 @@ const loadTopTrends = async (): Promise<TrendItem[]> => {
 
   const trendItems = ((data ?? []) as TrendCandidateRow[])
     .filter((item) => Boolean(item.title && item.url && item.score !== null))
+    .filter((item) => item.is_cluster_representative !== false)
     .filter((item) => {
       const category = normalizeToken(resolveCategory(item));
       if (excludedCategories.has(category)) {
@@ -460,7 +365,12 @@ const loadTopTrends = async (): Promise<TrendItem[]> => {
       publishedAt: item.published_at
     }));
 
-  return clusterTrendItems(trendItems);
+  return trendItems.slice(0, MAX_TREND_ITEMS).map((item) => ({
+    title: item.title,
+    url: item.url,
+    summary: item.summary,
+    source: item.source
+  }));
 };
 
 const resolveJoinedLetterRow = (
@@ -707,10 +617,14 @@ const readPlanSelectedTrendItems = (plan: InvokeResult): SelectedTrendAuditItem[
       const title = typeof record.title === "string" ? record.title.trim() : "";
       const score = typeof record.score === "number" && Number.isFinite(record.score) ? record.score : NaN;
       const publishedAt = typeof record.publishedAt === "string" ? record.publishedAt : null;
+      const clusterSize =
+        typeof record.clusterSize === "number" && Number.isFinite(record.clusterSize)
+          ? record.clusterSize
+          : null;
 
       if (!id || !title || Number.isNaN(score)) return null;
 
-      return { id, title, score, publishedAt };
+      return { id, title, score, publishedAt, clusterSize };
     })
     .filter((item): item is SelectedTrendAuditItem => item !== null);
 };

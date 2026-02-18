@@ -161,19 +161,23 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - 実行: `bash scripts/e2e-local.sh`
 - 成功時: `[RESULT] PASS (...)`
 
-## Trend Ingestion (RSS Foundation)
+## Trend Ingestion (RSS Upgraded)
 - Function: `ingest_trends_rss`
-- DB tables: `trend_sources` (`weight`, `category`), `trend_items` (`hash` UNIQUE + `normalized_hash` UNIQUE), `trend_runs`
-- score 式: `trend_items.score = trend_sources.weight × freshness_decay × signal`（現状 `signal=1`）
-- `freshness_decay` は `published_at` の新しさで指数減衰（0-48hを評価）
-- 重複記事は `trend_items.hash` / `trend_items.normalized_hash` の UNIQUE 衝突で no-op（insert-only）
-- `daily-generate` は「直近24h」「カテゴリ/キーワード除外後」の `score` 上位3件を採用
-- 除外設定は `TREND_EXCLUDED_CATEGORIES`, `TREND_EXCLUDED_KEYWORDS`（カンマ区切り env）で上書き可能
+- source 設定: `supabase/functions/_shared/trendsConfig.ts`
+- `trend_sources` は `weight`, `category`, `theme` を持ち、テーマ別RSSを10本以上定義可能
+- `trend_items` は `normalized_url + normalized_title_hash` とタイトル類似クラスタで重複統合
+- `published_at` がRSSで欠損時は HTML メタ (`article:published_time` など) を取得し、失敗時は `fetched_at` を fallback として保存
+- `published_at_source` は `rss|meta|fetched`、`published_at_fallback` は fallback timestamp を保存
+- score 式: `freshness + source_weight + cluster_size_bonus + diversity_bonus - clickbait_penalty`
+- clickbait 判定語は `TREND_CLICKBAIT_KEYWORDS` で上書き可能
+- `plan-topics` / `daily-generate` は `is_cluster_representative=true` の上位Nを採用
+- 実行結果は `fetchedCount`, `insertedCount`, `dedupedCount`, `publishedAtFilledCount` を返す
 
 ### Local Run (deterministic)
 1. `supabase start`
 2. `supabase db reset --local --yes`
 3. `supabase functions serve --no-verify-jwt`
-4. `curl -i -X POST http://127.0.0.1:54321/functions/v1/ingest_trends_rss -H "Content-Type: application/json" -d '{"mockFeeds":[{"sourceKey":"local-rss","name":"Local RSS","url":"https://local.invalid/rss","xml":"<rss><channel><item><title>Topic A</title><link>https://example.com/a</link><description>A summary</description><pubDate>Tue, 17 Feb 2026 12:00:00 GMT</pubDate></item></channel></rss>"}]}'`
-5. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c "select count(*) from public.trend_items;"`
-6. `trend_items` が 1 以上、`trend_runs` に実行ログが追加されることを確認
+4. `curl -i -X POST http://127.0.0.1:54321/functions/v1/ingest_trends_rss -H "Content-Type: application/json" -d '{"mockFeeds":[{"sourceKey":"local-rss","name":"Local RSS","url":"https://local.invalid/rss","weight":1.3,"category":"tech","xml":"<rss><channel><item><title>Topic A</title><link>https://example.com/a</link><description>A summary</description></item><item><title>Topic A!!!</title><link>https://example.com/a?utm_source=test</link><description>Duplicate summary</description></item></channel></rss>"}]}'`
+5. `curl -i -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H "Content-Type: application/json" -d '{"episodeDate":"2026-02-18"}'`
+6. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c "select title,score,cluster_size,published_at_source from public.trend_items order by score desc limit 5;"`
+7. `trend_runs.payload` に `dedupedCount` / `publishedAtFilledCount` が入り、`daily-generate` がクラスタ代表を採用することを確認
