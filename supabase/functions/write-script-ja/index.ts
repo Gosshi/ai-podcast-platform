@@ -13,6 +13,19 @@ type RequestBody = {
     title?: string;
     bullets?: string[];
   };
+  trendItems?: {
+    title?: string;
+    url?: string;
+  }[];
+};
+
+const buildSourcesSection = (trendItems: { title: string; url: string }[]): string => {
+  const uniqueUrls = Array.from(new Set(trendItems.map((item) => item.url)));
+  if (uniqueUrls.length === 0) {
+    return "";
+  }
+
+  return `\n\nSources:\n${uniqueUrls.map((url) => `- ${url}`).join("\n")}`;
 };
 
 Deno.serve(async (req) => {
@@ -25,15 +38,23 @@ Deno.serve(async (req) => {
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
   const topicTitle = body.topic?.title ?? `Staging Topic ${episodeDate}`;
   const bullets = body.topic?.bullets ?? ["MVP progress summary", "Behind the scenes", "Next build targets"];
+  const trendItems = (body.trendItems ?? [])
+    .filter((item) => Boolean(item?.title && item?.url))
+    .map((item) => ({
+      title: item.title as string,
+      url: item.url as string
+    }));
   const title = `${topicTitle} (JA)`;
   const description = `Japanese episode for ${episodeDate}`;
-  const script = `# ${topicTitle}\n\n- ${bullets.join("\n- ")}`;
+  const sourcesSection = buildSourcesSection(trendItems);
+  const script = `# ${topicTitle}\n\n- ${bullets.join("\n- ")}${sourcesSection}`;
 
   const runId = await startRun("write-script-ja", {
     step: "write-script-ja",
     episodeDate,
     idempotencyKey,
-    title
+    title,
+    trendItemsCount: trendItems.length
   });
 
   try {
@@ -56,7 +77,8 @@ Deno.serve(async (req) => {
       idempotencyKey,
       episodeId: episode.id,
       status: episode.status,
-      noOp: Boolean(episode.script)
+      noOp: Boolean(episode.script),
+      trendItemsCount: trendItems.length
     });
 
     return jsonResponse({
@@ -65,7 +87,8 @@ Deno.serve(async (req) => {
       idempotencyKey,
       episodeId: episode.id,
       title: episode.title,
-      status: episode.status
+      status: episode.status,
+      trendItemsCount: trendItems.length
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -73,7 +96,8 @@ Deno.serve(async (req) => {
       step: "write-script-ja",
       episodeDate,
       idempotencyKey,
-      title
+      title,
+      trendItemsCount: trendItems.length
     });
 
     return jsonResponse({ ok: false, error: message }, 500);
