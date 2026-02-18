@@ -10,6 +10,11 @@ type RequestBody = {
   episodeId?: string;
 };
 
+const buildForcedAudioVersion = (baseVersion: string): string => {
+  const revision = Date.now().toString(36);
+  return `${baseVersion}${revision}`.slice(0, 64);
+};
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
@@ -33,13 +38,14 @@ Deno.serve(async (req) => {
   try {
     const episode = await fetchEpisodeById(body.episodeId);
     const script = episode.script ?? episode.title ?? "";
-    const audioVersion = await buildAudioVersion(script);
+    const baseAudioVersion = await buildAudioVersion(script);
+    const forceLocalTts = Deno.env.get("LOCAL_TTS_ENABLED") === "1";
+    const audioVersion = forceLocalTts ? buildForcedAudioVersion(baseAudioVersion) : baseAudioVersion;
     const expectedLocalAudioUrl = buildLocalAudioUrl({
       episodeId: episode.id,
       lang: "en",
-      audioVersion
+      audioVersion: baseAudioVersion
     });
-    const forceLocalTts = Deno.env.get("LOCAL_TTS_ENABLED") === "1";
 
     if (!forceLocalTts && episode.audio_url === expectedLocalAudioUrl) {
       await finishRun(runId, {
