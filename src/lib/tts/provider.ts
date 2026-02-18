@@ -31,6 +31,7 @@ export interface TtsProvider {
 
 const JAPANESE_CHAR_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
 const OPENAI_TTS_FORMATS = new Set<TtsAudioFormat>(["mp3", "opus", "aac", "flac", "wav", "pcm"]);
+const OPENAI_TTS_TIMEOUT_MS = 45_000;
 
 const runCommand = async (command: string, args: string[]): Promise<void> => {
   await new Promise<void>((resolve, reject) => {
@@ -358,14 +359,26 @@ export const openAiTtsProvider: TtsProvider = {
       }
     }
 
-    const response = await fetch("https://api.openai.com/v1/audio/speech", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(body)
-    });
+    let response: Response;
+    try {
+      response = await fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(OPENAI_TTS_TIMEOUT_MS)
+      });
+    } catch (error) {
+      if (
+        (error instanceof DOMException && (error.name === "AbortError" || error.name === "TimeoutError")) ||
+        (error instanceof Error && error.name === "AbortError")
+      ) {
+        throw new Error("openai_tts_timeout");
+      }
+      throw error;
+    }
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "");

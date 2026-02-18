@@ -58,3 +58,23 @@ export const failRun = async (
     throw error;
   }
 };
+
+export const countFailedRunsForAudioVersion = async (params: {
+  jobType: string;
+  episodeId: string;
+  audioVersion: string;
+}): Promise<number> => {
+  const { count, error } = await supabaseAdmin
+    .from("job_runs")
+    .select("id", { count: "exact", head: true })
+    .eq("job_type", params.jobType)
+    .eq("status", "failed")
+    .filter("payload->>episodeId", "eq", params.episodeId)
+    .filter("payload->>audioVersion", "eq", params.audioVersion);
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
+};
