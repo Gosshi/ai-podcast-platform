@@ -6,6 +6,9 @@ export default function HomePage() {
       <p>
         <a href="/episodes">View episodes</a>
       </p>
+      <p>
+        <a href="/letters">Submit a letter</a>
+      </p>
     </main>
   );
 }
