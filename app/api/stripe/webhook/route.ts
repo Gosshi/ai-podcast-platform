@@ -3,6 +3,29 @@ import Stripe from "stripe";
 
 export const runtime = "nodejs";
 
+type InsertTipInput = {
+  provider: "stripe";
+  provider_payment_id: string;
+  amount: number;
+  currency: string | null;
+  letter_id: string | null;
+};
+
+type InsertTipError = {
+  code?: string | null;
+  message: string;
+} | null;
+
+type InsertTipResult = {
+  error: InsertTipError;
+};
+
+type StripeWebhookDeps = {
+  stripe: Stripe;
+  webhookSecret: string;
+  insertTip: (tip: InsertTipInput) => Promise<InsertTipResult>;
+};
+
 const getRequiredEnv = (name: string): string => {
   const value = process.env[name];
   if (!value) {
@@ -20,23 +43,30 @@ const jsonResponse = (body: Record<string, unknown>, status = 200): Response => 
   });
 };
 
-export async function POST(request: Request) {
-  let stripe: Stripe;
-  let supabaseUrl: string;
-  let serviceRoleKey: string;
-  let webhookSecret: string;
+const createRuntimeDeps = (): StripeWebhookDeps => {
+  const stripe = new Stripe(getRequiredEnv("STRIPE_SECRET_KEY"));
+  const supabaseUrl = getRequiredEnv("SUPABASE_URL");
+  const serviceRoleKey = getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+  const webhookSecret = getRequiredEnv("STRIPE_WEBHOOK_SECRET");
 
-  try {
-    stripe = new Stripe(getRequiredEnv("STRIPE_SECRET_KEY"));
-    supabaseUrl = getRequiredEnv("SUPABASE_URL");
-    serviceRoleKey = getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY");
-    webhookSecret = getRequiredEnv("STRIPE_WEBHOOK_SECRET");
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "configuration_error";
-    console.error("stripe_webhook_config_error", { message });
-    return jsonResponse({ ok: false, error: message }, 500);
-  }
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
 
+  return {
+    stripe,
+    webhookSecret,
+    insertTip: async (tip: InsertTipInput) => {
+      const { error } = await supabase.from("tips").insert(tip);
+      return { error: error ? { code: error.code, message: error.message } : null };
+    }
+  };
+};
+
+export async function handleStripeWebhook(request: Request, deps: StripeWebhookDeps): Promise<Response> {
   const signature = request.headers.get("stripe-signature");
   if (!signature) {
     return jsonResponse({ ok: false, error: "missing_stripe_signature" }, 400);
@@ -46,7 +76,7 @@ export async function POST(request: Request) {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    event = deps.stripe.webhooks.constructEvent(rawBody, signature, deps.webhookSecret);
   } catch (error) {
     console.error("stripe_webhook_signature_error", { error });
     return jsonResponse({ ok: false, error: "invalid_signature" }, 400);
@@ -59,14 +89,7 @@ export async function POST(request: Request) {
   const paymentIntent = event.data.object as Stripe.PaymentIntent;
   const providerPaymentId = paymentIntent.id;
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  });
-
-  const { error } = await supabase.from("tips").insert({
+  const { error } = await deps.insertTip({
     provider: "stripe",
     provider_payment_id: providerPaymentId,
     amount: paymentIntent.amount_received,
@@ -90,4 +113,18 @@ export async function POST(request: Request) {
   }
 
   return jsonResponse({ ok: true, providerPaymentId });
+}
+
+export async function POST(request: Request) {
+  let deps: StripeWebhookDeps;
+
+  try {
+    deps = createRuntimeDeps();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "configuration_error";
+    console.error("stripe_webhook_config_error", { message });
+    return jsonResponse({ ok: false, error: message }, 500);
+  }
+
+  return handleStripeWebhook(request, deps);
 }
