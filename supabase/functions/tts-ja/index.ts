@@ -1,6 +1,7 @@
 import { failRun, finishRun, startRun } from "../_shared/jobRuns.ts";
 import { jsonResponse } from "../_shared/http.ts";
 import { fetchEpisodeById, updateEpisode } from "../_shared/episodes.ts";
+import { synthesizeLocalAudio } from "../_shared/localTts.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -45,10 +46,15 @@ Deno.serve(async (req) => {
     }
 
     await updateEpisode(episode.id, { status: "generating" });
-    const audioUrl = `mock://audio/${episode.id}.ja.mp3`;
+    const synthesized = await synthesizeLocalAudio({
+      episodeId: episode.id,
+      lang: "ja",
+      text: episode.script ?? episode.title ?? ""
+    });
+    const audioUrl = synthesized.audioUrl;
     const updated = await updateEpisode(episode.id, {
       audio_url: audioUrl,
-      duration_sec: 120,
+      duration_sec: synthesized.durationSec,
       status: "ready"
     });
 

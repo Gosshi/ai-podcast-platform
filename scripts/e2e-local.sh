@@ -194,6 +194,24 @@ else
   fail "supabase functions serve"
 fi
 
+log "start next dev server"
+SUPABASE_URL="$API_URL" \
+SUPABASE_ANON_KEY="$ANON_KEY" \
+SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+LOCAL_TTS_BASE_URL="http://127.0.0.1:3000" \
+ENABLE_LOCAL_TTS="true" \
+STRIPE_SECRET_KEY="sk_test_local" \
+STRIPE_WEBHOOK_SECRET="whsec_local" \
+npm run dev >"$NEXT_LOG_FILE" 2>&1 &
+NEXT_PID=$!
+
+if wait_for_next; then
+  pass "next dev server"
+else
+  tail -n 100 "$NEXT_LOG_FILE" >&2 || true
+  fail "next dev server"
+fi
+
 EPISODE_DATE="${EPISODE_DATE:-$(date +%F)}"
 
 log "execute daily-generate pipeline #1"
@@ -224,6 +242,17 @@ assert_count_ge "episodes.en published rows linked to ja" "$EN_PUBLISHED_LINKED_
 assert_count_eq "no duplicate ja episode for same date title" "$JA_TITLE_COUNT" 1
 assert_count_eq "no duplicate en episode for same date title" "$EN_TITLE_COUNT" 1
 
+LOCAL_AUDIO_URL_COUNT="$(psql_query "select count(*) from public.episodes where lang in ('ja','en') and status='published' and audio_url like '/audio/%';")"
+assert_count_ge "episodes audio_url uses local /audio path" "$LOCAL_AUDIO_URL_COUNT" 2
+
+LATEST_JA_AUDIO_URL="$(psql_query "select coalesce(audio_url,'') from public.episodes where lang='ja' and status='published' order by published_at desc nulls last, created_at desc limit 1;")"
+assert_contains "ja audio_url path prefix" "$LATEST_JA_AUDIO_URL" "/audio/"
+if [ -f "public${LATEST_JA_AUDIO_URL}" ]; then
+  pass "ja audio file exists under public/"
+else
+  fail "ja audio file exists under public/"
+fi
+
 EXPECTED_JOB_TYPES=("daily-generate" "plan-topics" "write-script-ja" "tts-ja" "adapt-script-en" "tts-en" "publish")
 for job_type in "${EXPECTED_JOB_TYPES[@]}"; do
   JOB_TYPE_COUNT="$(psql_query "select count(*) from public.job_runs where job_type='${job_type}';")"
@@ -235,22 +264,6 @@ curl -sS -X POST "$FUNCTIONS_URL/publish" -H "Content-Type: application/json" -d
 
 FAILED_RUNS_WITH_ERROR="$(psql_query "select count(*) from public.job_runs where status='failed' and error is not null and length(error) > 0;")"
 assert_count_ge "job_runs failed rows keep error text" "$FAILED_RUNS_WITH_ERROR" 1
-
-log "start next dev server"
-SUPABASE_URL="$API_URL" \
-SUPABASE_ANON_KEY="$ANON_KEY" \
-SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
-STRIPE_SECRET_KEY="sk_test_local" \
-STRIPE_WEBHOOK_SECRET="whsec_local" \
-npm run dev >"$NEXT_LOG_FILE" 2>&1 &
-NEXT_PID=$!
-
-if wait_for_next; then
-  pass "next dev server"
-else
-  tail -n 100 "$NEXT_LOG_FILE" >&2 || true
-  fail "next dev server"
-fi
 
 EPISODES_HTML="$(curl -sS "http://127.0.0.1:3000/episodes")"
 assert_contains "/episodes renders title heading" "$EPISODES_HTML" "Title"
