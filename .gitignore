@@ -29,3 +29,7 @@ pnpm-debug.log*
 
 #cache
 .npm-cache/
+
+# local generated audio
+/public/audio/*
+!/public/audio/.gitkeep

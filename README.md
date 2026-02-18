@@ -44,9 +44,12 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 
 ### Manual Run (curl)
 1. `supabase start`
-2. `supabase functions serve --no-verify-jwt`
-3. `curl -i -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H \"Content-Type: application/json\" -d '{\"episodeDate\":\"2026-02-16\"}'`
-4. ローカル検証専用として `--no-verify-jwt` を使用。staging では通常どおり Authorization を付けて実行する。
+2. `npm run dev`（`/api/tts-local` が `say` で `public/audio/*.wav` を生成）
+3. `supabase functions serve --env-file .env.local --no-verify-jwt`
+4. `curl -i -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H \"Content-Type: application/json\" -d '{\"episodeDate\":\"2026-02-16\"}'`
+5. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c "select id, lang, audio_url from public.episodes order by created_at desc limit 2;"`
+6. `audio_url` が `/audio/<episodeId>.<lang>.wav` なら `/episodes` で再生可能。
+7. ローカル検証専用として `--no-verify-jwt` を使用。staging では通常どおり Authorization を付けて実行する。
 
 ### Scheduler (staging)
 - GitHub Actions: `.github/workflows/scheduled-daily-publish.yml`
@@ -111,6 +114,18 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - Page: `/episodes`
 - Displays: `title`, `lang`, `published_at`
 - Reads published rows from Supabase (`episodes.status='published'` and `published_at is not null`)
+- `audio_url` が `/audio/...` の場合、`public/audio` のローカル音声を `<audio>` タグで再生
+
+## Local TTS Fallback (macOS)
+- API route: `POST /api/tts-local`（Node runtime）
+- `say` + `afconvert` で WAV を生成し `public/audio/<episodeId>.<lang>.wav` に保存
+- `tts-ja` / `tts-en` は local fallback で `episodes.audio_url` を `/audio/<episodeId>.<lang>.wav` に更新
+- 主要 env（任意）:
+  - `LOCAL_TTS_BASE_URL` (default: `http://127.0.0.1:3000`)
+  - `LOCAL_TTS_PATH` (default: `/api/tts-local`)
+  - `LOCAL_TTS_API_KEY`（設定時は Edge Function から同キー送信が必須）
+  - `LOCAL_TTS_VOICE_JA`, `LOCAL_TTS_VOICE_EN`
+  - `ENABLE_LOCAL_TTS=true`（`NODE_ENV=development` でも有効）
 
 ## Ops Audit UI (Local)
 - Page: `/admin/job-runs`
