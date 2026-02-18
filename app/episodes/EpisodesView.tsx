@@ -336,6 +336,7 @@ export default function EpisodesView({
   const [activeEpisodeId, setActiveEpisodeId] = useState<string | null>(null);
   const [pendingAutoPlay, setPendingAutoPlay] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isMiniPlayerHidden, setIsMiniPlayerHidden] = useState(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -704,67 +705,88 @@ export default function EpisodesView({
         </div>
       )}
 
-      <section className={styles.miniPlayer}>
-        <div className={styles.miniPlayerMeta}>
-          <p className={styles.miniPlayerLabel}>{t.audioPlayerTitle}</p>
-          {activeEpisode ? (
-            <>
-              <h2>{activeEpisode.title ?? t.untitled}</h2>
-              <p>
-                {activeEpisode.lang.toUpperCase()} / {isPlaying ? t.nowPlaying : t.paused}
-              </p>
-            </>
-          ) : (
-            <p>{t.nothingPlaying}</p>
-          )}
-        </div>
+      {isMiniPlayerHidden ? (
+        <button
+          type="button"
+          className={styles.showPlayerButton}
+          onClick={() => setIsMiniPlayerHidden(false)}
+        >
+          {t.showPlayer}
+        </button>
+      ) : (
+        <section className={styles.miniPlayer}>
+          <div className={styles.miniPlayerHeader}>
+            <div className={styles.miniPlayerMeta}>
+              <p className={styles.miniPlayerLabel}>{t.audioPlayerTitle}</p>
+              {activeEpisode ? (
+                <>
+                  <h2>{activeEpisode.title ?? t.untitled}</h2>
+                  <p>
+                    {activeEpisode.lang.toUpperCase()} / {isPlaying ? t.nowPlaying : t.paused}
+                  </p>
+                </>
+              ) : (
+                <p>{t.nothingPlaying}</p>
+              )}
+            </div>
 
-        <div className={styles.miniPlayerActions}>
-          <button
-            type="button"
-            className={styles.secondaryButton}
-            onClick={() => playRelative(-1)}
-            disabled={activePlayableIndex <= 0}
-          >
-            {t.previous}
-          </button>
+            <button
+              type="button"
+              className={styles.closePlayerButton}
+              onClick={() => setIsMiniPlayerHidden(true)}
+              aria-label={t.hidePlayer}
+            >
+              ×
+            </button>
+          </div>
 
-          <button
-            type="button"
-            className={styles.secondaryButton}
-            onClick={() => playRelative(1)}
-            disabled={activePlayableIndex < 0 || activePlayableIndex >= playableEpisodes.length - 1}
-          >
-            {t.next}
-          </button>
+          <div className={styles.miniPlayerActions}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => playRelative(-1)}
+              disabled={activePlayableIndex <= 0}
+            >
+              {t.previous}
+            </button>
 
-          <button
-            type="button"
-            className={styles.primaryButton}
-            onClick={() => {
-              if (!activeEpisodeId) return;
-              scrollToEpisodeCard(activeEpisodeId, true);
-            }}
-            disabled={!activeEpisodeId}
-          >
-            {t.moveToPlaying}
-          </button>
-        </div>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => playRelative(1)}
+              disabled={activePlayableIndex < 0 || activePlayableIndex >= playableEpisodes.length - 1}
+            >
+              {t.next}
+            </button>
 
-        <audio
-          ref={audioRef}
-          controls
-          preload="metadata"
-          src={activeEpisode?.audio_url ?? undefined}
-          className={styles.audioPlayer}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          onEnded={() => setIsPlaying(false)}
-          onError={() => setPlaybackError(messageSet.common.unknownError)}
-        />
+            <button
+              type="button"
+              className={styles.primaryButton}
+              onClick={() => {
+                if (!activeEpisodeId) return;
+                scrollToEpisodeCard(activeEpisodeId, true);
+              }}
+              disabled={!activeEpisodeId}
+            >
+              {t.moveToPlaying}
+            </button>
+          </div>
 
-        {playbackError ? <p className={styles.errorText}>{playbackError}</p> : null}
-      </section>
+          <audio
+            ref={audioRef}
+            controls
+            preload="metadata"
+            src={activeEpisode?.audio_url ?? undefined}
+            className={styles.audioPlayer}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onEnded={() => setIsPlaying(false)}
+            onError={() => setPlaybackError(messageSet.common.unknownError)}
+          />
+
+          {playbackError ? <p className={styles.errorText}>{playbackError}</p> : null}
+        </section>
+      )}
     </main>
   );
 }
