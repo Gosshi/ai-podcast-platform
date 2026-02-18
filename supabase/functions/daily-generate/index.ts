@@ -15,6 +15,8 @@ type InvokeResult = {
 type TrendItem = {
   title: string;
   url: string;
+  summary: string;
+  source: string;
 };
 
 type ScoredTrendItem = TrendItem & {
@@ -25,16 +27,30 @@ type ScoredTrendItem = TrendItem & {
 type TrendCandidateRow = {
   title: string | null;
   url: string | null;
+  summary: string | null;
   score: number | null;
   published_at: string | null;
   trend_sources:
     | {
         category: string | null;
+        name: string | null;
       }
     | {
         category: string | null;
+        name: string | null;
       }[]
     | null;
+};
+
+type LetterItem = {
+  display_name: string;
+  text: string;
+};
+
+type LetterRow = {
+  display_name: string | null;
+  text: string | null;
+  moderation_status: string | null;
 };
 
 const orderedSteps = [
@@ -47,6 +63,7 @@ const orderedSteps = [
 ] as const;
 
 const MAX_TREND_ITEMS = 3;
+const MAX_LETTERS = 2;
 
 const DEFAULT_EXCLUDED_SOURCE_CATEGORIES = [
   "investment",
@@ -74,15 +91,21 @@ const DEFAULT_EXCLUDED_KEYWORDS = [
 const fallbackTrendItems: TrendItem[] = [
   {
     title: "Fallback: Product update cadence",
-    url: "https://example.com/fallback/product-update"
+    url: "https://example.com/fallback/product-update",
+    summary: "Product roadmap updates were shared in public channels.",
+    source: "example.com"
   },
   {
     title: "Fallback: Reliability improvements",
-    url: "https://example.com/fallback/reliability"
+    url: "https://example.com/fallback/reliability",
+    summary: "Reliability and operations improvements were highlighted.",
+    source: "example.com"
   },
   {
     title: "Fallback: User feedback highlights",
-    url: "https://example.com/fallback/user-feedback"
+    url: "https://example.com/fallback/user-feedback",
+    summary: "Recent user feedback showed recurring product requests.",
+    source: "example.com"
   }
 ];
 
@@ -98,6 +121,8 @@ const getFunctionsBaseUrl = (requestUrl: string): string => {
   return `${new URL(requestUrl).origin}/functions/v1`;
 };
 
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
 const invokeStep = async (
   functionsBaseUrl: string,
   step: string,
@@ -108,22 +133,40 @@ const invokeStep = async (
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is required");
   }
 
-  const response = await fetch(`${functionsBaseUrl}/${step}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${serviceRole}`
-    },
-    body: JSON.stringify(payload)
-  });
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await fetch(`${functionsBaseUrl}/${step}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${serviceRole}`
+        },
+        body: JSON.stringify(payload)
+      });
 
-  const body = (await response.json().catch(() => ({}))) as InvokeResult;
+      const body = (await response.json().catch(() => ({}))) as InvokeResult;
+      if (response.ok && body.ok !== false) {
+        return body;
+      }
 
-  if (!response.ok || body.ok === false) {
-    throw new Error(`step_failed:${step}`);
+      const retryable = response.status >= 500 || response.status === 429;
+      if (!retryable || attempt === maxAttempts) {
+        throw new Error(`step_failed:${step}`);
+      }
+    } catch (error) {
+      if (attempt === maxAttempts) {
+        if (error instanceof Error && error.message.startsWith("step_failed:")) {
+          throw error;
+        }
+        throw new Error(`step_failed:${step}`);
+      }
+    }
+
+    await sleep(attempt * 150);
   }
 
-  return body;
+  throw new Error(`step_failed:${step}`);
 };
 
 const parseCsvList = (rawValue: string | undefined, fallback: string[]): string[] => {
@@ -144,6 +187,13 @@ const resolveCategory = (row: TrendCandidateRow): string => {
     return row.trend_sources[0]?.category ?? "general";
   }
   return row.trend_sources?.category ?? "general";
+};
+
+const resolveSourceName = (row: TrendCandidateRow): string => {
+  if (Array.isArray(row.trend_sources)) {
+    return row.trend_sources[0]?.name ?? "unknown";
+  }
+  return row.trend_sources?.name ?? "unknown";
 };
 
 const resolveHost = (url: string): string => {
@@ -229,7 +279,9 @@ const clusterTrendItems = (items: ScoredTrendItem[]): TrendItem[] => {
 
   return clusters.slice(0, MAX_TREND_ITEMS).map((cluster) => ({
     title: cluster.representative.title,
-    url: cluster.representative.url
+    url: cluster.representative.url,
+    summary: cluster.representative.summary,
+    source: cluster.representative.source
   }));
 };
 
@@ -248,7 +300,7 @@ const loadTopTrends = async (): Promise<TrendItem[]> => {
 
   const { data, error } = await supabaseAdmin
     .from("trend_items")
-    .select("title, url, score, published_at, trend_sources!inner(category)")
+    .select("title, url, summary, score, published_at, trend_sources!inner(name,category)")
     .gte("published_at", sinceIso)
     .order("score", { ascending: false })
     .order("published_at", { ascending: false })
@@ -272,11 +324,37 @@ const loadTopTrends = async (): Promise<TrendItem[]> => {
     .map((item) => ({
       title: item.title as string,
       url: item.url as string,
+      summary:
+        (item.summary ?? "").trim() ||
+        `${item.title as string} was highlighted in recent public reports and discussions.`,
+      source: resolveSourceName(item),
       score: item.score as number,
       publishedAt: item.published_at
     }));
 
   return clusterTrendItems(trendItems);
+};
+
+const loadRecentLetters = async (): Promise<LetterItem[]> => {
+  const { data, error } = await supabaseAdmin
+    .from("letters")
+    .select("display_name, text, moderation_status")
+    .neq("moderation_status", "reject")
+    .order("created_at", { ascending: false })
+    .limit(MAX_LETTERS);
+
+  if (error) {
+    throw error;
+  }
+
+  const rows = ((data ?? []) as LetterRow[])
+    .filter((row) => Boolean(row.display_name && row.text))
+    .map((row) => ({
+      display_name: row.display_name as string,
+      text: row.text as string
+    }));
+
+  return rows.reverse();
 };
 
 const resolveTrendItems = async (
@@ -324,6 +402,7 @@ Deno.serve(async (req) => {
       episodeDate,
       idempotencyKey
     );
+    const letters = await loadRecentLetters().catch(() => []);
 
     const plan = await invokeStep(functionsBaseUrl, "plan-topics", { episodeDate, idempotencyKey });
 
@@ -331,7 +410,8 @@ Deno.serve(async (req) => {
       episodeDate,
       idempotencyKey,
       topic: plan.topic,
-      trendItems
+      trendItems,
+      letters
     });
 
     const ttsJa = await invokeStep(functionsBaseUrl, "tts-ja", {
@@ -365,6 +445,7 @@ Deno.serve(async (req) => {
       idempotencyKey,
       orderedSteps,
       trendItems,
+      lettersCount: letters.length,
       usedTrendFallback: usedFallback,
       outputs: {
         plan,
@@ -381,6 +462,7 @@ Deno.serve(async (req) => {
       episodeDate,
       idempotencyKey,
       trendItems,
+      lettersCount: letters.length,
       usedTrendFallback: usedFallback,
       outputs: {
         plan,
