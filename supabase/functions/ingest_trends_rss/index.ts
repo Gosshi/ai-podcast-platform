@@ -5,6 +5,12 @@ import {
   DEFAULT_TREND_RSS_SOURCES,
   parseCsvList
 } from "../_shared/trendsConfig.ts";
+import {
+  applyTrendCaps,
+  calculateTrendScore,
+  resolveRequestedPerSourceLimit,
+  resolveTrendIngestConfigFromRaw
+} from "../_shared/trendIngestPolicy.ts";
 
 type RequestBody = {
   limitPerSource?: number;
@@ -45,8 +51,10 @@ type PublishedAtResolution = {
 
 type CandidateItem = {
   sourceId: string;
+  sourceName: string;
   sourceWeight: number;
   sourceCategory: string;
+  sourceTheme: string | null;
   title: string;
   summary: string | null;
   url: string;
@@ -81,11 +89,6 @@ type ScoredRepresentative = {
   scorePenalty: number;
 };
 
-const DEFAULT_LIMIT_PER_SOURCE = 20;
-const MIN_LIMIT_PER_SOURCE = 1;
-const MAX_LIMIT_PER_SOURCE = 50;
-const FRESHNESS_HALF_LIFE_HOURS = 20;
-const MAX_FRESHNESS_WINDOW_HOURS = 72;
 const TITLE_SIMILARITY_THRESHOLD = 0.66;
 const META_FETCH_TIMEOUT_MS = 3000;
 const META_FETCH_MAX_TEXT_CHARS = 200_000;
@@ -203,51 +206,6 @@ const normalizeUrl = (value: string): string | null => {
 const containsClickbaitKeyword = (title: string, keywords: string[]): boolean => {
   const normalized = title.toLowerCase();
   return keywords.some((keyword) => keyword.length > 0 && normalized.includes(keyword.toLowerCase()));
-};
-
-const resolveFreshnessScore = (publishedAt: string): number => {
-  const baseline = new Date(publishedAt);
-  if (Number.isNaN(baseline.getTime())) return 0;
-
-  const diffMs = Math.max(0, Date.now() - baseline.getTime());
-  const ageHours = Math.min(diffMs / (60 * 60 * 1000), MAX_FRESHNESS_WINDOW_HOURS);
-  const decay = Math.exp((-Math.log(2) * ageHours) / FRESHNESS_HALF_LIFE_HOURS);
-  return decay * 2;
-};
-
-const calculateScore = (params: {
-  publishedAt: string;
-  sourceWeight: number;
-  sourceCategory: string;
-  clusterSize: number;
-  diversityBonus: number;
-  hasClickbaitKeyword: boolean;
-}): {
-  score: number;
-  scoreFreshness: number;
-  scoreSource: number;
-  scoreBonus: number;
-  scorePenalty: number;
-} => {
-  const freshness = resolveFreshnessScore(params.publishedAt);
-  const sourceWeightScore = Number.isFinite(params.sourceWeight) ? Math.max(params.sourceWeight, 0) : 0;
-  const clusterSizeBonus = Math.log2(Math.max(params.clusterSize, 1));
-  const entertainmentBonus = ENTERTAINMENT_BONUS_CATEGORIES.has(
-    normalizeToken(params.sourceCategory)
-  )
-    ? ENTERTAINMENT_BONUS_VALUE
-    : 0;
-  const bonusScore = clusterSizeBonus + params.diversityBonus + entertainmentBonus;
-  const clickbaitPenalty = params.hasClickbaitKeyword ? 1.1 : 0;
-
-  const raw = freshness + sourceWeightScore + bonusScore - clickbaitPenalty;
-  return {
-    score: Number(raw.toFixed(6)),
-    scoreFreshness: Number(freshness.toFixed(6)),
-    scoreSource: Number(sourceWeightScore.toFixed(6)),
-    scoreBonus: Number(bonusScore.toFixed(6)),
-    scorePenalty: Number(clickbaitPenalty.toFixed(6))
-  };
 };
 
 const decodeXmlText = (value: string): string => {
@@ -606,14 +564,24 @@ Deno.serve(async (req) => {
   }
 
   const body = (await req.json().catch(() => ({}))) as RequestBody;
-  const limitPerSource = Math.max(
-    MIN_LIMIT_PER_SOURCE,
-    Math.min(body.limitPerSource ?? DEFAULT_LIMIT_PER_SOURCE, MAX_LIMIT_PER_SOURCE)
+  const ingestConfig = resolveTrendIngestConfigFromRaw({
+    maxItemsTotal: Deno.env.get("TREND_MAX_ITEMS_TOTAL") ?? undefined,
+    maxItemsPerSource: Deno.env.get("TREND_MAX_ITEMS_PER_SOURCE") ?? undefined,
+    requirePublishedAt: Deno.env.get("TREND_REQUIRE_PUBLISHED_AT") ?? undefined,
+    categoryWeights: Deno.env.get("TREND_CATEGORY_WEIGHTS") ?? undefined
+  });
+  const limitPerSource = resolveRequestedPerSourceLimit(
+    body.limitPerSource,
+    ingestConfig.maxItemsPerSource
   );
 
   const runId = await startTrendRun({
     step: "ingest_trends_rss",
     limitPerSource,
+    maxItemsTotal: ingestConfig.maxItemsTotal,
+    maxItemsPerSource: ingestConfig.maxItemsPerSource,
+    requirePublishedAt: ingestConfig.requirePublishedAt,
+    categoryWeights: ingestConfig.categoryWeights,
     usingMockFeeds: Boolean(body.mockFeeds?.length)
   });
 
@@ -621,6 +589,9 @@ Deno.serve(async (req) => {
   let insertedCount = 0;
   let dedupedCount = 0;
   let publishedAtFilledCount = 0;
+  let publishedAtRequiredFilteredCount = 0;
+  let droppedTotalCount = 0;
+  let droppedPerSourceCount = 0;
 
   try {
     const sourceRows = await upsertSources(body);
@@ -658,6 +629,10 @@ Deno.serve(async (req) => {
           if (published.publishedAtSource !== "rss") {
             publishedAtFilledCount += 1;
           }
+          if (ingestConfig.requirePublishedAt && published.publishedAtSource === "fetched") {
+            publishedAtRequiredFilteredCount += 1;
+            continue;
+          }
 
           const normalizedTitle = normalizeTitleForHash(parsed.title) || parsed.title.trim().toLowerCase();
           const [normalizedTitleHash, urlHash, hash] = await Promise.all([
@@ -668,8 +643,10 @@ Deno.serve(async (req) => {
 
           candidates.push({
             sourceId: source.id,
+            sourceName: source.name,
             sourceWeight: source.weight,
             sourceCategory: source.category,
+            sourceTheme: source.theme,
             title: parsed.title,
             summary: parsed.summary,
             url: parsed.url,
@@ -708,13 +685,20 @@ Deno.serve(async (req) => {
       const categoryCount = categoryCounts.get(representative.sourceCategory || "general") ?? 1;
       const diversityBonus = Number((1 / categoryCount).toFixed(6));
       const clusterKey = `${representative.normalizedTitleHash.slice(0, 16)}-${representative.urlHash.slice(0, 16)}`;
-      const score = calculateScore({
+      const entertainmentBonus = ENTERTAINMENT_BONUS_CATEGORIES.has(
+        normalizeToken(representative.sourceCategory)
+      )
+        ? ENTERTAINMENT_BONUS_VALUE
+        : 0;
+      const score = calculateTrendScore({
         publishedAt: representative.publishedAt,
         sourceWeight: representative.sourceWeight,
         sourceCategory: representative.sourceCategory,
         clusterSize,
         diversityBonus,
-        hasClickbaitKeyword: representative.hasClickbaitKeyword
+        hasClickbaitKeyword: representative.hasClickbaitKeyword,
+        entertainmentBonusValue: entertainmentBonus,
+        categoryWeights: ingestConfig.categoryWeights
       });
 
       return {
@@ -734,10 +718,20 @@ Deno.serve(async (req) => {
       return b.item.publishedAt.localeCompare(a.item.publishedAt);
     });
 
-    for (const entry of scoredRepresentatives) {
+    const cappedRepresentatives = applyTrendCaps(scoredRepresentatives, {
+      maxItemsTotal: ingestConfig.maxItemsTotal,
+      maxItemsPerSource: ingestConfig.maxItemsPerSource
+    });
+    droppedTotalCount = cappedRepresentatives.droppedTotalCount;
+    droppedPerSourceCount = cappedRepresentatives.droppedPerSourceCount;
+
+    for (const entry of cappedRepresentatives.selected) {
       const { item } = entry;
       const { error } = await supabaseAdmin.from("trend_items").insert({
         source_id: item.sourceId,
+        source_name: item.sourceName,
+        source_category: item.sourceCategory,
+        source_theme: item.sourceTheme,
         title: item.title,
         url: item.url,
         summary: item.summary,
@@ -778,7 +772,13 @@ Deno.serve(async (req) => {
       fetchedCount,
       insertedCount,
       dedupedCount,
-      publishedAtFilledCount
+      publishedAtFilledCount,
+      publishedAtRequiredFilteredCount,
+      droppedTotalCount,
+      droppedPerSourceCount,
+      maxItemsTotal: ingestConfig.maxItemsTotal,
+      maxItemsPerSource: ingestConfig.maxItemsPerSource,
+      requirePublishedAt: ingestConfig.requirePublishedAt
     });
 
     return jsonResponse({
@@ -789,7 +789,13 @@ Deno.serve(async (req) => {
       fetchedCount,
       insertedCount,
       dedupedCount,
-      publishedAtFilledCount
+      publishedAtFilledCount,
+      publishedAtRequiredFilteredCount,
+      droppedTotalCount,
+      droppedPerSourceCount,
+      maxItemsTotal: ingestConfig.maxItemsTotal,
+      maxItemsPerSource: ingestConfig.maxItemsPerSource,
+      requirePublishedAt: ingestConfig.requirePublishedAt
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -800,7 +806,13 @@ Deno.serve(async (req) => {
       fetchedCount,
       insertedCount,
       dedupedCount,
-      publishedAtFilledCount
+      publishedAtFilledCount,
+      publishedAtRequiredFilteredCount,
+      droppedTotalCount,
+      droppedPerSourceCount,
+      maxItemsTotal: ingestConfig.maxItemsTotal,
+      maxItemsPerSource: ingestConfig.maxItemsPerSource,
+      requirePublishedAt: ingestConfig.requirePublishedAt
     });
 
     return jsonResponse({ ok: false, error: message }, 500);
