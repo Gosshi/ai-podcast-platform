@@ -934,6 +934,15 @@ const readPlanSelectedTrendItems = (plan: InvokeResult): SelectedTrendAuditItem[
     .filter((item): item is SelectedTrendAuditItem => item !== null);
 };
 
+const summarizeTrendCategoryDistribution = (items: TrendItem[]): Record<string, number> => {
+  const distribution: Record<string, number> = {};
+  for (const item of items) {
+    const category = normalizeToken(item.category || "general") || "general";
+    distribution[category] = (distribution[category] ?? 0) + 1;
+  }
+  return distribution;
+};
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
@@ -953,6 +962,7 @@ Deno.serve(async (req) => {
   });
 
   let failureDetails: Record<string, unknown> | null = null;
+  let digestMetricsForFailure: Record<string, unknown> = {};
 
   try {
     const functionsBaseUrl = getFunctionsBaseUrl(req.url);
@@ -973,6 +983,20 @@ Deno.serve(async (req) => {
     const plannedTrendItems = readPlanTrendItems(plan);
     const selectedTrendItems = readPlanSelectedTrendItems(plan);
     const trendItems = plannedTrendItems.length > 0 ? plannedTrendItems : balancedTrends.selected;
+    const digestUsedCount =
+      readNumberField(plan, ["digestUsedCount", "digest_used_count"]) ?? trendItems.length;
+    const digestFilteredCount =
+      readNumberField(plan, ["digestFilteredCount", "digest_filtered_count"]) ??
+      Math.max(0, balancedTrends.selected.length - trendItems.length);
+    const digestCategoryDistribution =
+      readRecordField(plan, "digestCategoryDistribution") ??
+      readRecordField(plan, "digest_category_distribution") ??
+      summarizeTrendCategoryDistribution(trendItems);
+    digestMetricsForFailure = {
+      digest_used_count: digestUsedCount,
+      digest_filtered_count: digestFilteredCount,
+      digest_category_distribution: digestCategoryDistribution
+    };
     const entertainmentCount = countEntertainmentTrends(trendItems);
     if (entertainmentCount < TREND_MIX_TARGET.entertainment) {
       throw new Error(`insufficient_entertainment_topics:${entertainmentCount}`);
@@ -1145,6 +1169,9 @@ Deno.serve(async (req) => {
       trendMix: balancedTrends.audit,
       entertainmentTopicCount: entertainmentCount,
       selectedTrendItems,
+      digest_used_count: digestUsedCount,
+      digest_filtered_count: digestFilteredCount,
+      digest_category_distribution: digestCategoryDistribution,
       scriptMetrics,
       estimatedDurationSec,
       scriptGate: {
@@ -1176,6 +1203,9 @@ Deno.serve(async (req) => {
       trendMix: balancedTrends.audit,
       entertainmentTopicCount: entertainmentCount,
       selectedTrendItems,
+      digestUsedCount,
+      digestFilteredCount,
+      digestCategoryDistribution,
       scriptMetrics,
       estimatedDurationSec,
       scriptGate: {
@@ -1200,6 +1230,7 @@ Deno.serve(async (req) => {
       idempotencyKey,
       orderedSteps,
       scriptGate: scriptGateConfig,
+      ...digestMetricsForFailure,
       ...(failureDetails ?? {})
     });
 

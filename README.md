@@ -41,7 +41,8 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - Functions: `daily-generate`, `plan-topics`, `write-script-ja`, `expand-script-ja`, `tts-ja`, `adapt-script-en`, `tts-en`, `publish`
 - `daily-generate` は上記を spec 順で実行する orchestrator
 - `publish` は `episodes.status='published'` と `published_at=now()` を必ず設定
-- `plan-topics` は `editor-in-chief` ロールで `main_topics(3) / quick_news(4) / small_talk(2) / letters / ending` を返す
+- `plan-topics` は `editor-in-chief` ロールで `trend digest` を作成し、`main_topics(3) / quick_news(4) / small_talk(2) / letters / ending` を返す
+- `trend digest` は HTML/URL を除去し、`cleanedTitle / whatHappened / whyItMatters / toneTag` を生成して planning に利用する
 - `write-script-ja` は script 生成後に `scriptNormalize`（HTML除去/URL除去/placeholder除去/重複行削減）を適用し、`ENABLE_SCRIPT_EDITOR=1` のとき OpenAI 後編集を実施する
 - `daily-generate` は `write-script-ja` 後に再度 `scriptNormalize` と `scriptQualityCheck` を実施し、`<` / `http` / `&#` / `数式` / 重複率 / 文字数を gate する
 - `adapt-script-en` は script 生成後に `normalizeForSpeech` を適用し、URL を script から除去する（元URLは `trend_items.url` に保持）
@@ -217,9 +218,14 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
   - `TREND_MAX_ITEMS_PER_SOURCE`（default: `10`）
   - `TREND_REQUIRE_PUBLISHED_AT`（default: `true`）
   - `TREND_CATEGORY_WEIGHTS`（JSON; entertainment を優遇し hard-news を緩やかに減点）
+- digest/filter knob:
+  - `TREND_DENY_KEYWORDS`（CSV。unsafe/hard block topic を除外）
+  - `TREND_ALLOW_CATEGORIES`（CSV。指定時のみ対象カテゴリを許可）
+  - `TREND_MAX_HARD_NEWS`（default: `1`）
 - `plan-topics` / `daily-generate` は `is_cluster_representative=true` の上位Nを採用
 - `daily-generate` は category を hard/soft/entertainment バケットへマップし、配分 4:4:3 を優先して候補を組む
 - 実行結果は `fetchedCount`, `insertedCount`, `dedupedCount`, `publishedAtFilledCount`, `publishedAtRequiredFilteredCount`, `droppedTotalCount`, `droppedPerSourceCount` を返す
+- `daily-generate` の `job_runs.payload` には `digest_used_count` / `digest_filtered_count` / `digest_category_distribution` が保存される
 
 ### Local Run (deterministic)
 1. `supabase start`
