@@ -125,6 +125,7 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - API route: `POST /api/tts`（Node runtime, `/api/tts-local` は互換エイリアス）
 - `tts-ja` / `tts-en` は `/api/tts` を呼び、`episodes.audio_url` を `/audio/<episodeId>.<lang>.<audioVersion>.<ext>` に更新
 - `TTS_PROVIDER=openai` の場合は OpenAI `/v1/audio/speech` を使用し、失敗時は macOS local TTS（`say` + `afconvert`）へフォールバック
+- OpenAI TTS は 1リクエスト文字数制限を超える台本を文単位で分割し、複数チャンクを結合して1本の音声として保存（長尺時は `mp3` を使用）
 - `preTtsNormalize` で日本語読み仮名辞書（`src/lib/tts/dictionary.json`）を適用し、句点/改行単位で文を短く分割してから合成
 - local provider は `say` + `afconvert` で WAV を生成し `public/audio` に保存
 - `/api/tts` は `LOCAL_TTS_API_KEY` 設定時に `x-local-tts-api-key` ヘッダ必須
@@ -136,9 +137,12 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
   - `OPENAI_TTS_VOICE_EN`
   - `OPENAI_TTS_FORMAT`（`mp3|opus|aac|flac|wav|pcm`, default: `wav`）
   - `OPENAI_TTS_SPEED`（`0.25`〜`4.0`）
+  - `OPENAI_TTS_TIMEOUT_MS`（default: `120000`）
+  - `OPENAI_TTS_MAX_INPUT_CHARS`（default: `1500`、上限 `4000`）
   - `OPENAI_TTS_INSTRUCTIONS_JA` / `OPENAI_TTS_INSTRUCTIONS_EN`（`gpt-4o-mini-tts` 時のみ有効）
   - `TTS_API_URL` (default: `http://host.docker.internal:3000/api/tts`)
   - `TTS_API_PATH`（default: `/api/tts`）
+  - `TTS_API_TIMEOUT_MS`（default: `180000`。Edge Function から `/api/tts` を待つ最大ミリ秒）
   - `TTS_LOCAL_API_URL`（後方互換）
   - `LOCAL_TTS_BASE_URL` / `LOCAL_TTS_PATH`（後方互換）
   - `LOCAL_TTS_API_KEY`（設定時は Edge Function から同キー送信が必須）
