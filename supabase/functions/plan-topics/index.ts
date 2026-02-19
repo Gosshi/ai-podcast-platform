@@ -3,6 +3,12 @@ import { jsonResponse } from "../_shared/http.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { parseCsvList } from "../_shared/trendsConfig.ts";
 import {
+  buildTrendDigest,
+  resolveTrendDigestConfigFromRaw,
+  type TrendDigestItem,
+  type TrendDigestSourceItem
+} from "../_shared/trendDigest.ts";
+import {
   PROGRAM_MAIN_TOPICS_COUNT,
   PROGRAM_QUICK_NEWS_COUNT,
   PROGRAM_SMALL_TALK_COUNT,
@@ -211,6 +217,34 @@ const normalizeProvidedTrends = (
     .filter((item): item is PlannedTrendItem => item !== null);
 };
 
+const toDigestSourceItems = (items: PlannedTrendItem[]): TrendDigestSourceItem[] => {
+  return items.map((item) => ({
+    id: item.id,
+    title: item.title,
+    summary: item.summary,
+    source: item.source,
+    url: item.url,
+    category: item.category || "general",
+    score: item.score,
+    publishedAt: item.publishedAt,
+    clusterSize: item.clusterSize
+  }));
+};
+
+const toPlannedFromDigestItem = (item: TrendDigestItem): PlannedTrendItem => {
+  return {
+    id: item.id,
+    title: item.cleanedTitle,
+    url: item.url,
+    summary: `${item.whatHappened} ${item.whyItMatters}`.trim(),
+    source: item.source,
+    category: item.category || "general",
+    score: item.score,
+    publishedAt: item.publishedAt,
+    clusterSize: item.clusterSize
+  };
+};
+
 const loadSelectedTrends = async (
   lookbackHours: number,
   topN: number
@@ -337,20 +371,34 @@ const buildProgramPlan = (episodeDate: string, trendItems: PlannedTrendItem[]): 
   };
 };
 
-const buildCompatTopic = (episodeDate: string, programPlan: ProgramPlan): Topic => {
-  const mainTitles = programPlan.main_topics
-    .map((item) => summarizeText(item.title, 28))
+const buildCompatTopic = (
+  episodeDate: string,
+  programPlan: ProgramPlan,
+  digestItems: TrendDigestItem[]
+): Topic => {
+  const digestTitle = digestItems
+    .slice(0, 2)
+    .map((item) => summarizeText(item.cleanedTitle, 26))
     .join(" / ");
-  const quickNewsTitles = programPlan.quick_news
-    .map((item, index) => `クイック${index + 1}: ${summarizeText(item.title, 26)}`)
-    .slice(0, 2);
+  const mainTitles = programPlan.main_topics.map((item) => summarizeText(item.title, 28)).join(" / ");
+  const quickNewsTitles = digestItems
+    .slice(0, 2)
+    .map((item, index) => `クイック${index + 1}: ${summarizeText(item.cleanedTitle, 26)}`);
+  const digestBullets = digestItems
+    .slice(0, 3)
+    .map(
+      (item, index) =>
+        `メイントピック${index + 1}: ${summarizeText(item.cleanedTitle, 42)} / ${summarizeText(item.whyItMatters, 42)}`
+    );
 
   return {
-    title: mainTitles || `Daily Topic ${episodeDate}`,
+    title: digestTitle || mainTitles || `Daily Topic ${episodeDate}`,
     bullets: [
-      ...programPlan.main_topics.map(
-        (item, index) => `メイントピック${index + 1}: ${summarizeText(item.title, 42)}`
-      ),
+      ...(digestBullets.length > 0
+        ? digestBullets
+        : programPlan.main_topics.map(
+            (item, index) => `メイントピック${index + 1}: ${summarizeText(item.title, 42)}`
+          )),
       ...quickNewsTitles,
       "レターズ: リスナーからのメッセージに番組として回答します。",
       "エンディング: 次回の予告と視点の持ち帰りを整理します。"
@@ -368,6 +416,12 @@ Deno.serve(async (req) => {
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
   const lookbackHours = resolveLookbackHours();
   const topN = resolveTopN();
+  const digestConfig = resolveTrendDigestConfigFromRaw({
+    denyKeywords: Deno.env.get("TREND_DENY_KEYWORDS") ?? undefined,
+    allowCategories: Deno.env.get("TREND_ALLOW_CATEGORIES") ?? undefined,
+    maxHardNews: Deno.env.get("TREND_MAX_HARD_NEWS") ?? undefined,
+    maxItems: `${topN}`
+  });
 
   const runId = await startRun("plan-topics", {
     step: "plan-topics",
@@ -375,7 +429,8 @@ Deno.serve(async (req) => {
     episodeDate,
     idempotencyKey,
     lookbackHours,
-    topN
+    topN,
+    digestConfig
   });
 
   try {
@@ -398,11 +453,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    const digestBaseItems = usedTrendFallback ? [...fallbackTrendItems] : selectedTrendItems;
+    let digestResult = buildTrendDigest(toDigestSourceItems(digestBaseItems), digestConfig);
+    if (digestResult.items.length === 0) {
+      usedTrendFallback = true;
+      trendFallbackReason = trendFallbackReason ?? "digest_filtered_all";
+      digestResult = buildTrendDigest(toDigestSourceItems(fallbackTrendItems), {
+        ...digestConfig,
+        allowCategories: [],
+        denyKeywords: []
+      });
+    }
+
+    const digestedTrendItems = digestResult.items.map(toPlannedFromDigestItem);
     const trendItemsForScript = withFallbackTrends(
-      usedTrendFallback ? [...fallbackTrendItems] : selectedTrendItems
+      digestedTrendItems.length > 0 ? digestedTrendItems : [...fallbackTrendItems]
     );
     const programPlan = buildProgramPlan(episodeDate, trendItemsForScript);
-    const topic = buildCompatTopic(episodeDate, programPlan);
+    const topic = buildCompatTopic(episodeDate, programPlan, digestResult.items);
     const selectedTrendAudit = selectedTrendItems.map((item) => ({
       id: item.id,
       title: item.title,
@@ -426,7 +494,12 @@ Deno.serve(async (req) => {
       trendFallbackReason,
       trendLoadError,
       trendItems: trendItemsForScript,
-      selectedTrendItems: selectedTrendAudit
+      selectedTrendItems: selectedTrendAudit,
+      trendDigest: digestResult.items,
+      digest_used_count: digestResult.usedCount,
+      digest_filtered_count: digestResult.filteredCount,
+      digest_category_distribution: digestResult.categoryDistribution,
+      digestConfig
     });
 
     return jsonResponse({
@@ -439,7 +512,11 @@ Deno.serve(async (req) => {
       usedTrendFallback,
       trendFallbackReason,
       trendItems: trendItemsForScript,
-      selectedTrendItems: selectedTrendAudit
+      selectedTrendItems: selectedTrendAudit,
+      trendDigest: digestResult.items,
+      digestUsedCount: digestResult.usedCount,
+      digestFilteredCount: digestResult.filteredCount,
+      digestCategoryDistribution: digestResult.categoryDistribution
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -449,7 +526,8 @@ Deno.serve(async (req) => {
       episodeDate,
       idempotencyKey,
       lookbackHours,
-      topN
+      topN,
+      digestConfig
     });
 
     return jsonResponse({ ok: false, error: message }, 500);
