@@ -183,8 +183,8 @@ const pickEpisodesByViewLang = (group: EpisodeGroup, viewLang: ViewLang): Episod
   return rows.filter((episode) => episode.lang === viewLang);
 };
 
-const hasFailedRunForGroup = (group: EpisodeGroup, failedRunIndex: FailedRunIndex): JobRunRow | null => {
-  const ids = [group.ja?.id, group.en?.id, group.en?.master_id]
+const findFailedRunForEpisode = (episode: EpisodeRow, failedRunIndex: FailedRunIndex): JobRunRow | null => {
+  const ids = [episode.id, episode.master_id]
     .filter((id): id is string => Boolean(id))
     .map((id) => id.toLowerCase());
 
@@ -568,7 +568,6 @@ export default function EpisodesView({
           <section className={styles.groupList}>
             {visibleGroups.map((group) => {
               const rows = pickEpisodesByViewLang(group, viewLang);
-              const failedRun = hasFailedRunForGroup(group, failedRunIndex);
 
               return (
                 <article key={group.key} className={styles.groupCard}>
@@ -581,7 +580,11 @@ export default function EpisodesView({
                     {rows.map((episode) => {
                       const isSelected = selectedEpisodeId === episode.id;
                       const isPlayingCard = isPlaying && activeEpisodeId === episode.id;
-                      const statusLabel = failedRun || episode.status === "failed"
+                      const failedRun =
+                        episode.status === "failed"
+                          ? findFailedRunForEpisode(episode, failedRunIndex)
+                          : null;
+                      const statusLabel = episode.status === "failed"
                         ? t.statusFailed
                         : !episode.audio_url
                           ? t.statusPending

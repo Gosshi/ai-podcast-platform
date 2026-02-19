@@ -56,8 +56,8 @@ type ScriptLetter = {
 
 const MAX_TREND_ITEMS = 12;
 const MAX_LETTERS = 2;
-const MAIN_TOPIC_MIN_CHARS = 950;
-const TARGET_SCRIPT_MIN_CHARS = 7200;
+const MAIN_TOPIC_MIN_CHARS = 520;
+const TARGET_SCRIPT_MIN_CHARS = 4200;
 const ESTIMATED_JA_CHARS_PER_MIN = 300;
 
 const fallbackTrend = (index: number): ScriptTrendItem => ({
