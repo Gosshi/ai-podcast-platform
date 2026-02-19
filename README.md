@@ -38,13 +38,13 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - 採用済み `letters` は `is_used=true` に更新される
 
 ## Jobs Orchestration
-- Functions: `daily-generate`, `plan-topics`, `write-script-ja`, `tts-ja`, `adapt-script-en`, `tts-en`, `publish`
+- Functions: `daily-generate`, `plan-topics`, `write-script-ja`, `expand-script-ja`, `tts-ja`, `adapt-script-en`, `tts-en`, `publish`
 - `daily-generate` は上記を spec 順で実行する orchestrator
 - `publish` は `episodes.status='published'` と `published_at=now()` を必ず設定
 - `plan-topics` は `editor-in-chief` ロールで `main_topics(3) / quick_news(4) / small_talk(2) / letters / ending` を返す
 - `write-script-ja` / `adapt-script-en` は script 生成後に `normalizeForSpeech` を適用し、URL を script から除去する（元URLは `trend_items.url` に保持）
 - `daily-generate` は trend category を hard:soft:entertainment = 4:4:3 目標で選定し、`entertainment_bonus` で娯楽カテゴリを加点する
-- `daily-generate` の script gate は `TARGET_SCRIPT_MIN_CHARS` / `TARGET_SCRIPT_ESTIMATED_CHARS_PER_MIN` / `TARGET_SCRIPT_DURATION_SEC` で調整可能（`TARGET_SCRIPT_DURATION_SEC` 未指定時は前2つから算出）
+- `daily-generate` の script gate は `SCRIPT_MIN_CHARS_JA` / `SCRIPT_TARGET_CHARS_JA` / `SCRIPT_MAX_CHARS_JA`（＋`TARGET_SCRIPT_ESTIMATED_CHARS_PER_MIN`）で調整可能。`SCRIPT_MIN_CHARS_JA` 未設定時は `TARGET_SCRIPT_MIN_CHARS` を後方互換で参照
 
 ### Manual Run (curl)
 1. `supabase start`
@@ -151,9 +151,12 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
   - `LOCAL_TTS_EN_VOICE`（英語voiceの最優先設定）
   - `LOCAL_TTS_VOICE_EN`（後方互換。`LOCAL_TTS_EN_VOICE` 未設定時のみ使用）
   - `ENABLE_LOCAL_TTS=true`（`NODE_ENV=development` でも有効）
-  - `TARGET_SCRIPT_MIN_CHARS`（default: `4200`）
+  - `SCRIPT_MIN_CHARS_JA`（default: `5500`）
+  - `SCRIPT_TARGET_CHARS_JA`（default: `7000`）
+  - `SCRIPT_MAX_CHARS_JA`（default: `9000`）
+  - `TARGET_SCRIPT_MIN_CHARS`（後方互換。`SCRIPT_MIN_CHARS_JA` 未設定時に参照）
   - `TARGET_SCRIPT_ESTIMATED_CHARS_PER_MIN`（default: `300`）
-  - `TARGET_SCRIPT_DURATION_SEC`（任意。未指定時は `TARGET_SCRIPT_MIN_CHARS` と係数から算出）
+  - `TARGET_SCRIPT_DURATION_SEC`（任意。未指定時は `SCRIPT_TARGET_CHARS_JA` と係数から算出）
 
 ## Ops Audit UI (Local)
 - Page: `/admin/job-runs`
