@@ -28,6 +28,7 @@ type RequestBody = {
     score?: number;
     publishedAt?: string | null;
     clusterSize?: number;
+    normalizedHash?: string;
   }[];
 };
 
@@ -41,6 +42,7 @@ type TrendCandidateRow = {
   cluster_size: number | null;
   is_cluster_representative: boolean | null;
   created_at: string | null;
+  normalized_hash: string | null;
   trend_sources:
     | {
         category: string | null;
@@ -63,6 +65,10 @@ type PlannedTrendItem = {
   score: number;
   publishedAt: string | null;
   clusterSize: number;
+  normalizedHash: string;
+  domain: string;
+  isHardTopic: boolean;
+  isEntertainmentTopic: boolean;
 };
 
 type Topic = {
@@ -70,12 +76,59 @@ type Topic = {
   bullets: string[];
 };
 
+type TrendSelectionConfig = {
+  targetTotal: number;
+  targetDeepDive: number;
+  targetQuickNews: number;
+  maxHardTopics: number;
+  minEntertainment: number;
+  sourceDiversityWindow: number;
+  lookbackHours: number;
+  candidatePoolSize: number;
+  categoryCaps: Record<string, number>;
+};
+
+type TrendSelectionAudit = {
+  targetTotal: number;
+  targetDeepDive: number;
+  targetQuickNews: number;
+  maxHardTopics: number;
+  minEntertainment: number;
+  sourceDiversityWindow: number;
+  selectedTotal: number;
+  selectedHard: number;
+  selectedEntertainment: number;
+  usedFallbackItems: number;
+  categoryDistribution: Record<string, number>;
+  domainDistribution: Record<string, number>;
+  categoryCaps: Record<string, number>;
+};
+
 const MIN_LOOKBACK_HOURS = 24;
-const MAX_LOOKBACK_HOURS = 48;
+const MAX_LOOKBACK_HOURS = 72;
 const DEFAULT_LOOKBACK_HOURS = 36;
-const MIN_TOP_N = 9;
-const MAX_TOP_N = 20;
-const DEFAULT_TOP_N = 10;
+
+const DEFAULT_TARGET_TOTAL = 10;
+const DEFAULT_TARGET_DEEPDIVE = 3;
+const DEFAULT_TARGET_QUICKNEWS = 6;
+const DEFAULT_MAX_HARD_TOPICS = 1;
+const DEFAULT_MIN_ENTERTAINMENT = 4;
+const DEFAULT_SOURCE_DIVERSITY_WINDOW = 3;
+const DEFAULT_CATEGORY_CAPS: Record<string, number> = {
+  game: 2,
+  gaming: 2,
+  politics: 1,
+  policy: 1,
+  crime: 1,
+  accident: 1,
+  war: 1,
+  disaster: 1
+};
+
+const MIN_TARGET_TOTAL = 8;
+const MAX_TARGET_TOTAL = 14;
+const MIN_CANDIDATE_POOL = 20;
+const MAX_CANDIDATE_POOL = 240;
 
 const PROGRAM_REQUIRED_TRENDS =
   PROGRAM_MAIN_TOPICS_COUNT + PROGRAM_QUICK_NEWS_COUNT + PROGRAM_SMALL_TALK_COUNT;
@@ -100,42 +153,110 @@ const DEFAULT_EXCLUDED_KEYWORDS = [
   "crypto",
   "bitcoin",
   "btc",
-  "eth"
+  "eth",
+  "diet pill",
+  "diet pills",
+  "ozempic",
+  "wegovy",
+  "mounjaro",
+  "違法薬物",
+  "覚醒剤",
+  "麻薬"
 ];
+
+const HARD_TOPIC_CATEGORIES = new Set([
+  "news",
+  "politics",
+  "policy",
+  "government",
+  "world",
+  "economy",
+  "business",
+  "crime",
+  "accident",
+  "disaster",
+  "war"
+]);
+
+const ENTERTAINMENT_TOPIC_CATEGORIES = new Set([
+  "entertainment",
+  "culture",
+  "game",
+  "gaming",
+  "movie",
+  "music",
+  "anime",
+  "video",
+  "youtube",
+  "streaming",
+  "celebrity",
+  "gadgets",
+  "lifestyle",
+  "food",
+  "travel",
+  "books"
+]);
 
 const fallbackTrendItems: PlannedTrendItem[] = [
   {
-    id: "fallback-main-1",
-    title: "Fallback: Public policy update",
-    url: "https://example.com/fallback/policy",
-    summary: "Policy and governance updates were discussed in major media.",
-    source: "example.com",
-    category: "news",
+    id: "fallback-ent-1",
+    title: "Fallback: Streaming release watch",
+    url: "https://example.com/fallback/streaming",
+    summary: "Streaming and creator releases are highlighted to keep the episode approachable.",
+    source: "fallback-editorial",
+    category: "entertainment",
     score: 1,
     publishedAt: null,
-    clusterSize: 1
+    clusterSize: 1,
+    normalizedHash: "fallback-ent-1",
+    domain: "example.com",
+    isHardTopic: false,
+    isEntertainmentTopic: true
   },
   {
-    id: "fallback-main-2",
-    title: "Fallback: Technology product move",
-    url: "https://example.com/fallback/product",
-    summary: "A technology product roadmap update triggered broad discussion.",
-    source: "example.com",
+    id: "fallback-game-1",
+    title: "Fallback: Gaming and platform updates",
+    url: "https://example.com/fallback/gaming",
+    summary: "Game platform updates are included when live trends are sparse.",
+    source: "fallback-editorial",
+    category: "game",
+    score: 1,
+    publishedAt: null,
+    clusterSize: 1,
+    normalizedHash: "fallback-game-1",
+    domain: "example.com",
+    isHardTopic: false,
+    isEntertainmentTopic: true
+  },
+  {
+    id: "fallback-gadget-1",
+    title: "Fallback: Gadget and app experience",
+    url: "https://example.com/fallback/gadgets",
+    summary: "Consumer gadgets and app UX topics are used to keep tone light.",
+    source: "fallback-editorial",
+    category: "gadgets",
+    score: 1,
+    publishedAt: null,
+    clusterSize: 1,
+    normalizedHash: "fallback-gadget-1",
+    domain: "example.com",
+    isHardTopic: false,
+    isEntertainmentTopic: true
+  },
+  {
+    id: "fallback-soft-1",
+    title: "Fallback: Product and creator workflow",
+    url: "https://example.com/fallback/productivity",
+    summary: "Product workflow changes are included as neutral context topics.",
+    source: "fallback-editorial",
     category: "tech",
     score: 1,
     publishedAt: null,
-    clusterSize: 1
-  },
-  {
-    id: "fallback-main-3",
-    title: "Fallback: Consumer trend signal",
-    url: "https://example.com/fallback/consumer",
-    summary: "Consumer behavior changes appeared in multiple public reports.",
-    source: "example.com",
-    category: "lifestyle",
-    score: 1,
-    publishedAt: null,
-    clusterSize: 1
+    clusterSize: 1,
+    normalizedHash: "fallback-soft-1",
+    domain: "example.com",
+    isHardTopic: false,
+    isEntertainmentTopic: false
   }
 ];
 
@@ -169,22 +290,143 @@ const clamp = (value: number, min: number, max: number): number => {
   return Math.max(min, Math.min(max, value));
 };
 
-const resolveLookbackHours = (): number => {
-  const raw = Number.parseInt(
-    Deno.env.get("PLAN_TREND_LOOKBACK_HOURS") ??
-      Deno.env.get("TREND_LOOKBACK_HOURS") ??
-      `${DEFAULT_LOOKBACK_HOURS}`,
-    10
-  );
-
-  if (!Number.isFinite(raw)) return DEFAULT_LOOKBACK_HOURS;
-  return clamp(raw, MIN_LOOKBACK_HOURS, MAX_LOOKBACK_HOURS);
+const parseIntWithBounds = (
+  raw: string | undefined,
+  fallback: number,
+  min: number,
+  max: number
+): number => {
+  const parsed = Number.parseInt(raw ?? "", 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return clamp(parsed, min, max);
 };
 
-const resolveTopN = (): number => {
-  const raw = Number.parseInt(Deno.env.get("PLAN_TREND_TOP_N") ?? `${DEFAULT_TOP_N}`, 10);
-  if (!Number.isFinite(raw)) return DEFAULT_TOP_N;
-  return clamp(raw, MIN_TOP_N, MAX_TOP_N);
+const normalizeHash = (title: string, url: string, fallbackId: string): string => {
+  const seed = `${compactText(title)}::${compactText(url)}`.normalize("NFKC").toLowerCase();
+  const normalized = seed.replace(/[^\p{Letter}\p{Number}]+/gu, "");
+  return normalized || fallbackId;
+};
+
+const resolveDomain = (url: string, source: string): string => {
+  try {
+    const parsed = new URL(url);
+    return normalizeToken(parsed.hostname);
+  } catch {
+    return normalizeToken(source) || "unknown";
+  }
+};
+
+const isHardTopicCategory = (category: string): boolean => {
+  return HARD_TOPIC_CATEGORIES.has(normalizeToken(category));
+};
+
+const isEntertainmentCategory = (category: string): boolean => {
+  return ENTERTAINMENT_TOPIC_CATEGORIES.has(normalizeToken(category));
+};
+
+const hydratePlannedTrendItem = (
+  raw: Omit<PlannedTrendItem, "domain" | "isHardTopic" | "isEntertainmentTopic">
+): PlannedTrendItem => {
+  const normalizedCategory = normalizeToken(raw.category || "general") || "general";
+  const domain = resolveDomain(raw.url, raw.source);
+  const normalizedHash = raw.normalizedHash || normalizeHash(raw.title, raw.url, raw.id);
+  return {
+    ...raw,
+    category: normalizedCategory,
+    normalizedHash,
+    domain,
+    isHardTopic: isHardTopicCategory(normalizedCategory),
+    isEntertainmentTopic: isEntertainmentCategory(normalizedCategory)
+  };
+};
+
+const resolveCategoryCaps = (): Record<string, number> => {
+  const raw = Deno.env.get("TREND_CATEGORY_CAPS");
+  if (!raw) return { ...DEFAULT_CATEGORY_CAPS };
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return { ...DEFAULT_CATEGORY_CAPS };
+    }
+
+    const caps: Record<string, number> = { ...DEFAULT_CATEGORY_CAPS };
+    for (const [category, rawCap] of Object.entries(parsed)) {
+      if (typeof rawCap !== "number" || !Number.isFinite(rawCap)) continue;
+      const normalizedCategory = normalizeToken(category);
+      if (!normalizedCategory) continue;
+      caps[normalizedCategory] = clamp(Math.floor(rawCap), 0, 10);
+    }
+    return caps;
+  } catch {
+    return { ...DEFAULT_CATEGORY_CAPS };
+  }
+};
+
+const resolveSelectionConfig = (): TrendSelectionConfig => {
+  const targetTotal = parseIntWithBounds(
+    Deno.env.get("TREND_TARGET_TOTAL"),
+    DEFAULT_TARGET_TOTAL,
+    MIN_TARGET_TOTAL,
+    MAX_TARGET_TOTAL
+  );
+  const targetDeepDive = parseIntWithBounds(
+    Deno.env.get("TREND_TARGET_DEEPDIVE"),
+    DEFAULT_TARGET_DEEPDIVE,
+    2,
+    6
+  );
+  const targetQuickNews = parseIntWithBounds(
+    Deno.env.get("TREND_TARGET_QUICKNEWS"),
+    DEFAULT_TARGET_QUICKNEWS,
+    5,
+    10
+  );
+  const minRequiredTotal = targetDeepDive + targetQuickNews;
+  const normalizedTargetTotal = clamp(Math.max(targetTotal, minRequiredTotal), MIN_TARGET_TOTAL, MAX_TARGET_TOTAL);
+
+  const maxHardTopics = parseIntWithBounds(
+    Deno.env.get("TREND_MAX_HARD_TOPICS") ?? Deno.env.get("TREND_MAX_HARD_NEWS"),
+    DEFAULT_MAX_HARD_TOPICS,
+    0,
+    4
+  );
+  const minEntertainment = parseIntWithBounds(
+    Deno.env.get("TREND_MIN_ENTERTAINMENT"),
+    DEFAULT_MIN_ENTERTAINMENT,
+    0,
+    normalizedTargetTotal
+  );
+  const sourceDiversityWindow = parseIntWithBounds(
+    Deno.env.get("TREND_SOURCE_DIVERSITY_WINDOW"),
+    DEFAULT_SOURCE_DIVERSITY_WINDOW,
+    1,
+    8
+  );
+  const lookbackHours = parseIntWithBounds(
+    Deno.env.get("PLAN_TREND_LOOKBACK_HOURS") ?? Deno.env.get("TREND_LOOKBACK_HOURS"),
+    DEFAULT_LOOKBACK_HOURS,
+    MIN_LOOKBACK_HOURS,
+    MAX_LOOKBACK_HOURS
+  );
+  const candidatePoolDefault = clamp(normalizedTargetTotal * 3, MIN_CANDIDATE_POOL, MAX_CANDIDATE_POOL);
+  const candidatePoolSize = parseIntWithBounds(
+    Deno.env.get("PLAN_TREND_TOP_N"),
+    candidatePoolDefault,
+    normalizedTargetTotal,
+    MAX_CANDIDATE_POOL
+  );
+
+  return {
+    targetTotal: normalizedTargetTotal,
+    targetDeepDive,
+    targetQuickNews,
+    maxHardTopics,
+    minEntertainment,
+    sourceDiversityWindow,
+    lookbackHours,
+    candidatePoolSize,
+    categoryCaps: resolveCategoryCaps()
+  };
 };
 
 const normalizeProvidedTrends = (
@@ -199,7 +441,7 @@ const normalizeProvidedTrends = (
         compactText(item?.summary ?? "") ||
         `${title} was highlighted in recent public reports and discussions.`;
       const url = compactText(item?.url ?? "");
-      return {
+      return hydratePlannedTrendItem({
         id: compactText(item?.id ?? "") || `provided-${index + 1}`,
         title,
         url,
@@ -211,8 +453,9 @@ const normalizeProvidedTrends = (
         clusterSize:
           typeof item?.clusterSize === "number" && Number.isFinite(item.clusterSize)
             ? Math.max(1, Math.floor(item.clusterSize))
-            : 1
-      } satisfies PlannedTrendItem;
+            : 1,
+        normalizedHash: compactText(item?.normalizedHash ?? "")
+      });
     })
     .filter((item): item is PlannedTrendItem => item !== null);
 };
@@ -232,7 +475,7 @@ const toDigestSourceItems = (items: PlannedTrendItem[]): TrendDigestSourceItem[]
 };
 
 const toPlannedFromDigestItem = (item: TrendDigestItem): PlannedTrendItem => {
-  return {
+  return hydratePlannedTrendItem({
     id: item.id,
     title: item.cleanedTitle,
     url: item.url,
@@ -241,13 +484,14 @@ const toPlannedFromDigestItem = (item: TrendDigestItem): PlannedTrendItem => {
     category: item.category || "general",
     score: item.score,
     publishedAt: item.publishedAt,
-    clusterSize: item.clusterSize
-  };
+    clusterSize: item.clusterSize,
+    normalizedHash: normalizeHash(item.cleanedTitle, item.url, item.id)
+  });
 };
 
 const loadSelectedTrends = async (
   lookbackHours: number,
-  topN: number
+  candidatePoolSize: number
 ): Promise<PlannedTrendItem[]> => {
   const sinceMs = Date.now() - lookbackHours * 60 * 60 * 1000;
   const excludedCategories = new Set(
@@ -261,15 +505,16 @@ const loadSelectedTrends = async (
     DEFAULT_EXCLUDED_KEYWORDS
   ).map(normalizeToken);
 
+  const queryLimit = clamp(candidatePoolSize * 4, 80, 400);
   const { data, error } = await supabaseAdmin
     .from("trend_items")
     .select(
-      "id, title, url, summary, score, published_at, cluster_size, is_cluster_representative, created_at, trend_sources!inner(name,category)"
+      "id, title, url, summary, score, published_at, cluster_size, is_cluster_representative, created_at, normalized_hash, trend_sources!inner(name,category)"
     )
     .eq("is_cluster_representative", true)
     .order("score", { ascending: false })
     .order("published_at", { ascending: false })
-    .limit(250);
+    .limit(queryLimit);
 
   if (error) throw error;
 
@@ -288,46 +533,198 @@ const loadSelectedTrends = async (
       const haystack = `${row.title ?? ""} ${row.summary ?? ""} ${row.url ?? ""}`.toLowerCase();
       return !excludedKeywords.some((keyword) => haystack.includes(keyword));
     })
-    .map((row) => ({
-      id: row.id as string,
-      title: compactText(row.title as string),
-      url: compactText(row.url as string),
-      summary:
-        compactText(row.summary ?? "") ||
-        `${compactText(row.title as string)} was highlighted in recent public reports and discussions.`,
-      source: resolveSourceName(row),
-      category: compactText(resolveCategory(row)),
-      score: row.score as number,
-      publishedAt: row.published_at,
-      clusterSize: Math.max(row.cluster_size ?? 1, 1)
-    }))
+    .map((row) =>
+      hydratePlannedTrendItem({
+        id: row.id as string,
+        title: compactText(row.title as string),
+        url: compactText(row.url as string),
+        summary:
+          compactText(row.summary ?? "") ||
+          `${compactText(row.title as string)} was highlighted in recent public reports and discussions.`,
+        source: resolveSourceName(row),
+        category: compactText(resolveCategory(row)),
+        score: row.score as number,
+        publishedAt: row.published_at,
+        clusterSize: Math.max(row.cluster_size ?? 1, 1),
+        normalizedHash: compactText(row.normalized_hash ?? "")
+      })
+    )
     .sort((left, right) => {
       if (right.score !== left.score) return right.score - left.score;
       if (right.clusterSize !== left.clusterSize) return right.clusterSize - left.clusterSize;
       return (right.publishedAt ?? "").localeCompare(left.publishedAt ?? "");
     });
 
-  return selected.slice(0, topN);
+  return selected.slice(0, candidatePoolSize);
 };
 
-const withFallbackTrends = (items: PlannedTrendItem[]): PlannedTrendItem[] => {
-  if (items.length >= PROGRAM_REQUIRED_TRENDS) return items;
+const canUseCategory = (
+  item: PlannedTrendItem,
+  categoryCounts: Map<string, number>,
+  categoryCaps: Record<string, number>
+): boolean => {
+  const category = normalizeToken(item.category || "general");
+  const cap = categoryCaps[category];
+  if (cap === undefined) return true;
+  const count = categoryCounts.get(category) ?? 0;
+  return count < cap;
+};
+
+const selectTrendItemsForPlan = (
+  candidates: PlannedTrendItem[],
+  config: TrendSelectionConfig
+): {
+  selected: PlannedTrendItem[];
+  audit: TrendSelectionAudit;
+} => {
+  const deduped: PlannedTrendItem[] = [];
+  const seenHash = new Set<string>();
+  for (const candidate of candidates) {
+    const key = candidate.normalizedHash || normalizeHash(candidate.title, candidate.url, candidate.id);
+    if (seenHash.has(key)) continue;
+    seenHash.add(key);
+    deduped.push(candidate);
+  }
+
+  const selected: PlannedTrendItem[] = [];
+  const selectedHash = new Set<string>();
+  const categoryCounts = new Map<string, number>();
+  const domainCounts = new Map<string, number>();
+  let hardCount = 0;
+  let entertainmentCount = 0;
+  let usedFallbackItems = 0;
+
+  const recentDomainConflict = (domain: string): boolean => {
+    if (!domain || domain === "unknown") return false;
+    if (config.sourceDiversityWindow <= 1) return false;
+    const recent = selected.slice(-config.sourceDiversityWindow).map((item) => item.domain);
+    return recent.includes(domain);
+  };
+
+  const addSelection = (item: PlannedTrendItem): void => {
+    const normalizedHash = item.normalizedHash || normalizeHash(item.title, item.url, item.id);
+    selected.push(item);
+    selectedHash.add(normalizedHash);
+    const category = normalizeToken(item.category || "general");
+    categoryCounts.set(category, (categoryCounts.get(category) ?? 0) + 1);
+    domainCounts.set(item.domain, (domainCounts.get(item.domain) ?? 0) + 1);
+    if (item.isHardTopic) hardCount += 1;
+    if (item.isEntertainmentTopic) entertainmentCount += 1;
+  };
+
+  const shouldSelect = (
+    item: PlannedTrendItem,
+    options: {
+      enforceDiversity: boolean;
+      enforceHardLimit: boolean;
+    }
+  ): boolean => {
+    const normalizedHash = item.normalizedHash || normalizeHash(item.title, item.url, item.id);
+    if (selectedHash.has(normalizedHash)) return false;
+    if (!canUseCategory(item, categoryCounts, config.categoryCaps)) return false;
+    if (options.enforceHardLimit && item.isHardTopic && hardCount >= config.maxHardTopics) return false;
+    if (options.enforceDiversity && recentDomainConflict(item.domain)) return false;
+    return true;
+  };
+
+  const entertainmentCandidates = deduped.filter((item) => item.isEntertainmentTopic);
+  const generalCandidates = deduped;
+
+  for (const item of entertainmentCandidates) {
+    if (selected.length >= config.targetTotal) break;
+    if (entertainmentCount >= config.minEntertainment) break;
+    if (!shouldSelect(item, { enforceDiversity: true, enforceHardLimit: true })) continue;
+    addSelection(item);
+  }
+
+  for (const item of generalCandidates) {
+    if (selected.length >= config.targetTotal) break;
+    if (!shouldSelect(item, { enforceDiversity: true, enforceHardLimit: true })) continue;
+    addSelection(item);
+  }
+
+  for (const item of entertainmentCandidates) {
+    if (selected.length >= config.targetTotal) break;
+    if (entertainmentCount >= config.minEntertainment) break;
+    if (!shouldSelect(item, { enforceDiversity: false, enforceHardLimit: true })) continue;
+    addSelection(item);
+  }
+
+  for (const item of generalCandidates) {
+    if (selected.length >= config.targetTotal) break;
+    if (!shouldSelect(item, { enforceDiversity: false, enforceHardLimit: true })) continue;
+    addSelection(item);
+  }
+
+  let fallbackCursor = 0;
+  while (selected.length < config.targetTotal) {
+    const fallbackBase =
+      entertainmentCount < config.minEntertainment
+        ? fallbackTrendItems[fallbackCursor % 3]
+        : fallbackTrendItems[fallbackCursor % fallbackTrendItems.length];
+    const fallback = hydratePlannedTrendItem({
+      ...fallbackBase,
+      id: `${fallbackBase.id}-${fallbackCursor + 1}`,
+      normalizedHash: `${fallbackBase.normalizedHash}-${fallbackCursor + 1}`
+    });
+    fallbackCursor += 1;
+    if (fallback.isHardTopic && hardCount >= config.maxHardTopics) {
+      continue;
+    }
+    addSelection(fallback);
+    usedFallbackItems += 1;
+  }
+
+  const categoryDistribution: Record<string, number> = {};
+  for (const [category, count] of categoryCounts.entries()) {
+    categoryDistribution[category] = count;
+  }
+  const domainDistribution: Record<string, number> = {};
+  for (const [domain, count] of domainCounts.entries()) {
+    domainDistribution[domain] = count;
+  }
+
+  return {
+    selected,
+    audit: {
+      targetTotal: config.targetTotal,
+      targetDeepDive: config.targetDeepDive,
+      targetQuickNews: config.targetQuickNews,
+      maxHardTopics: config.maxHardTopics,
+      minEntertainment: config.minEntertainment,
+      sourceDiversityWindow: config.sourceDiversityWindow,
+      selectedTotal: selected.length,
+      selectedHard: hardCount,
+      selectedEntertainment: entertainmentCount,
+      usedFallbackItems,
+      categoryDistribution,
+      domainDistribution,
+      categoryCaps: config.categoryCaps
+    }
+  };
+};
+
+const withFallbackTrends = (items: PlannedTrendItem[], targetCount: number): PlannedTrendItem[] => {
+  if (items.length >= targetCount) return items;
 
   const expanded = [...items];
   let fallbackIndex = 0;
-  while (expanded.length < PROGRAM_REQUIRED_TRENDS) {
+  while (expanded.length < targetCount) {
     const fallback = fallbackTrendItems[fallbackIndex % fallbackTrendItems.length];
-    expanded.push({
-      ...fallback,
-      id: `${fallback.id}-${fallbackIndex + 1}`
-    });
+    expanded.push(
+      hydratePlannedTrendItem({
+        ...fallback,
+        id: `${fallback.id}-${fallbackIndex + 1}`,
+        normalizedHash: `${fallback.normalizedHash}-${fallbackIndex + 1}`
+      })
+    );
     fallbackIndex += 1;
   }
   return expanded;
 };
 
 const buildProgramPlan = (episodeDate: string, trendItems: PlannedTrendItem[]): ProgramPlan => {
-  const pool = withFallbackTrends(trendItems);
+  const pool = withFallbackTrends(trendItems, PROGRAM_REQUIRED_TRENDS);
   const mainItems = pool.slice(0, PROGRAM_MAIN_TOPICS_COUNT);
   const quickNewsItems = pool.slice(
     PROGRAM_MAIN_TOPICS_COUNT,
@@ -414,13 +811,12 @@ Deno.serve(async (req) => {
   const body = (await req.json().catch(() => ({}))) as RequestBody;
   const episodeDate = body.episodeDate ?? new Date().toISOString().slice(0, 10);
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
-  const lookbackHours = resolveLookbackHours();
-  const topN = resolveTopN();
+  const selectionConfig = resolveSelectionConfig();
   const digestConfig = resolveTrendDigestConfigFromRaw({
     denyKeywords: Deno.env.get("TREND_DENY_KEYWORDS") ?? undefined,
     allowCategories: Deno.env.get("TREND_ALLOW_CATEGORIES") ?? undefined,
-    maxHardNews: Deno.env.get("TREND_MAX_HARD_NEWS") ?? undefined,
-    maxItems: `${topN}`
+    maxHardNews: Deno.env.get("TREND_MAX_HARD_TOPICS") ?? Deno.env.get("TREND_MAX_HARD_NEWS") ?? undefined,
+    maxItems: `${selectionConfig.candidatePoolSize}`
   });
 
   const runId = await startRun("plan-topics", {
@@ -428,21 +824,23 @@ Deno.serve(async (req) => {
     role: "editor-in-chief",
     episodeDate,
     idempotencyKey,
-    lookbackHours,
-    topN,
+    selectionConfig,
     digestConfig
   });
 
   try {
-    let selectedTrendItems: PlannedTrendItem[] = normalizeProvidedTrends(body.trendCandidates);
+    let loadedCandidates: PlannedTrendItem[] = normalizeProvidedTrends(body.trendCandidates);
     let usedTrendFallback = false;
     let trendFallbackReason: string | null = null;
     let trendLoadError: string | null = null;
 
-    if (selectedTrendItems.length === 0) {
+    if (loadedCandidates.length === 0) {
       try {
-        selectedTrendItems = await loadSelectedTrends(lookbackHours, topN);
-        if (selectedTrendItems.length === 0) {
+        loadedCandidates = await loadSelectedTrends(
+          selectionConfig.lookbackHours,
+          selectionConfig.candidatePoolSize
+        );
+        if (loadedCandidates.length === 0) {
           usedTrendFallback = true;
           trendFallbackReason = "no_recent_trends";
         }
@@ -453,7 +851,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const digestBaseItems = usedTrendFallback ? [...fallbackTrendItems] : selectedTrendItems;
+    const digestBaseItems = usedTrendFallback ? [...fallbackTrendItems] : loadedCandidates;
     let digestResult = buildTrendDigest(toDigestSourceItems(digestBaseItems), digestConfig);
     if (digestResult.items.length === 0) {
       usedTrendFallback = true;
@@ -466,12 +864,17 @@ Deno.serve(async (req) => {
     }
 
     const digestedTrendItems = digestResult.items.map(toPlannedFromDigestItem);
+    const selectedPlanTrends = selectTrendItemsForPlan(
+      digestedTrendItems.length > 0 ? digestedTrendItems : digestBaseItems,
+      selectionConfig
+    );
     const trendItemsForScript = withFallbackTrends(
-      digestedTrendItems.length > 0 ? digestedTrendItems : [...fallbackTrendItems]
+      selectedPlanTrends.selected,
+      Math.max(PROGRAM_REQUIRED_TRENDS, selectionConfig.targetTotal)
     );
     const programPlan = buildProgramPlan(episodeDate, trendItemsForScript);
     const topic = buildCompatTopic(episodeDate, programPlan, digestResult.items);
-    const selectedTrendAudit = selectedTrendItems.map((item) => ({
+    const selectedTrendAudit = selectedPlanTrends.selected.map((item) => ({
       id: item.id,
       title: item.title,
       source: item.source,
@@ -488,14 +891,14 @@ Deno.serve(async (req) => {
       idempotencyKey,
       topic,
       programPlan,
-      lookbackHours,
-      topN,
+      selectionConfig,
       usedTrendFallback,
       trendFallbackReason,
       trendLoadError,
       trendItems: trendItemsForScript,
       selectedTrendItems: selectedTrendAudit,
       trendDigest: digestResult.items,
+      trendSelectionSummary: selectedPlanTrends.audit,
       digest_used_count: digestResult.usedCount,
       digest_filtered_count: digestResult.filteredCount,
       digest_category_distribution: digestResult.categoryDistribution,
@@ -513,6 +916,7 @@ Deno.serve(async (req) => {
       trendFallbackReason,
       trendItems: trendItemsForScript,
       selectedTrendItems: selectedTrendAudit,
+      trendSelectionSummary: selectedPlanTrends.audit,
       trendDigest: digestResult.items,
       digestUsedCount: digestResult.usedCount,
       digestFilteredCount: digestResult.filteredCount,
@@ -525,8 +929,7 @@ Deno.serve(async (req) => {
       role: "editor-in-chief",
       episodeDate,
       idempotencyKey,
-      lookbackHours,
-      topN,
+      selectionConfig,
       digestConfig
     });
 

@@ -68,6 +68,8 @@ type CandidateItem = {
   publishedAtFallback: string | null;
   titleTokens: Set<string>;
   hasClickbaitKeyword: boolean;
+  hasSensitiveHardKeyword: boolean;
+  hasOverheatedKeyword: boolean;
 };
 
 type TrendCluster = {
@@ -92,10 +94,57 @@ type ScoredRepresentative = {
 const TITLE_SIMILARITY_THRESHOLD = 0.66;
 const META_FETCH_TIMEOUT_MS = 3000;
 const META_FETCH_MAX_TEXT_CHARS = 200_000;
+const DEFAULT_RSS_FETCH_TIMEOUT_MS = 4500;
+const MIN_RSS_FETCH_TIMEOUT_MS = 1200;
+const MAX_RSS_FETCH_TIMEOUT_MS = 12000;
 const DEFAULT_ENTERTAINMENT_BONUS = 0.35;
+const DEFAULT_HARD_TOPIC_KEYWORDS = [
+  "diet pill",
+  "diet pills",
+  "ozempic",
+  "wegovy",
+  "mounjaro",
+  "fatal",
+  "deaths",
+  "killed",
+  "homicide",
+  "shooting",
+  "murder",
+  "crime",
+  "arrested",
+  "accident",
+  "crash",
+  "disaster",
+  "earthquake",
+  "tsunami",
+  "war",
+  "invasion",
+  "terror",
+  "投薬事故",
+  "ダイエット薬",
+  "事故",
+  "逮捕",
+  "事件",
+  "犯罪",
+  "災害",
+  "戦争"
+] as const;
+const DEFAULT_OVERHEATED_KEYWORDS = [
+  "exposed",
+  "leaked",
+  "controversy",
+  "outrage",
+  "meltdown",
+  "炎上",
+  "暴露",
+  "流出",
+  "激怒"
+] as const;
 const ENTERTAINMENT_BONUS_CATEGORIES = new Set([
   "entertainment",
   "culture",
+  "gadgets",
+  "lifestyle",
   "sports",
   "music",
   "movie",
@@ -119,6 +168,25 @@ const resolveEntertainmentBonus = (): number => {
 };
 
 const ENTERTAINMENT_BONUS_VALUE = resolveEntertainmentBonus();
+
+const clamp = (value: number, min: number, max: number): number => {
+  return Math.max(min, Math.min(max, value));
+};
+
+const resolveRssFetchTimeoutMs = (): number => {
+  const raw = Number.parseInt(
+    Deno.env.get("TREND_RSS_FETCH_TIMEOUT_MS") ?? `${DEFAULT_RSS_FETCH_TIMEOUT_MS}`,
+    10
+  );
+  if (!Number.isFinite(raw)) return DEFAULT_RSS_FETCH_TIMEOUT_MS;
+  return clamp(raw, MIN_RSS_FETCH_TIMEOUT_MS, MAX_RSS_FETCH_TIMEOUT_MS);
+};
+
+const parseKeywordList = (raw: string | undefined, fallback: readonly string[]): string[] => {
+  return parseCsvList(raw, Array.from(fallback))
+    .map((keyword) => normalizeToken(keyword))
+    .filter((keyword) => keyword.length > 0);
+};
 
 const normalizeTitleForHash = (value: string): string => {
   return value
@@ -203,9 +271,13 @@ const normalizeUrl = (value: string): string | null => {
   }
 };
 
+const containsKeyword = (text: string, keywords: string[]): boolean => {
+  const normalized = normalizeToken(text);
+  return keywords.some((keyword) => keyword.length > 0 && normalized.includes(keyword));
+};
+
 const containsClickbaitKeyword = (title: string, keywords: string[]): boolean => {
-  const normalized = title.toLowerCase();
-  return keywords.some((keyword) => keyword.length > 0 && normalized.includes(keyword.toLowerCase()));
+  return containsKeyword(title, keywords);
 };
 
 const decodeXmlText = (value: string): string => {
@@ -582,6 +654,7 @@ Deno.serve(async (req) => {
     maxItemsPerSource: ingestConfig.maxItemsPerSource,
     requirePublishedAt: ingestConfig.requirePublishedAt,
     categoryWeights: ingestConfig.categoryWeights,
+    rssFetchTimeoutMs: resolveRssFetchTimeoutMs(),
     usingMockFeeds: Boolean(body.mockFeeds?.length)
   });
 
@@ -592,22 +665,60 @@ Deno.serve(async (req) => {
   let publishedAtRequiredFilteredCount = 0;
   let droppedTotalCount = 0;
   let droppedPerSourceCount = 0;
+  let sourceTimeoutCount = 0;
+  let hardKeywordCandidateCount = 0;
+  let overheatedCandidateCount = 0;
 
   try {
     const sourceRows = await upsertSources(body);
     const sourceErrors: { sourceKey: string; message: string }[] = [];
     const mockFeedMap = new Map(body.mockFeeds?.map((feed) => [feed.sourceKey, feed.xml]) ?? []);
-    const clickbaitKeywords = parseCsvList(
+    const clickbaitKeywords = parseKeywordList(
       Deno.env.get("TREND_CLICKBAIT_KEYWORDS") ?? undefined,
       DEFAULT_CLICKBAIT_KEYWORDS
     );
+    const sensitiveHardKeywords = parseKeywordList(
+      Deno.env.get("TREND_HARD_KEYWORDS") ?? undefined,
+      DEFAULT_HARD_TOPIC_KEYWORDS
+    );
+    const overheatedKeywords = parseKeywordList(
+      Deno.env.get("TREND_OVERHEATED_KEYWORDS") ?? undefined,
+      DEFAULT_OVERHEATED_KEYWORDS
+    );
+    const rssFetchTimeoutMs = resolveRssFetchTimeoutMs();
 
     const metaPublishedAtCache = new Map<string, string | null>();
     const candidates: CandidateItem[] = [];
 
     for (const source of sourceRows) {
       try {
-        const xml = mockFeedMap.get(source.source_key) ?? (await fetch(source.url).then((res) => res.text()));
+        const mockXml = mockFeedMap.get(source.source_key);
+        let xml = mockXml;
+        if (!xml) {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), rssFetchTimeoutMs);
+          try {
+            const response = await fetch(source.url, {
+              method: "GET",
+              redirect: "follow",
+              signal: controller.signal,
+              headers: {
+                Accept: "application/rss+xml,application/xml,text/xml;q=0.9,*/*;q=0.1",
+                "User-Agent": "ai-podcast-platform-trends/1.0"
+              }
+            });
+            if (!response.ok) {
+              throw new Error(`rss_fetch_failed:${response.status}`);
+            }
+            xml = await response.text();
+          } finally {
+            clearTimeout(timer);
+          }
+        }
+
+        if (!xml) {
+          throw new Error("rss_fetch_empty");
+        }
         const parsedItems = parseRssItems(xml).slice(0, limitPerSource);
         fetchedCount += parsedItems.length;
 
@@ -659,13 +770,25 @@ Deno.serve(async (req) => {
             publishedAtSource: published.publishedAtSource,
             publishedAtFallback: published.publishedAtFallback,
             titleTokens: tokenizeTitle(parsed.title),
-            hasClickbaitKeyword: containsClickbaitKeyword(parsed.title, clickbaitKeywords)
+            hasClickbaitKeyword: containsClickbaitKeyword(parsed.title, clickbaitKeywords),
+            hasSensitiveHardKeyword: containsKeyword(
+              `${parsed.title} ${parsed.summary ?? ""}`,
+              sensitiveHardKeywords
+            ),
+            hasOverheatedKeyword: containsKeyword(
+              `${parsed.title} ${parsed.summary ?? ""}`,
+              overheatedKeywords
+            )
           });
         }
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (/abort|timed?out|timeout/i.test(message)) {
+          sourceTimeoutCount += 1;
+        }
         sourceErrors.push({
           sourceKey: source.source_key,
-          message: error instanceof Error ? error.message : String(error)
+          message
         });
       }
     }
@@ -697,9 +820,18 @@ Deno.serve(async (req) => {
         clusterSize,
         diversityBonus,
         hasClickbaitKeyword: representative.hasClickbaitKeyword,
+        hasSensitiveHardKeyword: representative.hasSensitiveHardKeyword,
+        hasOverheatedKeyword: representative.hasOverheatedKeyword,
         entertainmentBonusValue: entertainmentBonus,
         categoryWeights: ingestConfig.categoryWeights
       });
+
+      if (representative.hasSensitiveHardKeyword) {
+        hardKeywordCandidateCount += 1;
+      }
+      if (representative.hasOverheatedKeyword) {
+        overheatedCandidateCount += 1;
+      }
 
       return {
         item: representative,
@@ -774,6 +906,9 @@ Deno.serve(async (req) => {
       dedupedCount,
       publishedAtFilledCount,
       publishedAtRequiredFilteredCount,
+      sourceTimeoutCount,
+      hardKeywordCandidateCount,
+      overheatedCandidateCount,
       droppedTotalCount,
       droppedPerSourceCount,
       maxItemsTotal: ingestConfig.maxItemsTotal,
@@ -791,6 +926,9 @@ Deno.serve(async (req) => {
       dedupedCount,
       publishedAtFilledCount,
       publishedAtRequiredFilteredCount,
+      sourceTimeoutCount,
+      hardKeywordCandidateCount,
+      overheatedCandidateCount,
       droppedTotalCount,
       droppedPerSourceCount,
       maxItemsTotal: ingestConfig.maxItemsTotal,
@@ -808,6 +946,9 @@ Deno.serve(async (req) => {
       dedupedCount,
       publishedAtFilledCount,
       publishedAtRequiredFilteredCount,
+      sourceTimeoutCount,
+      hardKeywordCandidateCount,
+      overheatedCandidateCount,
       droppedTotalCount,
       droppedPerSourceCount,
       maxItemsTotal: ingestConfig.maxItemsTotal,

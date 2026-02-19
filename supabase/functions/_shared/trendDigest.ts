@@ -61,7 +61,16 @@ export const DEFAULT_TREND_DENY_KEYWORDS = [
   "違法薬物",
   "自殺",
   "リストカット",
-  "性的"
+  "性的",
+  "child abuse",
+  "murder",
+  "mass shooting",
+  "terror attack",
+  "war crimes",
+  "殺人",
+  "銃撃",
+  "テロ",
+  "戦争犯罪"
 ];
 
 const HARD_NEWS_CATEGORIES = new Set([
@@ -71,7 +80,11 @@ const HARD_NEWS_CATEGORIES = new Set([
   "government",
   "world",
   "economy",
-  "business"
+  "business",
+  "crime",
+  "accident",
+  "war",
+  "disaster"
 ]);
 
 const ENTERTAINMENT_CATEGORIES = new Set([
@@ -85,7 +98,12 @@ const ENTERTAINMENT_CATEGORIES = new Set([
   "youtube",
   "streaming",
   "celebrity",
-  "culture"
+  "culture",
+  "gadgets",
+  "lifestyle",
+  "food",
+  "travel",
+  "books"
 ]);
 
 const DEFAULT_WHY_IT_MATTERS_BY_CATEGORY: Record<string, string> = {
@@ -95,6 +113,9 @@ const DEFAULT_WHY_IT_MATTERS_BY_CATEGORY: Record<string, string> = {
   movie: "配信と興行の両面で、次の消費トレンドを先読みしやすいためです。",
   music: "配信動向とSNS拡散の関係が見え、トレンド理解に役立つためです。",
   video: "クリエイターと視聴者の動線が変わり、情報接触の仕方に影響するためです。",
+  gadgets: "日常で触れるハードとアプリの体験変化を捉えやすいためです。",
+  lifestyle: "生活導線に直結し、リスナーが自分事として話しやすいためです。",
+  books: "作品文脈を追う入口になり、文化トレンドの把握に役立つためです。",
   news: "社会的影響が大きく、背景整理が必要な話題だからです。",
   politics: "制度変更や議論の前提を確認しないと誤読しやすいためです。",
   business: "市場や企業行動の変化が、実務判断に波及するためです。",
