@@ -117,6 +117,22 @@ type SelectedTrendAuditItem = {
   clusterSize: number | null;
 };
 
+type TrendSelectionSummary = {
+  targetTotal: number;
+  targetDeepDive: number;
+  targetQuickNews: number;
+  maxHardTopics: number;
+  minEntertainment: number;
+  sourceDiversityWindow: number;
+  selectedTotal: number;
+  selectedHard: number;
+  selectedEntertainment: number;
+  usedFallbackItems: number;
+  categoryDistribution: Record<string, number>;
+  domainDistribution: Record<string, number>;
+  categoryCaps: Record<string, number>;
+};
+
 type ScriptGateDiagnostic = {
   minChars: number;
   targetChars: number;
@@ -144,34 +160,33 @@ const MAX_LETTER_CANDIDATES = 20;
 const MAX_LETTER_SUMMARY_CHARS = 80;
 const MAX_EXPAND_ATTEMPTS = 2;
 
-const TREND_MIX_TARGET = {
-  hard: 4,
-  soft: 4,
-  entertainment: 3
-} as const;
-
-type TrendMixBucket = keyof typeof TREND_MIX_TARGET;
-
-type TrendMixAudit = {
-  target: typeof TREND_MIX_TARGET;
-  selected: Record<TrendMixBucket, number>;
-  achieved: boolean;
-  usedFallbackItems: number;
-};
+const DEFAULT_TARGET_TOTAL = 10;
+const DEFAULT_MIN_ENTERTAINMENT = 4;
+const DEFAULT_MAX_HARD_TOPICS = 1;
 
 const HARD_CATEGORIES = new Set([
   "news",
   "politics",
   "policy",
+  "government",
   "economy",
   "business",
   "science",
-  "world"
+  "world",
+  "crime",
+  "accident",
+  "disaster",
+  "war"
 ]);
 
 const ENTERTAINMENT_CATEGORIES = new Set([
   "entertainment",
   "culture",
+  "gadgets",
+  "lifestyle",
+  "food",
+  "travel",
+  "books",
   "sports",
   "music",
   "movie",
@@ -206,7 +221,12 @@ const DEFAULT_EXCLUDED_KEYWORDS = [
   "crypto",
   "bitcoin",
   "btc",
-  "eth"
+  "eth",
+  "diet pill",
+  "diet pills",
+  "ozempic",
+  "wegovy",
+  "mounjaro"
 ];
 
 const HARD_BLOCK_PATTERNS = [
@@ -224,51 +244,27 @@ const MEDICAL_INVESTMENT_ASSERTION_PATTERNS = [
 
 const fallbackTrendItems: TrendItem[] = [
   {
-    title: "Fallback: Product update cadence",
-    url: "https://example.com/fallback/product-update",
-    summary: "Product roadmap updates were shared in public channels.",
-    source: "example.com",
-    category: "soft"
-  },
-  {
-    title: "Fallback: Reliability improvements",
-    url: "https://example.com/fallback/reliability",
-    summary: "Reliability and operations improvements were highlighted.",
-    source: "example.com",
-    category: "hard"
-  },
-  {
-    title: "Fallback: User feedback highlights",
-    url: "https://example.com/fallback/user-feedback",
-    summary: "Recent user feedback showed recurring product requests.",
+    title: "Fallback: Streaming and creator updates",
+    url: "https://example.com/fallback/streaming",
+    summary: "Streaming and creator updates were highlighted as approachable topics.",
     source: "example.com",
     category: "entertainment"
+  },
+  {
+    title: "Fallback: Gadget and app trends",
+    url: "https://example.com/fallback/gadgets",
+    summary: "Consumer gadget and app trends were highlighted.",
+    source: "example.com",
+    category: "gadgets"
+  },
+  {
+    title: "Fallback: Product workflow highlight",
+    url: "https://example.com/fallback/workflow",
+    summary: "Product and workflow highlights were used as neutral fallback topics.",
+    source: "example.com",
+    category: "tech"
   }
 ];
-
-const fallbackByBucket: Record<TrendMixBucket, TrendItem> = {
-  hard: {
-    title: "Fallback hard topic: public policy and social impact",
-    url: "https://example.com/fallback/hard",
-    summary: "Policy and public impact context is added to keep the episode balanced.",
-    source: "fallback-editorial",
-    category: "hard"
-  },
-  soft: {
-    title: "Fallback soft topic: product and user experience",
-    url: "https://example.com/fallback/soft",
-    summary: "Product and user-focused context is added to keep the episode balanced.",
-    source: "fallback-editorial",
-    category: "soft"
-  },
-  entertainment: {
-    title: "Fallback entertainment topic: culture and lifestyle pulse",
-    url: "https://example.com/fallback/entertainment",
-    summary: "Culture and lifestyle context is added to keep the episode balanced.",
-    source: "fallback-editorial",
-    category: "entertainment"
-  }
-};
 
 const getFunctionsBaseUrl = (requestUrl: string): string => {
   const explicit = Deno.env.get("FUNCTIONS_BASE_URL") ?? Deno.env.get("SUPABASE_FUNCTIONS_URL");
@@ -378,14 +374,41 @@ const resolveSourceName = (row: TrendCandidateRow): string => {
   return row.trend_sources?.name ?? "unknown";
 };
 
-const resolveTrendBucket = (category: string): TrendMixBucket => {
+const isHardCategory = (category: string): boolean => {
   const normalized = normalizeToken(category);
-  if (normalized === "hard") return "hard";
-  if (normalized === "soft") return "soft";
-  if (normalized === "entertainment") return "entertainment";
-  if (HARD_CATEGORIES.has(normalized)) return "hard";
-  if (ENTERTAINMENT_CATEGORIES.has(normalized)) return "entertainment";
-  return "soft";
+  return normalized === "hard" || HARD_CATEGORIES.has(normalized);
+};
+
+const isEntertainmentCategory = (category: string): boolean => {
+  const normalized = normalizeToken(category);
+  return normalized === "entertainment" || ENTERTAINMENT_CATEGORIES.has(normalized);
+};
+
+const resolveTargetTotal = (): number => {
+  const raw = Number.parseInt(Deno.env.get("TREND_TARGET_TOTAL") ?? `${DEFAULT_TARGET_TOTAL}`, 10);
+  if (!Number.isFinite(raw)) return DEFAULT_TARGET_TOTAL;
+  return Math.max(8, Math.min(raw, 14));
+};
+
+const resolveMinEntertainment = (): number => {
+  const raw = Number.parseInt(
+    Deno.env.get("TREND_MIN_ENTERTAINMENT") ?? `${DEFAULT_MIN_ENTERTAINMENT}`,
+    10
+  );
+  const fallback = Math.min(DEFAULT_MIN_ENTERTAINMENT, resolveTargetTotal());
+  if (!Number.isFinite(raw)) return fallback;
+  return Math.max(0, Math.min(raw, resolveTargetTotal()));
+};
+
+const resolveMaxHardTopics = (): number => {
+  const raw = Number.parseInt(
+    Deno.env.get("TREND_MAX_HARD_TOPICS") ??
+      Deno.env.get("TREND_MAX_HARD_NEWS") ??
+      `${DEFAULT_MAX_HARD_TOPICS}`,
+    10
+  );
+  if (!Number.isFinite(raw)) return DEFAULT_MAX_HARD_TOPICS;
+  return Math.max(0, Math.min(raw, 4));
 };
 
 const sanitizeNarrationText = (value: string): string => {
@@ -709,70 +732,59 @@ const resolveTrendItems = async (
   }
 };
 
-const selectTrendsForMix = (trendItems: TrendItem[]): { selected: TrendItem[]; audit: TrendMixAudit } => {
-  const selected: TrendItem[] = [];
-  const used = new Set<number>();
-  const counts: Record<TrendMixBucket, number> = {
-    hard: 0,
-    soft: 0,
-    entertainment: 0
-  };
-  let usedFallbackItems = 0;
-
-  for (const bucket of Object.keys(TREND_MIX_TARGET) as TrendMixBucket[]) {
-    const targetCount = TREND_MIX_TARGET[bucket];
-    for (let i = 0; i < trendItems.length && counts[bucket] < targetCount; i += 1) {
-      if (used.has(i)) continue;
-      const item = trendItems[i];
-      if (resolveTrendBucket(item.category) !== bucket) continue;
-      selected.push(item);
-      used.add(i);
-      counts[bucket] += 1;
-    }
-  }
-
-  for (const bucket of Object.keys(TREND_MIX_TARGET) as TrendMixBucket[]) {
-    const targetCount = TREND_MIX_TARGET[bucket];
-    while (counts[bucket] < targetCount) {
-      const fallback = fallbackByBucket[bucket];
-      selected.push({
-        ...fallback,
-        id: `fallback-${bucket}-${usedFallbackItems + 1}`
-      });
-      counts[bucket] += 1;
-      usedFallbackItems += 1;
-    }
-  }
-
-  const totalTarget = TREND_MIX_TARGET.hard + TREND_MIX_TARGET.soft + TREND_MIX_TARGET.entertainment;
-  for (let i = 0; i < trendItems.length && selected.length < totalTarget; i += 1) {
-    if (used.has(i)) continue;
-    const item = trendItems[i];
-    selected.push(item);
-    used.add(i);
-    counts[resolveTrendBucket(item.category)] += 1;
-  }
-
-  const achieved =
-    counts.hard >= TREND_MIX_TARGET.hard &&
-    counts.soft >= TREND_MIX_TARGET.soft &&
-    counts.entertainment >= TREND_MIX_TARGET.entertainment;
-
-  return {
-    selected,
-    audit: {
-      target: TREND_MIX_TARGET,
-      selected: counts,
-      achieved,
-      usedFallbackItems
-    }
-  };
-};
-
 const countEntertainmentTrends = (items: TrendItem[]): number => {
   return items.reduce((count, item) => {
-    return resolveTrendBucket(item.category) === "entertainment" ? count + 1 : count;
+    return isEntertainmentCategory(item.category) ? count + 1 : count;
   }, 0);
+};
+
+const countHardTrends = (items: TrendItem[]): number => {
+  return items.reduce((count, item) => {
+    return isHardCategory(item.category) ? count + 1 : count;
+  }, 0);
+};
+
+const readTrendSelectionSummary = (source: InvokeResult): TrendSelectionSummary | null => {
+  const raw = source.trendSelectionSummary ?? source.trend_selection_summary;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return null;
+  }
+
+  const record = raw as Record<string, unknown>;
+  const readRequiredNumber = (key: keyof TrendSelectionSummary): number | null => {
+    const value = record[key];
+    if (typeof value !== "number" || !Number.isFinite(value)) return null;
+    return value;
+  };
+  const readRecord = (key: keyof TrendSelectionSummary): Record<string, number> => {
+    const value = record[key];
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return {};
+    }
+    const normalized: Record<string, number> = {};
+    for (const [entryKey, entryValue] of Object.entries(value)) {
+      if (typeof entryValue !== "number" || !Number.isFinite(entryValue)) continue;
+      normalized[entryKey] = entryValue;
+    }
+    return normalized;
+  };
+
+  const summary: TrendSelectionSummary = {
+    targetTotal: readRequiredNumber("targetTotal") ?? resolveTargetTotal(),
+    targetDeepDive: readRequiredNumber("targetDeepDive") ?? 3,
+    targetQuickNews: readRequiredNumber("targetQuickNews") ?? 6,
+    maxHardTopics: readRequiredNumber("maxHardTopics") ?? resolveMaxHardTopics(),
+    minEntertainment: readRequiredNumber("minEntertainment") ?? resolveMinEntertainment(),
+    sourceDiversityWindow: readRequiredNumber("sourceDiversityWindow") ?? 3,
+    selectedTotal: readRequiredNumber("selectedTotal") ?? 0,
+    selectedHard: readRequiredNumber("selectedHard") ?? 0,
+    selectedEntertainment: readRequiredNumber("selectedEntertainment") ?? 0,
+    usedFallbackItems: readRequiredNumber("usedFallbackItems") ?? 0,
+    categoryDistribution: readRecord("categoryDistribution"),
+    domainDistribution: readRecord("domainDistribution"),
+    categoryCaps: readRecord("categoryCaps")
+  };
+  return summary;
 };
 
 const extractEpisodeId = (stepResult: InvokeResult, stepName: string): string => {
@@ -996,40 +1008,52 @@ Deno.serve(async (req) => {
 
   try {
     const functionsBaseUrl = getFunctionsBaseUrl(req.url);
-    const { trendItems: fallbackTrendCandidates, usedFallback: fallbackFromDaily } = await resolveTrendItems(
+    const { trendItems: trendCandidatesForPlan, usedFallback: fallbackFromDaily } = await resolveTrendItems(
       functionsBaseUrl,
       episodeDate,
       idempotencyKey
     );
-    const balancedTrends = selectTrendsForMix(fallbackTrendCandidates);
     const letterCandidates = await loadPrioritizedLetters().catch(() => []);
     const { letters, blockedIds } = await prepareLettersForScript(letterCandidates);
 
     const plan = await invokeStep(functionsBaseUrl, "plan-topics", {
       episodeDate,
       idempotencyKey,
-      trendCandidates: balancedTrends.selected
+      trendCandidates: trendCandidatesForPlan
     });
     const plannedTrendItems = readPlanTrendItems(plan);
     const selectedTrendItems = readPlanSelectedTrendItems(plan);
-    const trendItems = plannedTrendItems.length > 0 ? plannedTrendItems : balancedTrends.selected;
+    const trendSelectionSummary = readTrendSelectionSummary(plan);
+    const trendItems = plannedTrendItems.length > 0 ? plannedTrendItems : trendCandidatesForPlan;
     const digestUsedCount =
       readNumberField(plan, ["digestUsedCount", "digest_used_count"]) ?? trendItems.length;
     const digestFilteredCount =
       readNumberField(plan, ["digestFilteredCount", "digest_filtered_count"]) ??
-      Math.max(0, balancedTrends.selected.length - trendItems.length);
+      Math.max(0, trendCandidatesForPlan.length - trendItems.length);
     const digestCategoryDistribution =
       readRecordField(plan, "digestCategoryDistribution") ??
       readRecordField(plan, "digest_category_distribution") ??
       summarizeTrendCategoryDistribution(trendItems);
+    const targetTotal = resolveTargetTotal();
+    const minEntertainment = resolveMinEntertainment();
+    const maxHardTopics = resolveMaxHardTopics();
+    const minimumSelectedTopics = Math.max(8, targetTotal - 2);
     digestMetricsForFailure = {
       digest_used_count: digestUsedCount,
       digest_filtered_count: digestFilteredCount,
-      digest_category_distribution: digestCategoryDistribution
+      digest_category_distribution: digestCategoryDistribution,
+      trend_selection_summary: trendSelectionSummary
     };
     const entertainmentCount = countEntertainmentTrends(trendItems);
-    if (entertainmentCount < TREND_MIX_TARGET.entertainment) {
+    const hardTopicCount = countHardTrends(trendItems);
+    if (trendItems.length < minimumSelectedTopics) {
+      throw new Error(`insufficient_selected_topics:${trendItems.length}`);
+    }
+    if (entertainmentCount < minEntertainment) {
       throw new Error(`insufficient_entertainment_topics:${entertainmentCount}`);
+    }
+    if (hardTopicCount > maxHardTopics) {
+      throw new Error(`too_many_hard_topics:${hardTopicCount}`);
     }
     const usedTrendFallback =
       typeof plan.usedTrendFallback === "boolean" ? plan.usedTrendFallback : fallbackFromDaily;
@@ -1252,8 +1276,9 @@ Deno.serve(async (req) => {
       blockedLetterIds: blockedIds,
       usedTrendFallback,
       trendFallbackReason,
-      trendMix: balancedTrends.audit,
+      trendSelectionSummary,
       entertainmentTopicCount: entertainmentCount,
+      hardTopicCount,
       selectedTrendItems,
       digest_used_count: digestUsedCount,
       digest_filtered_count: digestFilteredCount,
@@ -1290,8 +1315,9 @@ Deno.serve(async (req) => {
       blockedLetterIds: blockedIds,
       usedTrendFallback,
       trendFallbackReason,
-      trendMix: balancedTrends.audit,
+      trendSelectionSummary,
       entertainmentTopicCount: entertainmentCount,
+      hardTopicCount,
       selectedTrendItems,
       digestUsedCount,
       digestFilteredCount,

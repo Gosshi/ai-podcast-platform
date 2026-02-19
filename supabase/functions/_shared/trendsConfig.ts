@@ -513,6 +513,122 @@ export const TREND_SOURCE_THEMES: Record<string, TrendSourceSeed[]> = {
       category: "game",
       theme: "entertainment"
     }
+  ],
+  games: [
+    {
+      source_key: "pc_gamer",
+      name: "PC Gamer",
+      url: "https://www.pcgamer.com/rss/",
+      enabled: true,
+      weight: 1.3,
+      category: "game",
+      theme: "games"
+    },
+    {
+      source_key: "eurogamer",
+      name: "Eurogamer",
+      url: "https://www.eurogamer.net/feed",
+      enabled: true,
+      weight: 1.28,
+      category: "game",
+      theme: "games"
+    },
+    {
+      source_key: "polygon",
+      name: "Polygon",
+      url: "https://www.polygon.com/rss/index.xml",
+      enabled: true,
+      weight: 1.24,
+      category: "game",
+      theme: "games"
+    }
+  ],
+  gadgets: [
+    {
+      source_key: "engadget",
+      name: "Engadget",
+      url: "https://www.engadget.com/rss.xml",
+      enabled: true,
+      weight: 1.3,
+      category: "gadgets",
+      theme: "gadgets"
+    },
+    {
+      source_key: "wired",
+      name: "WIRED",
+      url: "https://www.wired.com/feed/rss",
+      enabled: true,
+      weight: 1.22,
+      category: "gadgets",
+      theme: "gadgets"
+    },
+    {
+      source_key: "cnet_news",
+      name: "CNET News",
+      url: "https://www.cnet.com/rss/news/",
+      enabled: true,
+      weight: 1.16,
+      category: "gadgets",
+      theme: "gadgets"
+    }
+  ],
+  lifestyle: [
+    {
+      source_key: "lifehacker",
+      name: "Lifehacker",
+      url: "https://lifehacker.com/rss",
+      enabled: true,
+      weight: 1.2,
+      category: "lifestyle",
+      theme: "lifestyle"
+    },
+    {
+      source_key: "eater",
+      name: "Eater",
+      url: "https://www.eater.com/rss/index.xml",
+      enabled: true,
+      weight: 1.14,
+      category: "lifestyle",
+      theme: "lifestyle"
+    },
+    {
+      source_key: "google_news_travel",
+      name: "Google News Travel",
+      url: "https://news.google.com/rss/search?q=travel+tips&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.12,
+      category: "lifestyle",
+      theme: "lifestyle"
+    }
+  ],
+  culture: [
+    {
+      source_key: "nyt_arts",
+      name: "NYTimes Arts",
+      url: "https://rss.nytimes.com/services/xml/rss/nyt/Arts.xml",
+      enabled: true,
+      weight: 1.2,
+      category: "culture",
+      theme: "culture"
+    },
+    {
+      source_key: "guardian_culture",
+      name: "The Guardian Culture",
+      url: "https://www.theguardian.com/uk/culture/rss",
+      enabled: true,
+      weight: 1.18,
+      category: "culture",
+      theme: "culture"
+    },
+    {
+      source_key: "book_riot",
+      name: "Book Riot",
+      url: "https://bookriot.com/feed/",
+      enabled: true,
+      weight: 1.16,
+      category: "culture",
+      theme: "culture"
+    }
   ]
 };
 
@@ -531,7 +647,15 @@ export const DEFAULT_CLICKBAIT_KEYWORDS = [
   "must read",
   "must-see",
   "break the internet",
-  "click here"
+  "click here",
+  "insane",
+  "unbelievable",
+  "mind blowing",
+  "暴露",
+  "炎上",
+  "大炎上",
+  "激怒",
+  "神回"
 ];
 
 export const parseCsvList = (rawValue: string | undefined, fallback: string[]): string[] => {

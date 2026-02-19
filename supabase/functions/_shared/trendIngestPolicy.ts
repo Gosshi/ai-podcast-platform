@@ -12,6 +12,8 @@ export type TrendScoreInput = {
   clusterSize: number;
   diversityBonus: number;
   hasClickbaitKeyword: boolean;
+  hasSensitiveHardKeyword: boolean;
+  hasOverheatedKeyword: boolean;
   entertainmentBonusValue: number;
   categoryWeights: Record<string, number>;
 };
@@ -24,6 +26,8 @@ export type TrendScoreBreakdown = {
   scorePenalty: number;
   categoryWeight: number;
   hardNewsPenalty: number;
+  hardKeywordPenalty: number;
+  overheatedPenalty: number;
 };
 
 export type TrendCapsResult<T> = {
@@ -42,6 +46,8 @@ const MAX_MAX_ITEMS_TOTAL = 300;
 const MIN_MAX_ITEMS_PER_SOURCE = 1;
 const MAX_MAX_ITEMS_PER_SOURCE = 50;
 const HARD_NEWS_PENALTY = 0.28;
+const HARD_KEYWORD_PENALTY = 0.65;
+const OVERHEATED_PENALTY = 0.32;
 
 const HARD_NEWS_CATEGORIES = new Set([
   "news",
@@ -68,6 +74,11 @@ export const DEFAULT_TREND_CATEGORY_WEIGHTS: Record<string, number> = {
   business: 0.93,
   entertainment: 1.26,
   culture: 1.18,
+  gadgets: 1.24,
+  lifestyle: 1.16,
+  food: 1.12,
+  travel: 1.12,
+  books: 1.14,
   sports: 1.08,
   music: 1.26,
   movie: 1.24,
@@ -190,10 +201,13 @@ export const calculateTrendScore = (params: TrendScoreInput): TrendScoreBreakdow
     ? HARD_NEWS_PENALTY
     : 0;
   const clickbaitPenalty = params.hasClickbaitKeyword ? 1.1 : 0;
+  const hardKeywordPenalty = params.hasSensitiveHardKeyword ? HARD_KEYWORD_PENALTY : 0;
+  const overheatedPenalty = params.hasOverheatedKeyword ? OVERHEATED_PENALTY : 0;
 
   const bonusScore =
     clusterSizeBonus + params.diversityBonus + params.entertainmentBonusValue + categoryWeightBonus;
-  const penaltyScore = clickbaitPenalty + categoryWeightPenalty + hardNewsPenalty;
+  const penaltyScore =
+    clickbaitPenalty + categoryWeightPenalty + hardNewsPenalty + hardKeywordPenalty + overheatedPenalty;
   const raw = freshness + weightedSource + bonusScore - penaltyScore;
 
   return {
@@ -203,7 +217,9 @@ export const calculateTrendScore = (params: TrendScoreInput): TrendScoreBreakdow
     scoreBonus: Number(bonusScore.toFixed(6)),
     scorePenalty: Number(penaltyScore.toFixed(6)),
     categoryWeight: Number(categoryWeight.toFixed(6)),
-    hardNewsPenalty: Number(hardNewsPenalty.toFixed(6))
+    hardNewsPenalty: Number(hardNewsPenalty.toFixed(6)),
+    hardKeywordPenalty: Number(hardKeywordPenalty.toFixed(6)),
+    overheatedPenalty: Number(overheatedPenalty.toFixed(6))
   };
 };
 

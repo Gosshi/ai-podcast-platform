@@ -223,6 +223,8 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - `trend_items.score_freshness/score_source/score_bonus/score_penalty` に内訳を保存し `/admin/trends` で表示
 - `trend_items` には source snapshot として `source_name` / `source_category` / `source_theme` を保持
 - clickbait 判定語は `TREND_CLICKBAIT_KEYWORDS` で上書き可能
+- hardキーワード (`TREND_HARD_KEYWORDS`) と過激ワード (`TREND_OVERHEATED_KEYWORDS`) は減点対象（完全除外ではなく抑制）
+- RSS取得は `TREND_RSS_FETCH_TIMEOUT_MS` でタイムアウト制御
 - 調整 knob:
   - `TREND_MAX_ITEMS_TOTAL`（default: `60`）
   - `TREND_MAX_ITEMS_PER_SOURCE`（default: `10`）
@@ -232,10 +234,17 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
   - `TREND_DENY_KEYWORDS`（CSV。unsafe/hard block topic を除外）
   - `TREND_ALLOW_CATEGORIES`（CSV。指定時のみ対象カテゴリを許可）
   - `TREND_MAX_HARD_NEWS`（default: `1`）
-- `plan-topics` / `daily-generate` は `is_cluster_representative=true` の上位Nを採用
-- `daily-generate` は category を hard/soft/entertainment バケットへマップし、配分 4:4:3 を優先して候補を組む
+- selection knob:
+  - `TREND_TARGET_TOTAL`（default: `10`）
+  - `TREND_TARGET_DEEPDIVE`（default: `3`）
+  - `TREND_TARGET_QUICKNEWS`（default: `6`）
+  - `TREND_MAX_HARD_TOPICS`（default: `1`）
+  - `TREND_MIN_ENTERTAINMENT`（default: `4`）
+  - `TREND_SOURCE_DIVERSITY_WINDOW`（default: `3`）
+  - `TREND_LOOKBACK_HOURS`（default: `36`）
+- `plan-topics` は normalized hash / domain / category cap を使って重複除外と分散選定を行い、`trendSelectionSummary` を payload に保存
 - 実行結果は `fetchedCount`, `insertedCount`, `dedupedCount`, `publishedAtFilledCount`, `publishedAtRequiredFilteredCount`, `droppedTotalCount`, `droppedPerSourceCount` を返す
-- `daily-generate` の `job_runs.payload` には `digest_used_count` / `digest_filtered_count` / `digest_category_distribution` が保存される
+- `daily-generate` の `job_runs.payload` には `digest_used_count` / `digest_filtered_count` / `digest_category_distribution` / `trend_selection_summary` が保存される
 
 ### Local Run (deterministic)
 1. `supabase start`
@@ -244,5 +253,5 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 4. `curl -i -X POST http://127.0.0.1:54321/functions/v1/ingest_trends_rss -H "Content-Type: application/json" -d '{"mockFeeds":[{"sourceKey":"local-rss","name":"Local RSS","url":"https://local.invalid/rss","weight":1.3,"category":"tech","xml":"<rss><channel><item><title>Topic A</title><link>https://example.com/a</link><description>A summary</description></item><item><title>Topic A!!!</title><link>https://example.com/a?utm_source=test</link><description>Duplicate summary</description></item></channel></rss>"}]}'`
 5. `curl -i -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H "Content-Type: application/json" -d '{"episodeDate":"2026-02-18"}'`
 6. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c "select title,score,cluster_size,published_at_source from public.trend_items order by score desc limit 5;"`
-7. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -At -F $'\t' -c "select coalesce((payload->'trendMix'->'selected'->>'entertainment')::int,0) from public.job_runs where job_type='daily-generate' order by created_at desc limit 1;"`
-8. `trend_runs.payload` に `dedupedCount` / `publishedAtFilledCount` が入り、`daily-generate` の entertainment 件数が3以上であることを確認
+7. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -At -F $'\t' -c "select coalesce((payload->'trend_selection_summary'->>'selectedEntertainment')::int,0), coalesce((payload->'trend_selection_summary'->>'selectedHard')::int,0) from public.job_runs where job_type='daily-generate' order by created_at desc limit 1;"`
+8. `trend_runs.payload` に `dedupedCount` / `publishedAtFilledCount` が入り、`daily-generate` の entertainment 件数が `TREND_MIN_ENTERTAINMENT` 以上、hard 件数が `TREND_MAX_HARD_TOPICS` 以下であることを確認
