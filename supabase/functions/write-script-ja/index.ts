@@ -12,6 +12,11 @@ import {
   type ProgramPlan
 } from "../_shared/programPlan.ts";
 import { normalizeForSpeech } from "../_shared/speechNormalization.ts";
+import {
+  estimateScriptDurationSec,
+  resolveScriptGateConfig,
+  type ScriptGateConfig
+} from "../_shared/scriptGate.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -57,8 +62,6 @@ type ScriptLetter = {
 const MAX_TREND_ITEMS = 12;
 const MAX_LETTERS = 2;
 const MAIN_TOPIC_MIN_CHARS = 520;
-const TARGET_SCRIPT_MIN_CHARS = 4200;
-const ESTIMATED_JA_CHARS_PER_MIN = 300;
 
 const fallbackTrend = (index: number): ScriptTrendItem => ({
   id: `fallback-${index}`,
@@ -328,7 +331,8 @@ const buildJapaneseScript = (params: {
   programPlan: ProgramPlan;
   trendItems: ScriptTrendItem[];
   letters: ScriptLetter[];
-}): { script: string; estimatedDurationSec: number } => {
+  scriptGate: ScriptGateConfig;
+}): { script: string; scriptChars: number; estimatedDurationSec: number } => {
   const opening = `[OPENING]
 番組タイトル: ${params.topicTitle}
 今夜の進行はラジオ司会者スタイルでお送りします。テンポよく、でも大事なところは丁寧に整理していきます。
@@ -364,17 +368,15 @@ ${params.programPlan.ending.message}
     sourceReferences
   ].join("\n\n");
 
-  while (draft.length < TARGET_SCRIPT_MIN_CHARS) {
+  while (draft.length < params.scriptGate.minChars) {
     draft = `${draft}\n\n[CONTENT EXPANSION]\n深掘り補足: 速報性だけでなく、背景・影響・前提条件を繰り返し確認することで、短期的な反応に偏らない理解を目指します。`;
   }
 
   const normalized = normalizeForSpeech(draft, "ja");
-  const estimatedDurationSec = Math.max(
-    60,
-    Math.round((normalized.length / ESTIMATED_JA_CHARS_PER_MIN) * 60)
-  );
+  const scriptChars = normalized.length;
+  const estimatedDurationSec = estimateScriptDurationSec(scriptChars, params.scriptGate.charsPerMin);
 
-  return { script: normalized, estimatedDurationSec };
+  return { script: normalized, scriptChars, estimatedDurationSec };
 };
 
 const resolveTopicTitle = (rawTitle: string | undefined, episodeDate: string): string => {
@@ -402,9 +404,10 @@ Deno.serve(async (req) => {
   const trendItems = normalizeTrendItems(body.trendItems);
   const letters = normalizeLetters(body.letters);
   const programPlan = ensureProgramPlan(body.programPlan, topicTitle, trendItems);
+  const scriptGate = resolveScriptGateConfig();
   const title = `Daily Topic ${episodeDate} (JA)`;
   const description = `Japanese episode for ${episodeDate}`;
-  const built = buildJapaneseScript({ topicTitle, trendItems, letters, programPlan });
+  const built = buildJapaneseScript({ topicTitle, trendItems, letters, programPlan, scriptGate });
 
   const runId = await startRun("write-script-ja", {
     step: "write-script-ja",
@@ -414,7 +417,9 @@ Deno.serve(async (req) => {
     title,
     trendItemsCount: trendItems.length,
     lettersCount: letters.length,
-    estimatedDurationSec: built.estimatedDurationSec
+    scriptChars: built.scriptChars,
+    estimatedDurationSec: built.estimatedDurationSec,
+    scriptGate
   });
 
   try {
@@ -446,7 +451,9 @@ Deno.serve(async (req) => {
       noOp,
       trendItemsCount: trendItems.length,
       lettersCount: letters.length,
-      estimatedDurationSec: built.estimatedDurationSec
+      scriptChars: built.scriptChars,
+      estimatedDurationSec: built.estimatedDurationSec,
+      scriptGate
     });
 
     return jsonResponse({
@@ -458,7 +465,9 @@ Deno.serve(async (req) => {
       status: episode.status,
       trendItemsCount: trendItems.length,
       lettersCount: letters.length,
-      estimatedDurationSec: built.estimatedDurationSec
+      scriptChars: built.scriptChars,
+      estimatedDurationSec: built.estimatedDurationSec,
+      scriptGate
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -470,7 +479,9 @@ Deno.serve(async (req) => {
       title,
       trendItemsCount: trendItems.length,
       lettersCount: letters.length,
-      estimatedDurationSec: built.estimatedDurationSec
+      scriptChars: built.scriptChars,
+      estimatedDurationSec: built.estimatedDurationSec,
+      scriptGate
     });
 
     return jsonResponse({ ok: false, error: message }, 500);

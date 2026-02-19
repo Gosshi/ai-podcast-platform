@@ -171,6 +171,24 @@ assert_not_contains() {
   fi
 }
 
+extract_json_string_field() {
+  local json="$1"
+  local key="$2"
+  printf "%s" "$json" | sed -n "s/.*\"${key}\":\"\\([^\"]*\\)\".*/\\1/p" | head -n 1
+}
+
+print_daily_failure_diagnostics() {
+  local label="$1"
+  local body="$2"
+  local run_id
+  run_id="$(extract_json_string_field "$body" "runId")"
+  if [ -z "$run_id" ]; then
+    run_id="(missing)"
+  fi
+  printf "[e2e][diag] %s runId=%s\n" "$label" "$run_id" >&2
+  printf "[e2e][diag] %s response=%s\n" "$label" "$body" >&2
+}
+
 assert_command "npm ci" npm ci --cache "$NPM_CONFIG_CACHE"
 assert_command "npm run build" npm run build
 
@@ -259,7 +277,7 @@ DAILY_1="$(run_daily_generate_with_retry)"
 if grep -Fq "\"ok\":true" <<<"$DAILY_1"; then
   pass "daily-generate pipeline #1"
 else
-  printf "%s\n" "$DAILY_1" >&2
+  print_daily_failure_diagnostics "daily-generate pipeline #1" "$DAILY_1"
   fail "daily-generate pipeline #1"
 fi
 
@@ -268,7 +286,7 @@ DAILY_2="$(run_daily_generate_with_retry)"
 if grep -Fq "\"ok\":true" <<<"$DAILY_2"; then
   pass "daily-generate pipeline #2"
 else
-  printf "%s\n" "$DAILY_2" >&2
+  print_daily_failure_diagnostics "daily-generate pipeline #2" "$DAILY_2"
   fail "daily-generate pipeline #2"
 fi
 
@@ -351,7 +369,12 @@ BLOCKED_LETTER_ID="$(psql_query "insert into public.letters (display_name, text,
 SAFE_LETTER_ID="$(psql_query "insert into public.letters (display_name, text, moderation_status, is_used, is_blocked) values ('safe-e2e', '最近の配信も楽しみにしています。', 'pending', false, false) returning id;" | head -n 1)"
 
 DAILY_3="$(run_daily_generate_with_retry)"
-assert_contains "daily-generate pipeline #3" "$DAILY_3" "\"ok\":true"
+if grep -Fq "\"ok\":true" <<<"$DAILY_3"; then
+  pass "daily-generate pipeline #3"
+else
+  print_daily_failure_diagnostics "daily-generate pipeline #3" "$DAILY_3"
+  fail "daily-generate pipeline #3"
+fi
 assert_contains "daily-generate uses unblocked letter" "$DAILY_3" "$SAFE_LETTER_ID"
 assert_not_contains "daily-generate does not use blocked letter" "$DAILY_3" "$BLOCKED_LETTER_ID"
 
