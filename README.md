@@ -38,14 +38,16 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - 採用済み `letters` は `is_used=true` に更新される
 
 ## Jobs Orchestration
-- Functions: `daily-generate`, `plan-topics`, `write-script-ja`, `expand-script-ja`, `tts-ja`, `adapt-script-en`, `tts-en`, `publish`
+- Functions: `daily-generate`, `plan-topics`, `write-script-ja`, `expand-script-ja`, `script-polish-ja`, `tts-ja`, `adapt-script-en`, `tts-en`, `publish`
 - `daily-generate` は上記を spec 順で実行する orchestrator
 - `publish` は `episodes.status='published'` と `published_at=now()` を必ず設定
 - `plan-topics` は `editor-in-chief` ロールで `trend digest` を作成し、`main_topics(3) / quick_news(4) / small_talk(2) / letters / ending` を返す
 - `trend digest` は HTML/URL を除去し、`cleanedTitle / whatHappened / whyItMatters / toneTag` を生成して planning に利用する
 - `write-script-ja` は script 生成後に `scriptNormalize`（HTML除去/URL除去/placeholder除去/重複行削減）を適用し、`ENABLE_SCRIPT_EDITOR=1` のとき OpenAI 後編集を実施する
 - `write-script-ja` は `EPISODE_DEEPDIVE_COUNT` / `EPISODE_QUICKNEWS_COUNT` / `EPISODE_TOTAL_TARGET_CHARS` に基づいて構成を決定し、最終台本を `ttsPreprocess` + `scriptNormalize` 後に quality gate で検証する
-- `daily-generate` は `write-script-ja` 後に再度 `scriptNormalize` と `scriptQualityCheck` を実施し、`<` / `http` / `&#` / `数式` / 重複率 / 文字数を gate する
+- `script-polish-ja` は `write-script-ja` のJA台本を LLM で放送品質に再構成し、重複/placeholder/URL混入を抑制して `episodes.script` を更新する
+- `daily-generate` は `write-script-ja` 後に `ENABLE_SCRIPT_POLISH !== 'false'` の場合 `script-polish-ja` を実行し、その後に `scriptNormalize` と `scriptQualityCheck` で `"<" / "http" / "&#" / "数式" / 重複率 / 文字数` を gate する
+- `SKIP_TTS=true`（default）では `tts-ja` / `tts-en`（および downstream publish）をスキップし、台本生成までを検証できる
 - `adapt-script-en` は script 生成後に `normalizeForSpeech` を適用し、URL を script から除去する（元URLは `trend_items.url` に保持）
 - `daily-generate` は trend category を hard:soft:entertainment = 4:4:3 目標で選定し、`entertainment_bonus` で娯楽カテゴリを加点する
 - `daily-generate` の script gate は `SCRIPT_MIN_CHARS_JA` / `SCRIPT_TARGET_CHARS_JA` / `SCRIPT_MAX_CHARS_JA`（＋`TARGET_SCRIPT_ESTIMATED_CHARS_PER_MIN`）で調整可能。`SCRIPT_MIN_CHARS_JA` 未設定時は `TARGET_SCRIPT_MIN_CHARS` を後方互換で参照
@@ -165,6 +167,9 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
   - `EPISODE_TOTAL_TARGET_CHARS`（default: `2800`）
   - `ENABLE_SCRIPT_EDITOR=1`（`write-script-ja` で OpenAI 後編集を有効化）
   - `SCRIPT_EDITOR_MODEL`（default: `gpt-4o-mini`）
+  - `ENABLE_SCRIPT_POLISH=true`（`daily-generate` で `script-polish-ja` を有効化。`false` で無効）
+  - `SCRIPT_POLISH_MODEL`（default: `gpt-4o-mini`）
+  - `SKIP_TTS=true`（default。`true` で `tts-ja` / `tts-en` と publish をスキップ）
   - `TARGET_SCRIPT_MIN_CHARS`（後方互換。`SCRIPT_MIN_CHARS_JA` 未設定時に参照）
   - `TARGET_SCRIPT_ESTIMATED_CHARS_PER_MIN`（default: `300`）
   - `TARGET_SCRIPT_DURATION_SEC`（任意。未指定時は `SCRIPT_TARGET_CHARS_JA` と係数から算出）
@@ -191,11 +196,12 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 ### Local Verification (script gate)
 1. `supabase db reset --local --yes`
 2. `curl -sS -X POST http://127.0.0.1:54321/functions/v1/ingest_trends_rss -H "Content-Type: application/json" -d '{"mockFeeds":[{"sourceKey":"local-rss","name":"Local RSS","url":"https://local.invalid/rss","weight":1.3,"category":"tech","xml":"<rss><channel><item><title>Topic A</title><link>https://example.com/a</link><description>A summary</description></item></channel></rss>"}]}'`
-3. `curl -sS -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H "Content-Type: application/json" -d '{"episodeDate":"2026-02-19"}'` を実行し、`outputs.plan/writeJa/ttsJa/adaptEn/ttsEn/publish` が揃うことを確認
-4. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -At -F $'\t' -c "select lang,status,coalesce(audio_url,'') from public.episodes where lang in ('ja','en') order by published_at desc nulls last, created_at desc limit 2;"` で `ja/en` とも `status=published` かつ `audio_url` 非空を確認
+3. `curl -sS -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H "Content-Type: application/json" -d '{"episodeDate":"2026-02-19"}'` を実行し、`outputs.plan/writeJa/scriptPolish` が揃うことを確認（`SKIP_TTS=false` の場合は `ttsJa/adaptEn/ttsEn/publish` も確認）
+4. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -At -F $'\t' -c "select lang,status,coalesce(audio_url,'') from public.episodes where lang in ('ja','en') order by published_at desc nulls last, created_at desc limit 2;"` で `SKIP_TTS=true` では `audio_url` が空のまま、`SKIP_TTS=false` では `ja/en` とも `status=published` かつ `audio_url` 非空を確認
 
 ### Troubleshooting
 - `daily-generate` が `step_failed:tts-ja` で止まる:
+  - `SKIP_TTS=false` を設定している場合にのみ発生するため、台本確認だけなら `SKIP_TTS=true` を維持する
   - `npm run dev -- --hostname 0.0.0.0` を起動し、`/api/tts` を Edge Function から到達可能にする
   - `.env.local` で `TTS_API_URL` / `LOCAL_TTS_BASE_URL` がローカル開発 URL を指しているか確認する
 - script quality で `script_quality_failed:*`:
