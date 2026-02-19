@@ -134,15 +134,9 @@ type ScriptNormalizationAudit = {
   changed: boolean;
 };
 
-const orderedSteps = [
-  "plan-topics",
-  "write-script-ja",
-  "expand-script-ja",
-  "tts-ja",
-  "adapt-script-en",
-  "tts-en",
-  "publish"
-] as const;
+const BASE_ORDERED_STEPS = ["plan-topics", "write-script-ja", "expand-script-ja"] as const;
+const POLISH_STEP = "script-polish-ja";
+const POST_SCRIPT_ORDERED_STEPS = ["tts-ja", "adapt-script-en", "tts-en", "publish"] as const;
 
 const MAX_TREND_ITEMS = 30;
 const MAX_LETTERS = 2;
@@ -289,6 +283,28 @@ const getFunctionsBaseUrl = (requestUrl: string): string => {
 };
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+const TRUE_ENV_VALUES = new Set(["1", "true", "yes", "on"]);
+const FALSE_ENV_VALUES = new Set(["0", "false", "no", "off"]);
+
+const resolveBooleanEnv = (name: string, defaultValue: boolean): boolean => {
+  const raw = Deno.env.get(name);
+  if (raw === undefined) {
+    return defaultValue;
+  }
+
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized) {
+    return defaultValue;
+  }
+  if (TRUE_ENV_VALUES.has(normalized)) {
+    return true;
+  }
+  if (FALSE_ENV_VALUES.has(normalized)) {
+    return false;
+  }
+  return defaultValue;
+};
 
 const invokeStep = async (
   functionsBaseUrl: string,
@@ -879,6 +895,11 @@ const readNormalizationMetric = (source: InvokeResult, key: string): number => {
   return Math.max(0, Math.round(value));
 };
 
+const readBooleanField = (source: InvokeResult, key: string): boolean => {
+  const value = source[key];
+  return typeof value === "boolean" ? value : false;
+};
+
 const readPlanTrendItems = (plan: InvokeResult): TrendItem[] => {
   const items = Array.isArray(plan.trendItems) ? plan.trendItems : [];
 
@@ -952,12 +973,21 @@ Deno.serve(async (req) => {
   const episodeDate = body.episodeDate ?? new Date().toISOString().slice(0, 10);
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
   const scriptGateConfig = resolveScriptGateConfig();
+  const scriptPolishEnabled = resolveBooleanEnv("ENABLE_SCRIPT_POLISH", true);
+  const skipTts = resolveBooleanEnv("SKIP_TTS", true);
+  const orderedSteps = [
+    ...BASE_ORDERED_STEPS,
+    ...(scriptPolishEnabled ? [POLISH_STEP] : []),
+    ...(!skipTts ? POST_SCRIPT_ORDERED_STEPS : [])
+  ];
 
   const runId = await startRun("daily-generate", {
     step: "daily-generate",
     episodeDate,
     idempotencyKey,
     orderedSteps,
+    scriptPolishEnabled,
+    skipTts,
     scriptGate: scriptGateConfig
   });
 
@@ -1059,6 +1089,38 @@ Deno.serve(async (req) => {
       }
     }
 
+    const scriptPolish = scriptPolishEnabled
+      ? await invokeStep(functionsBaseUrl, "script-polish-ja", {
+          episodeDate,
+          idempotencyKey,
+          episodeId: writeJaEpisodeId
+        })
+      : ({
+          ok: true,
+          skipped: true,
+          reason: "disabled_by_env",
+          episodeId: writeJaEpisodeId
+        } satisfies InvokeResult);
+    if (scriptPolishEnabled) {
+      actualChars =
+        readNumberField(scriptPolish, ["chars_after", "chars_actual", "scriptChars"]) ??
+        await loadEpisodeScriptChars(writeJaEpisodeId);
+      estimatedDurationSec =
+        readNumberField(scriptPolish, ["estimatedDurationSec"]) ??
+        estimateScriptDurationSec(actualChars, scriptGateConfig.charsPerMin);
+      sectionsCharsBreakdown =
+        readRecordField(scriptPolish, "sections_chars_breakdown") ?? sectionsCharsBreakdown;
+      normalizationAudit = {
+        removedHtmlCount:
+          normalizationAudit.removedHtmlCount + readNormalizationMetric(scriptPolish, "removed_html_count"),
+        removedUrlCount:
+          normalizationAudit.removedUrlCount + readNormalizationMetric(scriptPolish, "removed_url_count"),
+        dedupedLinesCount:
+          normalizationAudit.dedupedLinesCount + readNormalizationMetric(scriptPolish, "deduped_lines_count"),
+        changed: normalizationAudit.changed || readBooleanField(scriptPolish, "polish_applied")
+      };
+    }
+
     const normalizedJaScript = await applyNormalizationToEpisodeScript(writeJaEpisodeId);
     normalizationAudit = {
       removedHtmlCount: normalizationAudit.removedHtmlCount + normalizedJaScript.metrics.removedHtmlCount,
@@ -1100,9 +1162,10 @@ Deno.serve(async (req) => {
         violations: jaQuality.violations
       }
     };
+    const scriptValidationStep = scriptPolishEnabled ? "script-polish-ja" : "write-script-ja";
     if (actualChars < scriptGateConfig.minChars) {
       failureDetails = {
-        failedStep: "write-script-ja",
+        failedStep: scriptValidationStep,
         scriptGate: scriptGateDiagnostic,
         scriptMetrics
       };
@@ -1110,7 +1173,7 @@ Deno.serve(async (req) => {
     }
     if (actualChars > scriptGateConfig.maxChars) {
       failureDetails = {
-        failedStep: "write-script-ja",
+        failedStep: scriptValidationStep,
         scriptGate: scriptGateDiagnostic,
         scriptMetrics
       };
@@ -1118,7 +1181,7 @@ Deno.serve(async (req) => {
     }
     if (!jaQuality.ok) {
       failureDetails = {
-        failedStep: "write-script-ja",
+        failedStep: scriptValidationStep,
         scriptGate: scriptGateDiagnostic,
         scriptMetrics
       };
@@ -1126,42 +1189,65 @@ Deno.serve(async (req) => {
     }
     await assertNoUrlsInEpisodeScript(writeJaEpisodeId);
 
-    const ttsJa = await invokeStep(functionsBaseUrl, "tts-ja", {
-      episodeDate,
-      idempotencyKey,
-      episodeId: writeJaEpisodeId
-    });
+    const skipResult = {
+      ok: true,
+      skipped: true,
+      reason: "skip_tts_enabled"
+    } satisfies InvokeResult;
 
-    const adaptEn = await invokeStep(functionsBaseUrl, "adapt-script-en", {
-      episodeDate,
-      idempotencyKey,
-      masterEpisodeId: writeJaEpisodeId
-    });
-    const adaptEnEpisodeId = extractEpisodeId(adaptEn, "adapt-script-en");
-    await assertNoUrlsInEpisodeScript(adaptEnEpisodeId);
+    let ttsJa: InvokeResult;
+    let adaptEn: InvokeResult;
+    let ttsEn: InvokeResult;
+    let publish: InvokeResult;
+    let lettersMarkedUsed = false;
 
-    const ttsEn = await invokeStep(functionsBaseUrl, "tts-en", {
-      episodeDate,
-      idempotencyKey,
-      episodeId: adaptEnEpisodeId
-    });
+    if (skipTts) {
+      ttsJa = { ...skipResult, episodeId: writeJaEpisodeId };
+      adaptEn = skipResult;
+      ttsEn = skipResult;
+      publish = skipResult;
+    } else {
+      ttsJa = await invokeStep(functionsBaseUrl, "tts-ja", {
+        episodeDate,
+        idempotencyKey,
+        episodeId: writeJaEpisodeId
+      });
 
-    const publish = await invokeStep(functionsBaseUrl, "publish", {
-      episodeDate,
-      idempotencyKey,
-      episodeIdJa: ttsJa.episodeId,
-      episodeIdEn: ttsEn.episodeId
-    });
+      adaptEn = await invokeStep(functionsBaseUrl, "adapt-script-en", {
+        episodeDate,
+        idempotencyKey,
+        masterEpisodeId: writeJaEpisodeId
+      });
+      const adaptEnEpisodeId = extractEpisodeId(adaptEn, "adapt-script-en");
+      await assertNoUrlsInEpisodeScript(adaptEnEpisodeId);
 
-    await markLettersAsUsed(letters);
+      ttsEn = await invokeStep(functionsBaseUrl, "tts-en", {
+        episodeDate,
+        idempotencyKey,
+        episodeId: adaptEnEpisodeId
+      });
+
+      publish = await invokeStep(functionsBaseUrl, "publish", {
+        episodeDate,
+        idempotencyKey,
+        episodeIdJa: ttsJa.episodeId,
+        episodeIdEn: ttsEn.episodeId
+      });
+
+      await markLettersAsUsed(letters);
+      lettersMarkedUsed = true;
+    }
 
     await finishRun(runId, {
       step: "daily-generate",
       episodeDate,
       idempotencyKey,
       orderedSteps,
+      scriptPolishEnabled,
+      skipTts,
       trendItems,
       lettersCount: letters.length,
+      lettersMarkedUsed,
       usedLetterIds: letters.map((letter) => letter.id),
       blockedLetterIds: blockedIds,
       usedTrendFallback,
@@ -1182,6 +1268,7 @@ Deno.serve(async (req) => {
         plan,
         writeJa,
         expandJa: expandJaAttempts,
+        scriptPolish,
         ttsJa,
         adaptEn,
         ttsEn,
@@ -1194,8 +1281,11 @@ Deno.serve(async (req) => {
       runId,
       episodeDate,
       idempotencyKey,
+      scriptPolishEnabled,
+      skipTts,
       trendItems,
       lettersCount: letters.length,
+      lettersMarkedUsed,
       usedLetterIds: letters.map((letter) => letter.id),
       blockedLetterIds: blockedIds,
       usedTrendFallback,
@@ -1216,6 +1306,7 @@ Deno.serve(async (req) => {
         plan,
         writeJa,
         expandJa: expandJaAttempts,
+        scriptPolish,
         ttsJa,
         adaptEn,
         ttsEn,
@@ -1229,6 +1320,8 @@ Deno.serve(async (req) => {
       episodeDate,
       idempotencyKey,
       orderedSteps,
+      scriptPolishEnabled,
+      skipTts,
       scriptGate: scriptGateConfig,
       ...digestMetricsForFailure,
       ...(failureDetails ?? {})
