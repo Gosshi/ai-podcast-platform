@@ -15,6 +15,13 @@ type RequestBody = {
 };
 
 const MARKERS = [
+  "OP",
+  "HEADLINE",
+  "DEEPDIVE 1",
+  "DEEPDIVE 2",
+  "DEEPDIVE 3",
+  "LETTERS",
+  "OUTRO",
   "OPENING",
   "MAIN TOPIC 1",
   "MAIN TOPIC 2",
@@ -105,11 +112,26 @@ const extractMainTopicBlock = (text: string, index: number): MainTopicBlock => {
   const source = readField(text, "参照媒体") ?? "Japanese media";
   const intro = readField(text, "導入") ?? "We open by framing the key question and scope.";
   const background =
-    readField(text, "背景") ?? "We review the timeline and assumptions behind the latest update.";
+    readField(text, "背景") ??
+    readField(text, "要点1") ??
+    "We review the timeline and assumptions behind the latest update.";
   const impact = readField(text, "影響") ?? "We break down likely operational and user impact.";
+  const point2 = readField(text, "要点2");
+  const point3 = readField(text, "要点3");
   const supplement =
-    readField(text, "補足") ?? "We include uncertainty and alternative interpretations.";
-  return { title, category, source, intro, background, impact, supplement };
+    readField(text, "補足") ??
+    readField(text, "一言ツッコミ") ??
+    readField(text, "まとめ") ??
+    "We include uncertainty and alternative interpretations.";
+  return {
+    title,
+    category,
+    source,
+    intro,
+    background,
+    impact: point2 || point3 ? [impact, point2, point3].filter(Boolean).join(" ") : impact,
+    supplement
+  };
 };
 
 const extractLegacyTrendBlock = (text: string, index: number): MainTopicBlock => {
@@ -137,8 +159,8 @@ const parseQuickNewsLines = (text: string): string[] => {
   return text
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter((line) => /^-\s*クイックニュース\d*/.test(line))
-    .map((line) => line.replace(/^-\s*クイックニュース\d*（30秒想定）:\s*/, "").trim())
+    .filter((line) => /^-\s*(クイックニュース|QuickNews)\s*\d*/i.test(line))
+    .map((line) => line.replace(/^-\s*(クイックニュース|QuickNews)\s*\d*(（[^）]*）)?\s*:?\s*/i, "").trim())
     .filter((line) => line.length > 0);
 };
 
@@ -152,11 +174,15 @@ const parseSmallTalkLines = (text: string): string[] => {
 };
 
 const extractLetters = (lettersSection: string): { name: string; text: string }[] => {
-  if (!lettersSection || lettersSection.includes("今日はお便りはお休み")) {
+  if (
+    !lettersSection ||
+    lettersSection.includes("今日はお便りはお休み") ||
+    lettersSection.includes("お便りは0通")
+  ) {
     return [];
   }
 
-  return lettersSection
+  const oldFormat = lettersSection
     .split(/\r?\n/)
     .map((line) => line.trim())
     .map((line) => line.match(/^- お便り\d*（(.+?)）:\s*(.+)$/))
@@ -165,6 +191,29 @@ const extractLetters = (lettersSection: string): { name: string; text: string }[
       name: match[1].trim(),
       text: match[2].trim()
     }));
+
+  if (oldFormat.length > 0) {
+    return oldFormat;
+  }
+
+  const lines = lettersSection.split(/\r?\n/).map((line) => line.trim());
+  const result: { name: string; text: string }[] = [];
+  let currentName = "Listener";
+
+  for (const line of lines) {
+    const nameMatch = line.match(/^感謝:\s*(.+?)さん/);
+    if (nameMatch) {
+      currentName = nameMatch[1].trim();
+      continue;
+    }
+
+    const bodyMatch = line.match(/^本文要約:\s*(.+)$/);
+    if (bodyMatch) {
+      result.push({ name: currentName, text: bodyMatch[1].trim() });
+    }
+  }
+
+  return result;
 };
 
 const extractSourceRows = (sourcesSection: string): string[] => {
@@ -175,24 +224,31 @@ const extractSourceRows = (sourcesSection: string): string[] => {
 };
 
 const buildEnglishScript = (title: string, sections: Record<Marker, string>): string => {
+  const deepDiveSections = [1, 2, 3]
+    .map((index) => sections[`DEEPDIVE ${index}` as Marker])
+    .filter((section) => section.length > 0)
+    .map((section, index) => extractMainTopicBlock(section, index + 1));
+
   const mainTopicSections = [1, 2, 3]
     .map((index) => sections[`MAIN TOPIC ${index}` as Marker])
     .filter((section) => section.length > 0)
     .map((section, index) => extractMainTopicBlock(section, index + 1));
 
   const mainTopics =
-    mainTopicSections.length > 0
+    deepDiveSections.length > 0
+      ? deepDiveSections
+      : mainTopicSections.length > 0
       ? mainTopicSections
       : [1, 2, 3].map((index) => extractLegacyTrendBlock(sections[`TREND ${index}` as Marker], index));
 
   const quickNews = parseQuickNewsLines(sections["QUICK NEWS"]);
   const smallTalk = parseSmallTalkLines(sections["SMALL TALK"]);
-  const letters = extractLetters(sections["LETTERS CORNER"]);
+  const letters = extractLetters(sections.LETTERS || sections["LETTERS CORNER"]);
   const sourceRows = extractSourceRows(sections.SOURCES);
 
   const opening = `[OPENING]
 Welcome back. This English edition follows the editor-in-chief format:
-three main topics, four quick news briefs, two small-talk segments, letters, and a short ending.
+three main topics, quick news briefs, two small-talk segments, letters, and a short ending.
 Today's title is "${title}".`;
 
   const mainTopicBlocks = mainTopics.map((topic, index) => {
@@ -221,7 +277,7 @@ ${
   quickNews.length === 0
     ? "- No quick news items in this run."
     : quickNews
-        .slice(0, 4)
+        .slice(0, 8)
         .map((line, index) => `- Quick news ${index + 1} (about 30 seconds): ${toEnglishSentence(line, "Update in progress.")}`)
         .join("\n")
 }`;

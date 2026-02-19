@@ -116,6 +116,8 @@ type SelectedTrendAuditItem = {
 
 type ScriptGateDiagnostic = {
   minChars: number;
+  targetChars: number;
+  maxChars: number;
   actualChars: number;
   estimatedSec: number;
   targetSec: number;
@@ -125,6 +127,7 @@ type ScriptGateDiagnostic = {
 const orderedSteps = [
   "plan-topics",
   "write-script-ja",
+  "expand-script-ja",
   "tts-ja",
   "adapt-script-en",
   "tts-en",
@@ -135,6 +138,7 @@ const MAX_TREND_ITEMS = 30;
 const MAX_LETTERS = 2;
 const MAX_LETTER_CANDIDATES = 20;
 const MAX_LETTER_SUMMARY_CHARS = 80;
+const MAX_EXPAND_ATTEMPTS = 2;
 
 const TREND_MIX_TARGET = {
   hard: 4,
@@ -797,6 +801,28 @@ const toRecord = (value: unknown): Record<string, unknown> | null => {
   return value as Record<string, unknown>;
 };
 
+const readNumberField = (source: InvokeResult, keys: string[]): number | null => {
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return Math.max(0, Math.round(value));
+    }
+  }
+  return null;
+};
+
+const readRecordField = (source: InvokeResult, key: string): Record<string, unknown> | null => {
+  const value = source[key];
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+};
+
+const readItemsUsedCount = (source: InvokeResult): Record<string, unknown> => {
+  return readRecordField(source, "items_used_count") ?? {};
+};
+
 const readPlanTrendItems = (plan: InvokeResult): TrendItem[] => {
   const items = Array.isArray(plan.trendItems) ? plan.trendItems : [];
 
@@ -913,27 +939,74 @@ Deno.serve(async (req) => {
       letters
     });
     const writeJaEpisodeId = extractEpisodeId(writeJa, "write-script-ja");
-    const actualChars =
-      typeof writeJa.scriptChars === "number" && Number.isFinite(writeJa.scriptChars)
-        ? Math.max(0, Math.round(writeJa.scriptChars))
-        : await loadEpisodeScriptChars(writeJaEpisodeId);
-    const estimatedDurationSec =
-      typeof writeJa.estimatedDurationSec === "number" && Number.isFinite(writeJa.estimatedDurationSec)
-        ? Math.max(0, Math.round(writeJa.estimatedDurationSec))
-        : estimateScriptDurationSec(actualChars, scriptGateConfig.charsPerMin);
+    const expandJaAttempts: InvokeResult[] = [];
+    let actualChars =
+      readNumberField(writeJa, ["chars_actual", "scriptChars"]) ??
+      await loadEpisodeScriptChars(writeJaEpisodeId);
+    let estimatedDurationSec =
+      readNumberField(writeJa, ["estimatedDurationSec"]) ??
+      estimateScriptDurationSec(actualChars, scriptGateConfig.charsPerMin);
+    let sectionsCharsBreakdown = readRecordField(writeJa, "sections_chars_breakdown") ?? {};
+    let itemsUsedCount = readItemsUsedCount(writeJa);
+    let expandAttempted = 0;
+
+    while (actualChars < scriptGateConfig.minChars && expandAttempted < MAX_EXPAND_ATTEMPTS) {
+      expandAttempted += 1;
+      const expanded = await invokeStep(functionsBaseUrl, "expand-script-ja", {
+        episodeDate,
+        idempotencyKey,
+        episodeId: writeJaEpisodeId,
+        attempt: expandAttempted,
+        charsShortage: scriptGateConfig.minChars - actualChars
+      });
+      expandJaAttempts.push(expanded);
+      actualChars =
+        readNumberField(expanded, ["chars_actual", "scriptChars"]) ??
+        await loadEpisodeScriptChars(writeJaEpisodeId);
+      estimatedDurationSec =
+        readNumberField(expanded, ["estimatedDurationSec"]) ??
+        estimateScriptDurationSec(actualChars, scriptGateConfig.charsPerMin);
+      sectionsCharsBreakdown = readRecordField(expanded, "sections_chars_breakdown") ?? sectionsCharsBreakdown;
+      const expandedItemsUsed = readItemsUsedCount(expanded);
+      if (Object.keys(expandedItemsUsed).length > 0) {
+        itemsUsedCount = expandedItemsUsed;
+      }
+    }
+
     const scriptGateDiagnostic: ScriptGateDiagnostic = {
       minChars: scriptGateConfig.minChars,
+      targetChars: scriptGateConfig.targetChars,
+      maxChars: scriptGateConfig.maxChars,
       actualChars,
       estimatedSec: estimatedDurationSec,
       targetSec: scriptGateConfig.targetSec,
       rule: scriptGateConfig.rule
     };
-    if (actualChars < scriptGateConfig.minChars || estimatedDurationSec < scriptGateConfig.targetSec) {
+    const scriptMetrics = {
+      chars_ja: actualChars,
+      chars_actual: actualChars,
+      chars_min: scriptGateConfig.minChars,
+      chars_target: scriptGateConfig.targetChars,
+      chars_max: scriptGateConfig.maxChars,
+      sections_chars_breakdown: sectionsCharsBreakdown,
+      expand_attempted: expandAttempted,
+      items_used_count: itemsUsedCount
+    };
+    if (actualChars < scriptGateConfig.minChars) {
       failureDetails = {
         failedStep: "write-script-ja",
-        scriptGate: scriptGateDiagnostic
+        scriptGate: scriptGateDiagnostic,
+        scriptMetrics
       };
       throw new Error("script_too_short");
+    }
+    if (actualChars > scriptGateConfig.maxChars) {
+      failureDetails = {
+        failedStep: "write-script-ja",
+        scriptGate: scriptGateDiagnostic,
+        scriptMetrics
+      };
+      throw new Error("script_too_long");
     }
     await assertNoUrlsInEpisodeScript(writeJaEpisodeId);
 
@@ -980,6 +1053,7 @@ Deno.serve(async (req) => {
       trendMix: balancedTrends.audit,
       entertainmentTopicCount: entertainmentCount,
       selectedTrendItems,
+      scriptMetrics,
       estimatedDurationSec,
       scriptGate: {
         ...scriptGateDiagnostic,
@@ -988,6 +1062,7 @@ Deno.serve(async (req) => {
       outputs: {
         plan,
         writeJa,
+        expandJa: expandJaAttempts,
         ttsJa,
         adaptEn,
         ttsEn,
@@ -1009,6 +1084,7 @@ Deno.serve(async (req) => {
       trendMix: balancedTrends.audit,
       entertainmentTopicCount: entertainmentCount,
       selectedTrendItems,
+      scriptMetrics,
       estimatedDurationSec,
       scriptGate: {
         ...scriptGateDiagnostic,
@@ -1017,6 +1093,7 @@ Deno.serve(async (req) => {
       outputs: {
         plan,
         writeJa,
+        expandJa: expandJaAttempts,
         ttsJa,
         adaptEn,
         ttsEn,
