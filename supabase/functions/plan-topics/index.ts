@@ -2,10 +2,27 @@ import { failRun, finishRun, startRun } from "../_shared/jobRuns.ts";
 import { jsonResponse } from "../_shared/http.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { parseCsvList } from "../_shared/trendsConfig.ts";
+import {
+  PROGRAM_MAIN_TOPICS_COUNT,
+  PROGRAM_QUICK_NEWS_COUNT,
+  PROGRAM_SMALL_TALK_COUNT,
+  type ProgramPlan
+} from "../_shared/programPlan.ts";
 
 type RequestBody = {
   episodeDate?: string;
   idempotencyKey?: string;
+  trendCandidates?: {
+    id?: string;
+    title?: string;
+    url?: string;
+    summary?: string;
+    source?: string;
+    category?: string;
+    score?: number;
+    publishedAt?: string | null;
+    clusterSize?: number;
+  }[];
 };
 
 type TrendCandidateRow = {
@@ -36,6 +53,7 @@ type PlannedTrendItem = {
   url: string;
   summary: string;
   source: string;
+  category: string;
   score: number;
   publishedAt: string | null;
   clusterSize: number;
@@ -49,11 +67,12 @@ type Topic = {
 const MIN_LOOKBACK_HOURS = 24;
 const MAX_LOOKBACK_HOURS = 48;
 const DEFAULT_LOOKBACK_HOURS = 36;
-const MIN_TOP_N = 3;
-const MAX_TOP_N = 5;
-const DEFAULT_TOP_N = 5;
-const MIN_TREND_BULLETS = 3;
-const MAX_TREND_BULLETS = 5;
+const MIN_TOP_N = 9;
+const MAX_TOP_N = 20;
+const DEFAULT_TOP_N = 10;
+
+const PROGRAM_REQUIRED_TRENDS =
+  PROGRAM_MAIN_TOPICS_COUNT + PROGRAM_QUICK_NEWS_COUNT + PROGRAM_SMALL_TALK_COUNT;
 
 const DEFAULT_EXCLUDED_SOURCE_CATEGORIES = [
   "investment",
@@ -78,39 +97,53 @@ const DEFAULT_EXCLUDED_KEYWORDS = [
   "eth"
 ];
 
-const fallbackTopic = (episodeDate: string): Topic => ({
-  title: `Daily Topic ${episodeDate}`,
-  bullets: [
-    "トレンド要約1: 公開情報の更新を確認中です。",
-    "トレンド要約2: 継続観測が必要な論点を整理します。",
-    "トレンド要約3: 主要トピックの背景を短く振り返ります。",
-    "お便りコーナー: リスナーのお便りを紹介します。",
-    "次回予告: 次回の深掘り候補を案内します。"
-  ]
-});
-
-const fallbackTrendItems = [
+const fallbackTrendItems: PlannedTrendItem[] = [
   {
-    title: "Fallback: Product update cadence",
-    url: "https://example.com/fallback/product-update",
-    summary: "Product roadmap updates were shared in public channels.",
-    source: "example.com"
+    id: "fallback-main-1",
+    title: "Fallback: Public policy update",
+    url: "https://example.com/fallback/policy",
+    summary: "Policy and governance updates were discussed in major media.",
+    source: "example.com",
+    category: "news",
+    score: 1,
+    publishedAt: null,
+    clusterSize: 1
   },
   {
-    title: "Fallback: Reliability improvements",
-    url: "https://example.com/fallback/reliability",
-    summary: "Reliability and operations improvements were highlighted.",
-    source: "example.com"
+    id: "fallback-main-2",
+    title: "Fallback: Technology product move",
+    url: "https://example.com/fallback/product",
+    summary: "A technology product roadmap update triggered broad discussion.",
+    source: "example.com",
+    category: "tech",
+    score: 1,
+    publishedAt: null,
+    clusterSize: 1
   },
   {
-    title: "Fallback: User feedback highlights",
-    url: "https://example.com/fallback/user-feedback",
-    summary: "Recent user feedback showed recurring product requests.",
-    source: "example.com"
+    id: "fallback-main-3",
+    title: "Fallback: Consumer trend signal",
+    url: "https://example.com/fallback/consumer",
+    summary: "Consumer behavior changes appeared in multiple public reports.",
+    source: "example.com",
+    category: "lifestyle",
+    score: 1,
+    publishedAt: null,
+    clusterSize: 1
   }
-] as const;
+];
 
 const normalizeToken = (value: string): string => value.trim().toLowerCase();
+
+const compactText = (value: string): string => {
+  return value.replace(/\s+/g, " ").trim();
+};
+
+const summarizeText = (value: string, maxChars: number): string => {
+  const normalized = compactText(value);
+  if (normalized.length <= maxChars) return normalized;
+  return `${normalized.slice(0, maxChars).trimEnd()}…`;
+};
 
 const resolveCategory = (row: TrendCandidateRow): string => {
   if (Array.isArray(row.trend_sources)) {
@@ -143,22 +176,39 @@ const resolveLookbackHours = (): number => {
 };
 
 const resolveTopN = (): number => {
-  const raw = Number.parseInt(
-    Deno.env.get("PLAN_TREND_TOP_N") ?? `${DEFAULT_TOP_N}`,
-    10
-  );
+  const raw = Number.parseInt(Deno.env.get("PLAN_TREND_TOP_N") ?? `${DEFAULT_TOP_N}`, 10);
   if (!Number.isFinite(raw)) return DEFAULT_TOP_N;
   return clamp(raw, MIN_TOP_N, MAX_TOP_N);
 };
 
-const compactText = (value: string): string => {
-  return value.replace(/\s+/g, " ").trim();
-};
+const normalizeProvidedTrends = (
+  trendCandidates: RequestBody["trendCandidates"]
+): PlannedTrendItem[] => {
+  return (trendCandidates ?? [])
+    .map((item, index) => {
+      const title = compactText(item?.title ?? "");
+      if (!title) return null;
 
-const summarizeBullet = (value: string, maxChars = 80): string => {
-  const compact = compactText(value);
-  if (compact.length <= maxChars) return compact;
-  return `${compact.slice(0, maxChars).trimEnd()}…`;
+      const summary =
+        compactText(item?.summary ?? "") ||
+        `${title} was highlighted in recent public reports and discussions.`;
+      const url = compactText(item?.url ?? "");
+      return {
+        id: compactText(item?.id ?? "") || `provided-${index + 1}`,
+        title,
+        url,
+        summary,
+        source: compactText(item?.source ?? "") || "unknown",
+        category: compactText(item?.category ?? "") || "general",
+        score: typeof item?.score === "number" && Number.isFinite(item.score) ? item.score : 0,
+        publishedAt: typeof item?.publishedAt === "string" ? item.publishedAt : null,
+        clusterSize:
+          typeof item?.clusterSize === "number" && Number.isFinite(item.clusterSize)
+            ? Math.max(1, Math.floor(item.clusterSize))
+            : 1
+      } satisfies PlannedTrendItem;
+    })
+    .filter((item): item is PlannedTrendItem => item !== null);
 };
 
 const loadSelectedTrends = async (
@@ -185,7 +235,7 @@ const loadSelectedTrends = async (
     .eq("is_cluster_representative", true)
     .order("score", { ascending: false })
     .order("published_at", { ascending: false })
-    .limit(200);
+    .limit(250);
 
   if (error) throw error;
 
@@ -212,6 +262,7 @@ const loadSelectedTrends = async (
         compactText(row.summary ?? "") ||
         `${compactText(row.title as string)} was highlighted in recent public reports and discussions.`,
       source: resolveSourceName(row),
+      category: compactText(resolveCategory(row)),
       score: row.score as number,
       publishedAt: row.published_at,
       clusterSize: Math.max(row.cluster_size ?? 1, 1)
@@ -225,34 +276,84 @@ const loadSelectedTrends = async (
   return selected.slice(0, topN);
 };
 
-const buildTopicFromTrends = (episodeDate: string, trendItems: PlannedTrendItem[]): Topic => {
-  const main = trendItems[0];
-  if (!main) {
-    return fallbackTopic(episodeDate);
+const withFallbackTrends = (items: PlannedTrendItem[]): PlannedTrendItem[] => {
+  if (items.length >= PROGRAM_REQUIRED_TRENDS) return items;
+
+  const expanded = [...items];
+  let fallbackIndex = 0;
+  while (expanded.length < PROGRAM_REQUIRED_TRENDS) {
+    const fallback = fallbackTrendItems[fallbackIndex % fallbackTrendItems.length];
+    expanded.push({
+      ...fallback,
+      id: `${fallback.id}-${fallbackIndex + 1}`
+    });
+    fallbackIndex += 1;
   }
+  return expanded;
+};
 
-  const subTitles = trendItems
-    .slice(1, 3)
-    .map((item) => summarizeBullet(item.title, 28))
-    .filter((value) => value.length > 0);
-
-  const title =
-    subTitles.length > 0
-      ? `${summarizeBullet(main.title, 40)} を軸に読む: ${subTitles.join(" / ")}`
-      : `${summarizeBullet(main.title, 48)} の背景整理`;
-
-  const trendBulletCount = clamp(trendItems.length, MIN_TREND_BULLETS, MAX_TREND_BULLETS);
-  const trendBullets = Array.from({ length: trendBulletCount }, (_, index) => {
-    const item = trendItems[Math.min(index, trendItems.length - 1)] ?? main;
-    return `トレンド要約${index + 1}: ${summarizeBullet(item.title, 45)} - ${summarizeBullet(item.summary, 55)}`;
-  });
+const buildProgramPlan = (episodeDate: string, trendItems: PlannedTrendItem[]): ProgramPlan => {
+  const pool = withFallbackTrends(trendItems);
+  const mainItems = pool.slice(0, PROGRAM_MAIN_TOPICS_COUNT);
+  const quickNewsItems = pool.slice(
+    PROGRAM_MAIN_TOPICS_COUNT,
+    PROGRAM_MAIN_TOPICS_COUNT + PROGRAM_QUICK_NEWS_COUNT
+  );
+  const smallTalkItems = pool.slice(
+    PROGRAM_MAIN_TOPICS_COUNT + PROGRAM_QUICK_NEWS_COUNT,
+    PROGRAM_MAIN_TOPICS_COUNT + PROGRAM_QUICK_NEWS_COUNT + PROGRAM_SMALL_TALK_COUNT
+  );
 
   return {
-    title,
+    role: "editor-in-chief",
+    main_topics: mainItems.map((item, index) => ({
+      title: item.title,
+      source: item.source,
+      category: item.category || "general",
+      intro: `${index + 1}本目のメイントピックです。${item.title}を起点に、今日の論点を短期と中期の両方で整理します。`,
+      background: `背景としては、${summarizeText(item.summary, 180)}。一次情報では、関係者の発言と公開資料の更新タイミングが噛み合い、短期間で注目が拡大しました。`,
+      impact: `影響は実務面と生活面の両方に及びます。政策・プロダクト・利用者行動のどこに変化圧力がかかるのかを分解し、判断を急ぎすぎない姿勢で整理します。`,
+      supplement: `補足として、出典カテゴリは「${item.category || "general"}」、主な参照媒体は「${item.source}」です。断定よりも比較で理解するため、類似事例と反証可能性も併せて確認します。`
+    })),
+    quick_news: quickNewsItems.map((item) => ({
+      title: item.title,
+      source: item.source,
+      category: item.category || "general",
+      summary: summarizeText(item.summary, 120),
+      durationSecTarget: 30
+    })),
+    small_talk: smallTalkItems.map((item, index) => ({
+      title: item.title,
+      mood: index % 2 === 0 ? "calm" : "light",
+      talkingPoint: `${item.title}をきっかけに、リスナーの体験に引き寄せて短く会話します。${summarizeText(item.summary, 80)}`
+    })),
+    letters: {
+      host_prompt:
+        "お便りは結論を急がず、共感と次の行動が両立する返答を優先します。個別助言は避け、番組全体に有益な学びへ要約します。"
+    },
+    ending: {
+      message: `${episodeDate}回の締めです。重要論点の再確認と、次回の深掘り予告を一言で提示して終わります。`
+    }
+  };
+};
+
+const buildCompatTopic = (episodeDate: string, programPlan: ProgramPlan): Topic => {
+  const mainTitles = programPlan.main_topics
+    .map((item) => summarizeText(item.title, 28))
+    .join(" / ");
+  const quickNewsTitles = programPlan.quick_news
+    .map((item, index) => `クイック${index + 1}: ${summarizeText(item.title, 26)}`)
+    .slice(0, 2);
+
+  return {
+    title: mainTitles || `Daily Topic ${episodeDate}`,
     bullets: [
-      ...trendBullets,
-      "お便りコーナー: リスナーのお便りを紹介し、番組内で回答します。",
-      "次回予告: 今日反応が大きかった論点を次回に深掘りします。"
+      ...programPlan.main_topics.map(
+        (item, index) => `メイントピック${index + 1}: ${summarizeText(item.title, 42)}`
+      ),
+      ...quickNewsTitles,
+      "レターズ: リスナーからのメッセージに番組として回答します。",
+      "エンディング: 次回の予告と視点の持ち帰りを整理します。"
     ]
   };
 };
@@ -270,6 +371,7 @@ Deno.serve(async (req) => {
 
   const runId = await startRun("plan-topics", {
     step: "plan-topics",
+    role: "editor-in-chief",
     episodeDate,
     idempotencyKey,
     lookbackHours,
@@ -277,37 +379,35 @@ Deno.serve(async (req) => {
   });
 
   try {
-    let selectedTrendItems: PlannedTrendItem[] = [];
+    let selectedTrendItems: PlannedTrendItem[] = normalizeProvidedTrends(body.trendCandidates);
     let usedTrendFallback = false;
     let trendFallbackReason: string | null = null;
     let trendLoadError: string | null = null;
 
-    try {
-      selectedTrendItems = await loadSelectedTrends(lookbackHours, topN);
-      if (selectedTrendItems.length === 0) {
+    if (selectedTrendItems.length === 0) {
+      try {
+        selectedTrendItems = await loadSelectedTrends(lookbackHours, topN);
+        if (selectedTrendItems.length === 0) {
+          usedTrendFallback = true;
+          trendFallbackReason = "no_recent_trends";
+        }
+      } catch (error) {
         usedTrendFallback = true;
-        trendFallbackReason = "no_recent_trends";
+        trendFallbackReason = "trend_query_failed";
+        trendLoadError = error instanceof Error ? error.message : String(error);
       }
-    } catch (error) {
-      usedTrendFallback = true;
-      trendFallbackReason = "trend_query_failed";
-      trendLoadError = error instanceof Error ? error.message : String(error);
     }
 
-    const topic = usedTrendFallback
-      ? fallbackTopic(episodeDate)
-      : buildTopicFromTrends(episodeDate, selectedTrendItems);
-    const trendItemsForScript = usedTrendFallback
-      ? [...fallbackTrendItems]
-      : selectedTrendItems.map((item) => ({
-          title: item.title,
-          url: item.url,
-          summary: item.summary,
-          source: item.source
-        }));
+    const trendItemsForScript = withFallbackTrends(
+      usedTrendFallback ? [...fallbackTrendItems] : selectedTrendItems
+    );
+    const programPlan = buildProgramPlan(episodeDate, trendItemsForScript);
+    const topic = buildCompatTopic(episodeDate, programPlan);
     const selectedTrendAudit = selectedTrendItems.map((item) => ({
       id: item.id,
       title: item.title,
+      source: item.source,
+      category: item.category,
       score: item.score,
       publishedAt: item.publishedAt,
       clusterSize: item.clusterSize
@@ -315,9 +415,11 @@ Deno.serve(async (req) => {
 
     await finishRun(runId, {
       step: "plan-topics",
+      role: "editor-in-chief",
       episodeDate,
       idempotencyKey,
       topic,
+      programPlan,
       lookbackHours,
       topN,
       usedTrendFallback,
@@ -331,7 +433,9 @@ Deno.serve(async (req) => {
       ok: true,
       episodeDate,
       idempotencyKey,
+      role: "editor-in-chief",
       topic,
+      programPlan,
       usedTrendFallback,
       trendFallbackReason,
       trendItems: trendItemsForScript,
@@ -341,6 +445,7 @@ Deno.serve(async (req) => {
     const message = error instanceof Error ? error.message : String(error);
     await failRun(runId, message, {
       step: "plan-topics",
+      role: "editor-in-chief",
       episodeDate,
       idempotencyKey,
       lookbackHours,

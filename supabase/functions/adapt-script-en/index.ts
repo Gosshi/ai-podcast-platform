@@ -6,6 +6,7 @@ import {
   insertEnglishEpisode,
   updateEpisode
 } from "../_shared/episodes.ts";
+import { normalizeForSpeech } from "../_shared/speechNormalization.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -15,9 +16,14 @@ type RequestBody = {
 
 const MARKERS = [
   "OPENING",
+  "MAIN TOPIC 1",
+  "MAIN TOPIC 2",
+  "MAIN TOPIC 3",
   "TREND 1",
   "TREND 2",
   "TREND 3",
+  "QUICK NEWS",
+  "SMALL TALK",
   "LETTERS CORNER",
   "CLOSING",
   "SOURCES",
@@ -59,18 +65,90 @@ const parseSections = (script: string | null): Record<Marker, string> => {
   return sections;
 };
 
+const normalizeWhitespace = (value: string): string => value.replace(/\s+/g, " ").trim();
+
+const hasJapaneseText = (value: string): boolean => JAPANESE_CHAR_PATTERN.test(value);
+
 const readField = (text: string, label: string): string | null => {
   const match = text.match(new RegExp(`(?:^|\\n)${label}\\s*:?\\s*(.+)`));
   return match ? match[1].trim() : null;
 };
 
-const extractTrendBlock = (text: string): { topic: string; happened: string; why: string; take: string; source: string } => {
-  const topic = readField(text, "トピック") ?? "Emerging topic";
-  const happened = readField(text, "- 何が起きた") ?? "Recent updates were observed from public reports.";
-  const why = readField(text, "- なぜ話題") ?? "The story gained attention because it affects practical decisions.";
-  const take = readField(text, "- ひとこと見解") ?? "We track confirmed facts and avoid overconfident conclusions.";
-  const source = readField(text, "- 参照メディア") ?? "Source under review";
-  return { topic, happened, why, take, source };
+const toEnglishSourceLabel = (value: string): string => {
+  const normalized = normalizeWhitespace(value);
+  if (!normalized) {
+    return "Japanese media";
+  }
+  return hasJapaneseText(normalized) ? "Japanese media" : normalized;
+};
+
+const toEnglishSentence = (value: string, fallback: string): string => {
+  const normalized = normalizeWhitespace(value);
+  if (!normalized) return fallback;
+  if (hasJapaneseText(normalized)) return fallback;
+  return normalized;
+};
+
+type MainTopicBlock = {
+  title: string;
+  category: string;
+  source: string;
+  intro: string;
+  background: string;
+  impact: string;
+  supplement: string;
+};
+
+const extractMainTopicBlock = (text: string, index: number): MainTopicBlock => {
+  const title = readField(text, "見出し") ?? `Main topic ${index}`;
+  const category = readField(text, "カテゴリ") ?? "general";
+  const source = readField(text, "参照媒体") ?? "Japanese media";
+  const intro = readField(text, "導入") ?? "We open by framing the key question and scope.";
+  const background =
+    readField(text, "背景") ?? "We review the timeline and assumptions behind the latest update.";
+  const impact = readField(text, "影響") ?? "We break down likely operational and user impact.";
+  const supplement =
+    readField(text, "補足") ?? "We include uncertainty and alternative interpretations.";
+  return { title, category, source, intro, background, impact, supplement };
+};
+
+const extractLegacyTrendBlock = (text: string, index: number): MainTopicBlock => {
+  const title = readField(text, "トピック") ?? `Main topic ${index}`;
+  const source = readField(text, "- 参照メディア") ?? "Japanese media";
+  const intro = `We begin with ${title} and define why this story matters now.`;
+  const background =
+    readField(text, "- 何が起きた") ?? "Recent updates were observed from public reports.";
+  const impact =
+    readField(text, "- なぜ話題") ?? "The topic gained traction because practical decisions may change.";
+  const supplement =
+    readField(text, "- ひとこと見解") ?? "We avoid overconfident claims and track verified updates.";
+  return {
+    title,
+    category: "general",
+    source,
+    intro,
+    background,
+    impact,
+    supplement
+  };
+};
+
+const parseQuickNewsLines = (text: string): string[] => {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /^-\s*クイックニュース\d*/.test(line))
+    .map((line) => line.replace(/^-\s*クイックニュース\d*（30秒想定）:\s*/, "").trim())
+    .filter((line) => line.length > 0);
+};
+
+const parseSmallTalkLines = (text: string): string[] => {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /^-\s*スモールトーク\d*/.test(line))
+    .map((line) => line.replace(/^-\s*スモールトーク\d*（[^）]*）:\s*/, "").trim())
+    .filter((line) => line.length > 0);
 };
 
 const extractLetters = (lettersSection: string): { name: string; text: string }[] => {
@@ -89,111 +167,74 @@ const extractLetters = (lettersSection: string): { name: string; text: string }[
     }));
 };
 
-const extractSourceRows = (sourcesSection: string): { outlet: string; title: string }[] => {
+const extractSourceRows = (sourcesSection: string): string[] => {
   return sourcesSection
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .map((line) => line.match(/^- 媒体名:\s*(.+?)\s*\/\s*タイトル:\s*(.+)$/))
-    .filter((match): match is RegExpMatchArray => Boolean(match))
-    .map((match) => ({
-      outlet: match[1].trim(),
-      title: match[2].trim()
-    }));
-};
-
-const extractUrls = (sourcesForUiSection: string): string[] => {
-  const urls = new Set<string>();
-  for (const line of sourcesForUiSection.split(/\r?\n/)) {
-    const match = line.match(/https?:\/\/\S+/);
-    if (match) {
-      urls.add(match[0]);
-    }
-  }
-  return Array.from(urls);
-};
-
-const normalizeWhitespace = (value: string): string => value.replace(/\s+/g, " ").trim();
-
-const hasJapaneseText = (value: string): boolean => JAPANESE_CHAR_PATTERN.test(value);
-
-const toEnglishSourceLabel = (value: string): string => {
-  const normalized = normalizeWhitespace(value);
-  if (!normalized) {
-    return "Japanese media";
-  }
-
-  return hasJapaneseText(normalized) ? "Japanese media" : normalized;
-};
-
-const toEnglishTopicLine = (topic: string, source: string, index: number): string => {
-  const normalized = normalizeWhitespace(topic);
-  if (!normalized || hasJapaneseText(normalized)) {
-    return `${source} report: trend story ${index}`;
-  }
-
-  return normalized;
-};
-
-const toEnglishHappenedLine = (value: string, source: string): string => {
-  const normalized = normalizeWhitespace(value);
-  if (normalized && !hasJapaneseText(normalized)) {
-    return normalized;
-  }
-
-  const percent = normalized.match(/(\d+(?:\.\d+)?)\s*%/);
-  if (percent) {
-    return `${source} reported a change of about ${percent[1]} percent.`;
-  }
-
-  const year = normalized.match(/(20\d{2})/);
-  if (year) {
-    return `${source} reported a notable update in ${year[1]}.`;
-  }
-
-  return `${source} reported a notable update in Japanese-language coverage.`;
-};
-
-const toEnglishWhyLine = (value: string, source: string): string => {
-  const normalized = normalizeWhitespace(value);
-  if (normalized && !hasJapaneseText(normalized)) {
-    return normalized;
-  }
-
-  return `The topic gained traction in Japan and is being tracked by ${source}.`;
-};
-
-const toEnglishTakeLine = (value: string): string => {
-  const normalized = normalizeWhitespace(value);
-  if (normalized && !hasJapaneseText(normalized)) {
-    return normalized;
-  }
-
-  return "We avoid overconfident claims and keep following verified updates.";
+    .filter((line) => line.startsWith("- "));
 };
 
 const buildEnglishScript = (title: string, sections: Record<Marker, string>): string => {
-  const trend1 = extractTrendBlock(sections["TREND 1"]);
-  const trend2 = extractTrendBlock(sections["TREND 2"]);
-  const trend3 = extractTrendBlock(sections["TREND 3"]);
+  const mainTopicSections = [1, 2, 3]
+    .map((index) => sections[`MAIN TOPIC ${index}` as Marker])
+    .filter((section) => section.length > 0)
+    .map((section, index) => extractMainTopicBlock(section, index + 1));
+
+  const mainTopics =
+    mainTopicSections.length > 0
+      ? mainTopicSections
+      : [1, 2, 3].map((index) => extractLegacyTrendBlock(sections[`TREND ${index}` as Marker], index));
+
+  const quickNews = parseQuickNewsLines(sections["QUICK NEWS"]);
+  const smallTalk = parseSmallTalkLines(sections["SMALL TALK"]);
   const letters = extractLetters(sections["LETTERS CORNER"]);
   const sourceRows = extractSourceRows(sections.SOURCES);
-  const urls = extractUrls(sections.SOURCES_FOR_UI);
 
   const opening = `[OPENING]
-Welcome back. This English edition keeps the same structure as the Japanese script while making the flow natural for global listeners.
-Today's theme is "${title}" and we focus on confirmed information only.`;
+Welcome back. This English edition follows the editor-in-chief format:
+three main topics, four quick news briefs, two small-talk segments, letters, and a short ending.
+Today's title is "${title}".`;
 
-  const trendSections = [trend1, trend2, trend3].map(
-    (trend, index) => {
-      const source = toEnglishSourceLabel(trend.source);
-      return `[TREND ${index + 1}]
-Topic: ${toEnglishTopicLine(trend.topic, source, index + 1)}
-- What happened: ${toEnglishHappenedLine(trend.happened, source)}
-- Why it is trending: ${toEnglishWhyLine(trend.why, source)}
-- Quick take: ${toEnglishTakeLine(trend.take)}
-- Source context: ${source}`;
-    }
-  );
+  const mainTopicBlocks = mainTopics.map((topic, index) => {
+    const source = toEnglishSourceLabel(topic.source);
+    return `[MAIN TOPIC ${index + 1}]
+Headline: ${toEnglishSentence(topic.title, `Main topic ${index + 1}`)}
+Category: ${toEnglishSentence(topic.category, "general")}
+Source: ${source}
+Intro: ${toEnglishSentence(topic.intro, "We frame the topic and define the decision context.")}
+Background: ${toEnglishSentence(
+      topic.background,
+      "We summarize the timeline and assumptions using public information."
+    )}
+Impact: ${toEnglishSentence(
+      topic.impact,
+      "We discuss likely effects on operations, users, and governance."
+    )}
+Supplement: ${toEnglishSentence(
+      topic.supplement,
+      "We include uncertainty and alternate interpretations instead of overconfident claims."
+    )}`;
+  });
+
+  const quickNewsSection = `[QUICK NEWS]
+${
+  quickNews.length === 0
+    ? "- No quick news items in this run."
+    : quickNews
+        .slice(0, 4)
+        .map((line, index) => `- Quick news ${index + 1} (about 30 seconds): ${toEnglishSentence(line, "Update in progress.")}`)
+        .join("\n")
+}`;
+
+  const smallTalkSection = `[SMALL TALK]
+${
+  smallTalk.length === 0
+    ? "- No small-talk segment today."
+    : smallTalk
+        .slice(0, 2)
+        .map((line, index) => `- Small talk ${index + 1}: ${toEnglishSentence(line, "A light listener-facing reflection.")}`)
+        .join("\n")
+}`;
 
   const lettersSection =
     letters.length === 0
@@ -204,41 +245,37 @@ ${letters
   .slice(0, 2)
   .map(
     (letter, index) =>
-      `- Letter ${index + 1} from ${letter.name}: ${letter.text}\n- Host reply: Thanks for the message. We'll keep improving the show with your feedback.`
+      `- Letter ${index + 1} from ${letter.name}: ${toEnglishSentence(letter.text, "Thanks for your message.")}\n- Host reply: Thank you. We will keep improving the show with your feedback.`
   )
   .join("\n")}`;
 
   const closing = `[CLOSING]
-That's the wrap for today. If you'd like us to cover a topic next time, send us a note and we'll pick it up in a future episode.`;
+That wraps today's episode. We will keep tracking verified updates and return with deeper follow-ups next time.`;
 
   const sourcesSection = `[SOURCES]
 ${
   sourceRows.length === 0
     ? "- Source list is being prepared."
-    : sourceRows
-        .map((row, index) => {
-          const outlet = toEnglishSourceLabel(row.outlet);
-          const titleValue = normalizeWhitespace(row.title);
-          const title = titleValue && !hasJapaneseText(titleValue)
-            ? titleValue
-            : `Top story ${index + 1} from Japanese-language coverage`;
-          return `- Outlet: ${outlet} / Title: ${title}`;
-        })
-        .join("\n")
+    : sourceRows.map((row) => toEnglishSentence(row, "Source metadata available in the database.")).join("\n")
 }`;
 
-  const sourcesForUiSection = `[SOURCES_FOR_UI]
-${urls.length === 0 ? "- none" : urls.map((url) => `- ${url}`).join("\n")}`;
+  const referencesSection = `[SOURCES_FOR_UI]
+- Script URLs are intentionally removed for speech quality.
+- Original URLs remain stored in trend-related database records.`;
 
-  return [
-    `# ${title}`,
+  const raw = [
+    `TITLE: ${title}`,
     opening,
-    ...trendSections,
+    ...mainTopicBlocks,
+    quickNewsSection,
+    smallTalkSection,
     lettersSection,
     closing,
     sourcesSection,
-    sourcesForUiSection
+    referencesSection
   ].join("\n\n");
+
+  return normalizeForSpeech(raw, "en");
 };
 
 Deno.serve(async (req) => {

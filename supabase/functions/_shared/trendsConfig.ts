@@ -142,6 +142,44 @@ export const TREND_SOURCE_THEMES: Record<string, TrendSourceSeed[]> = {
       category: "startup",
       theme: "startup"
     }
+  ],
+  entertainment: [
+    {
+      source_key: "google_news_entertainment",
+      name: "Google News Entertainment",
+      url: "https://news.google.com/rss/search?q=entertainment&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.08,
+      category: "entertainment",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_entertainment_jp",
+      name: "Google News Entertainment (JP)",
+      url: "https://news.google.com/rss/search?q=%E3%82%A8%E3%83%B3%E3%82%BF%E3%83%A1&hl=ja&gl=JP&ceid=JP:ja",
+      enabled: true,
+      weight: 1.08,
+      category: "entertainment",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_sports_jp",
+      name: "Google News Sports (JP)",
+      url: "https://news.google.com/rss/search?q=%E3%82%B9%E3%83%9D%E3%83%BC%E3%83%84&hl=ja&gl=JP&ceid=JP:ja",
+      enabled: true,
+      weight: 1.05,
+      category: "sports",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_culture",
+      name: "Google News Culture",
+      url: "https://news.google.com/rss/search?q=culture&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.04,
+      category: "culture",
+      theme: "entertainment"
+    }
   ]
 };
 

@@ -5,6 +5,13 @@ import {
   insertJapaneseEpisode,
   updateEpisode
 } from "../_shared/episodes.ts";
+import {
+  PROGRAM_MAIN_TOPICS_COUNT,
+  PROGRAM_QUICK_NEWS_COUNT,
+  PROGRAM_SMALL_TALK_COUNT,
+  type ProgramPlan
+} from "../_shared/programPlan.ts";
+import { normalizeForSpeech } from "../_shared/speechNormalization.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -13,11 +20,14 @@ type RequestBody = {
     title?: string;
     bullets?: string[];
   };
+  programPlan?: ProgramPlan;
   trendItems?: {
+    id?: string;
     title?: string;
     summary?: string;
     url?: string;
     source?: string;
+    category?: string;
   }[];
   letters?: {
     display_name?: string;
@@ -29,10 +39,12 @@ type RequestBody = {
 };
 
 type ScriptTrendItem = {
+  id: string;
   title: string;
   summary: string;
   url: string | null;
   source: string;
+  category: string;
 };
 
 type ScriptLetter = {
@@ -42,14 +54,19 @@ type ScriptLetter = {
   tipCurrency: string | null;
 };
 
-const MAX_TREND_ITEMS = 3;
+const MAX_TREND_ITEMS = 12;
 const MAX_LETTERS = 2;
+const MAIN_TOPIC_MIN_CHARS = 950;
+const TARGET_SCRIPT_MIN_CHARS = 7200;
+const ESTIMATED_JA_CHARS_PER_MIN = 300;
 
 const fallbackTrend = (index: number): ScriptTrendItem => ({
+  id: `fallback-${index}`,
   title: `補足トレンド ${index}`,
   summary: "公開情報を確認中です。未確認情報は断定せず、事実ベースでお伝えします。",
   url: null,
-  source: "確認中"
+  source: "確認中",
+  category: "general"
 });
 
 const sanitizeNarrationText = (value: string): string => {
@@ -80,14 +97,16 @@ const normalizeTrendItems = (trendItems: RequestBody["trendItems"]): ScriptTrend
   const normalized = (trendItems ?? [])
     .filter((item) => Boolean(item?.title))
     .slice(0, MAX_TREND_ITEMS)
-    .map((item) => {
+    .map((item, index) => {
       const title = (item?.title ?? "").trim();
       const summary =
         sanitizeNarrationText(item?.summary ?? "") ||
         `${title}に関する最新トピックです。公開情報ベースで確認します。`;
       const url = (item?.url ?? "").trim() || null;
       const source = resolveSourceName(item?.source, item?.url);
-      return { title, summary, url, source };
+      const id = (item?.id ?? "").trim() || `trend-${index + 1}`;
+      const category = (item?.category ?? "").trim() || "general";
+      return { id, title, summary, url, source, category };
     });
 
   while (normalized.length < MAX_TREND_ITEMS) {
@@ -104,10 +123,10 @@ const normalizeLetters = (letters: RequestBody["letters"]): ScriptLetter[] => {
       return "応援メッセージをいただきました。";
     }
 
-    const MAX_SUMMARY_CHARS = 80;
-    return sanitized.length <= MAX_SUMMARY_CHARS
+    const maxSummaryChars = 110;
+    return sanitized.length <= maxSummaryChars
       ? sanitized
-      : `${sanitized.slice(0, MAX_SUMMARY_CHARS).trimEnd()}…`;
+      : `${sanitized.slice(0, maxSummaryChars).trimEnd()}…`;
   };
 
   return (letters ?? [])
@@ -134,72 +153,221 @@ const formatTipAmount = (tipAmount: number | null, tipCurrency: string | null): 
   return `${(tipAmount / 100).toFixed(2)} ${currency.toUpperCase()}`;
 };
 
-const buildJapaneseScript = (params: {
-  topicTitle: string;
-  bullets: string[];
-  trendItems: ScriptTrendItem[];
-  letters: ScriptLetter[];
-}): string => {
-  const opening = `[OPENING]
-今日は「${params.topicTitle}」をお届けします。最新トレンドを3本、事実ベースでコンパクトに整理します。
-この番組は一般的な情報提供を目的とし、誹謗中傷や断定的な医療・投資助言は行いません。`;
+const repeatSentenceUntilMinLength = (base: string, extra: string, minLength: number): string => {
+  const sentences = [base.trim()];
+  while (sentences.join("").length < minLength) {
+    sentences.push(extra);
+  }
+  return sentences.join("");
+};
 
-  const trendSections = params.trendItems.map((trend, index) => {
-    const bulletHint = params.bullets[index] ? `（関連メモ: ${params.bullets[index]}）` : "";
-    return `[TREND ${index + 1}]
-トピック: ${trend.title}
-- 何が起きた: ${trend.summary}
-- なぜ話題: ${trend.title}は直近の反応が大きく、背景理解に役立つ論点が含まれます。${bulletHint}
-- ひとこと見解: 断定は避けつつ、一次情報の更新を追いながら実務への示唆を拾っていきましょう。
-- 参照メディア: ${trend.source}`;
+const buildMainTopicNarration = (
+  topic: ProgramPlan["main_topics"][number],
+  index: number
+): string => {
+  const intro = `導入: ${topic.intro} 冒頭では、話題の見出しだけでなく、どの意思決定に影響するかを先に示します。`;
+  const background = `背景: ${topic.background} 直近の変化だけを見るのではなく、時系列で前提を確認し、誤解されやすい論点を切り分けます。`;
+  const impact = `影響: ${topic.impact} 現場実装、利用者体験、コスト、ガバナンスの四点で見たときの優先順位を具体化します。`;
+  const supplement = `補足: ${topic.supplement} 反対意見や未確定情報も同時に扱い、断定を避けて解像度を上げる運用に寄せます。`;
+  const summary = `まとめ: メイントピック${index + 1}では、短期の対応と中長期の設計を同時に考えることが重要です。`;
+  const narrative = [intro, background, impact, supplement, summary].join("\n");
+
+  return repeatSentenceUntilMinLength(
+    narrative,
+    "追加整理: 重要論点を一つずつ再確認し、一次情報の更新が出た時に判断を更新できるよう、前提・根拠・不確実性をセットで記録します。",
+    MAIN_TOPIC_MIN_CHARS
+  );
+};
+
+const buildFallbackProgramPlan = (topicTitle: string, trendItems: ScriptTrendItem[]): ProgramPlan => {
+  const mainTopics = trendItems.slice(0, PROGRAM_MAIN_TOPICS_COUNT).map((trend, index) => ({
+    title: trend.title || `${topicTitle} 補足 ${index + 1}`,
+    source: trend.source,
+    category: trend.category,
+    intro: `${trend.title}について、導入で論点の全体像を確認します。`,
+    background: `${trend.summary} 背景では公開情報の時系列と前提を確認します。`,
+    impact: "影響では、利用者と実務の両面で生じる変化を整理します。",
+    supplement: "補足では、反証可能性や未確定情報を明示して誤読を避けます。"
+  }));
+  const quickNews = trendItems
+    .slice(PROGRAM_MAIN_TOPICS_COUNT, PROGRAM_MAIN_TOPICS_COUNT + PROGRAM_QUICK_NEWS_COUNT)
+    .map((trend) => ({
+      title: trend.title,
+      source: trend.source,
+      category: trend.category,
+      summary: trend.summary,
+      durationSecTarget: 30
+    }));
+  const smallTalk = trendItems
+    .slice(
+      PROGRAM_MAIN_TOPICS_COUNT + PROGRAM_QUICK_NEWS_COUNT,
+      PROGRAM_MAIN_TOPICS_COUNT + PROGRAM_QUICK_NEWS_COUNT + PROGRAM_SMALL_TALK_COUNT
+    )
+    .map((trend, index) => ({
+      title: trend.title,
+      mood: index % 2 === 0 ? "calm" : "light",
+      talkingPoint: `${trend.summary} をきっかけに、リスナーと距離の近い視点で会話します。`
+    }));
+
+  return {
+    role: "editor-in-chief",
+    main_topics: mainTopics,
+    quick_news: quickNews,
+    small_talk: smallTalk,
+    letters: {
+      host_prompt:
+        "お便りには感謝を伝えた上で、断定を避け、次の行動に繋がる短い提案を添えて回答します。"
+    },
+    ending: {
+      message: "本編で扱った論点の再確認と、次回の予告を一言で締めます。"
+    }
+  };
+};
+
+const ensureProgramPlan = (
+  plan: ProgramPlan | undefined,
+  topicTitle: string,
+  trendItems: ScriptTrendItem[]
+): ProgramPlan => {
+  const fallback = buildFallbackProgramPlan(topicTitle, trendItems);
+  if (!plan || plan.role !== "editor-in-chief") {
+    return fallback;
+  }
+
+  return {
+    role: "editor-in-chief",
+    main_topics: [...plan.main_topics, ...fallback.main_topics].slice(0, PROGRAM_MAIN_TOPICS_COUNT),
+    quick_news: [...plan.quick_news, ...fallback.quick_news].slice(0, PROGRAM_QUICK_NEWS_COUNT),
+    small_talk: [...plan.small_talk, ...fallback.small_talk].slice(0, PROGRAM_SMALL_TALK_COUNT),
+    letters: plan.letters ?? fallback.letters,
+    ending: plan.ending ?? fallback.ending
+  };
+};
+
+const buildQuickNewsSection = (quickNews: ProgramPlan["quick_news"]): string => {
+  const lines = quickNews.map(
+    (item, index) =>
+      `- クイックニュース${index + 1}（30秒想定）: ${item.title}\n  要約: ${item.summary}\n  出典カテゴリ: ${item.category} / 参照媒体: ${item.source}`
+  );
+  return `[QUICK NEWS]\n${lines.join("\n")}`;
+};
+
+const buildSmallTalkSection = (smallTalk: ProgramPlan["small_talk"]): string => {
+  const lines = smallTalk.map(
+    (item, index) =>
+      `- スモールトーク${index + 1}（${item.mood}）: ${item.title}\n  話しどころ: ${item.talkingPoint}`
+  );
+  return `[SMALL TALK]\n${lines.join("\n")}`;
+};
+
+const buildLettersSection = (letters: ScriptLetter[], hostPrompt: string): string => {
+  if (letters.length === 0) {
+    return `[LETTERS CORNER]
+- 今日はお便りはお休み
+- 進行メモ: ${hostPrompt}`;
+  }
+
+  return `[LETTERS CORNER]
+${letters
+  .map((letter, index) => {
+    const tipAmount = formatTipAmount(letter.tipAmount, letter.tipCurrency);
+    const thanksLine = tipAmount
+      ? `- ${letter.displayName}さん、（${tipAmount}）ありがとうございます。\n`
+      : "";
+    return `${thanksLine}- お便り${index + 1}（${letter.displayName}）: ${letter.summarizedText}\n- 返答方針: ${hostPrompt}`;
+  })
+  .join("\n")}`;
+};
+
+const buildSourcesSection = (
+  trendItems: ScriptTrendItem[],
+  programPlan: ProgramPlan
+): { sources: string; sourceReferences: string } => {
+  const mainTitles = new Set(programPlan.main_topics.map((item) => item.title));
+  const quickTitles = new Set(programPlan.quick_news.map((item) => item.title));
+  const smallTalkTitles = new Set(programPlan.small_talk.map((item) => item.title));
+
+  const uniqueItems = trendItems.filter(
+    (item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index
+  );
+  const sourceLines = uniqueItems.map((item) => {
+    const section = mainTitles.has(item.title)
+      ? "main_topics"
+      : quickTitles.has(item.title)
+        ? "quick_news"
+        : smallTalkTitles.has(item.title)
+          ? "small_talk"
+          : "other";
+    return `- セクション: ${section} / 媒体名: ${item.source} / カテゴリ: ${item.category} / タイトル: ${item.title}`;
   });
 
-  const lettersSection =
-    params.letters.length === 0
-      ? `[LETTERS CORNER]
-- 今日はお便りはお休み`
-      : `[LETTERS CORNER]
-${params.letters
-  .map(
-    (letter, index) => {
-      const tipAmount = formatTipAmount(letter.tipAmount, letter.tipCurrency);
-      const thanksLine = tipAmount
-        ? `- ${letter.displayName}さん、（${tipAmount}）ありがとうございます！\n`
-        : "";
-      return `${thanksLine}- お便り${index + 1}（${letter.displayName}）: ${letter.summarizedText}\n- ひとこと返信: メッセージありがとうございます。次回以降の番組づくりにも活かします。`;
-    }
-  )
-  .join("\n")}`;
+  const referenceLines = uniqueItems.map((item) => {
+    return `- trend_item_id: ${item.id}`;
+  });
 
+  return {
+    sources: `[SOURCES]\n${sourceLines.length === 0 ? "- 本日の参照情報は準備中です。" : sourceLines.join("\n")}`,
+    sourceReferences: `[SOURCES_FOR_UI]\n${
+      referenceLines.length === 0
+        ? "- 元URLはtrend_itemsテーブルを参照してください。"
+        : [
+            "- 本文からURLは除去済みです。元URLはtrend_itemsテーブルを参照してください。",
+            ...referenceLines
+          ].join("\n")
+    }`
+  };
+};
+
+const buildJapaneseScript = (params: {
+  topicTitle: string;
+  programPlan: ProgramPlan;
+  trendItems: ScriptTrendItem[];
+  letters: ScriptLetter[];
+}): { script: string; estimatedDurationSec: number } => {
+  const opening = `[OPENING]
+番組タイトル: ${params.topicTitle}
+編集長ロールで進行します。今日はメイントピック3本、クイックニュース4本、スモールトーク2本、レターズ、エンディングの順でお届けします。
+この番組は一般的な情報提供を目的とし、断定的な医療・投資助言は行いません。`;
+
+  const mainTopicSections = params.programPlan.main_topics.map((topic, index) => {
+    const body = buildMainTopicNarration(topic, index);
+    return `[MAIN TOPIC ${index + 1}]
+見出し: ${topic.title}
+カテゴリ: ${topic.category}
+参照媒体: ${topic.source}
+${body}`;
+  });
+
+  const quickNewsSection = buildQuickNewsSection(params.programPlan.quick_news);
+  const smallTalkSection = buildSmallTalkSection(params.programPlan.small_talk);
+  const lettersSection = buildLettersSection(params.letters, params.programPlan.letters.host_prompt);
   const closing = `[CLOSING]
-以上、今日のトピック整理でした。気になる話題があれば次回の深掘り候補として取り上げます。`;
+${params.programPlan.ending.message}
+以上、今日の番組でした。次回も背景と影響を分けて丁寧に整理します。`;
+  const { sources, sourceReferences } = buildSourcesSection(params.trendItems, params.programPlan);
 
-  const sources = params.trendItems
-    .map((trend) => ({
-      source: trend.source,
-      title: trend.title
-    }))
-    .filter((item) => item.title.length > 0);
-  const sourceLines =
-    sources.length === 0
-      ? "- 本日の参照情報は準備中です。"
-      : sources.map((item) => `- 媒体名: ${item.source} / タイトル: ${item.title}`).join("\n");
-  const sourcesSection = `[SOURCES]
-${sourceLines}`;
-
-  const urls = Array.from(new Set(params.trendItems.map((trend) => trend.url).filter(Boolean))) as string[];
-  const sourcesForUiSection = `[SOURCES_FOR_UI]
-${urls.length === 0 ? "- none" : urls.map((url) => `- ${url}`).join("\n")}`;
-
-  return [
-    `# ${params.topicTitle}`,
+  let draft = [
     opening,
-    ...trendSections,
+    ...mainTopicSections,
+    quickNewsSection,
+    smallTalkSection,
     lettersSection,
     closing,
-    sourcesSection,
-    sourcesForUiSection
+    sources,
+    sourceReferences
   ].join("\n\n");
+
+  while (draft.length < TARGET_SCRIPT_MIN_CHARS) {
+    draft = `${draft}\n\n[CONTENT EXPANSION]\n深掘り補足: 速報性だけでなく、背景・影響・前提条件を繰り返し確認することで、短期的な反応に偏らない理解を目指します。`;
+  }
+
+  const normalized = normalizeForSpeech(draft, "ja");
+  const estimatedDurationSec = Math.max(
+    60,
+    Math.round((normalized.length / ESTIMATED_JA_CHARS_PER_MIN) * 60)
+  );
+
+  return { script: normalized, estimatedDurationSec };
 };
 
 const resolveTopicTitle = (rawTitle: string | undefined, episodeDate: string): string => {
@@ -224,51 +392,54 @@ Deno.serve(async (req) => {
   const episodeDate = body.episodeDate ?? new Date().toISOString().slice(0, 10);
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
   const topicTitle = resolveTopicTitle(body.topic?.title, episodeDate);
-  const bullets = body.topic?.bullets ?? [
-    "トレンド要約1: 公開情報の更新を確認中です。",
-    "トレンド要約2: 継続観測が必要な論点を整理します。",
-    "トレンド要約3: 主要トピックの背景を短く振り返ります。",
-    "お便りコーナー: リスナーのお便りを紹介します。",
-    "次回予告: 次回の深掘り候補を案内します。"
-  ];
   const trendItems = normalizeTrendItems(body.trendItems);
   const letters = normalizeLetters(body.letters);
+  const programPlan = ensureProgramPlan(body.programPlan, topicTitle, trendItems);
   const title = `Daily Topic ${episodeDate} (JA)`;
   const description = `Japanese episode for ${episodeDate}`;
-  const script = buildJapaneseScript({ topicTitle, bullets, trendItems, letters });
+  const built = buildJapaneseScript({ topicTitle, trendItems, letters, programPlan });
 
   const runId = await startRun("write-script-ja", {
     step: "write-script-ja",
+    role: "editor-in-chief",
     episodeDate,
     idempotencyKey,
     title,
     trendItemsCount: trendItems.length,
-    lettersCount: letters.length
+    lettersCount: letters.length,
+    estimatedDurationSec: built.estimatedDurationSec
   });
 
   try {
     let episode = await findJapaneseEpisodeByTitle(title);
+    let noOp = false;
 
     if (!episode) {
-      episode = await insertJapaneseEpisode({ title, description, script });
-    } else if (!episode.script || episode.status === "failed") {
+      episode = await insertJapaneseEpisode({ title, description, script: built.script });
+      episode = await updateEpisode(episode.id, { duration_sec: built.estimatedDurationSec });
+    } else if (!episode.script || episode.status === "failed" || episode.script !== built.script) {
       await updateEpisode(episode.id, { status: "generating" });
       episode = await updateEpisode(episode.id, {
-        script,
+        script: built.script,
         description,
-        status: "draft"
+        status: "draft",
+        duration_sec: built.estimatedDurationSec
       });
+    } else {
+      noOp = true;
     }
 
     await finishRun(runId, {
       step: "write-script-ja",
+      role: "editor-in-chief",
       episodeDate,
       idempotencyKey,
       episodeId: episode.id,
       status: episode.status,
-      noOp: Boolean(episode.script),
+      noOp,
       trendItemsCount: trendItems.length,
-      lettersCount: letters.length
+      lettersCount: letters.length,
+      estimatedDurationSec: built.estimatedDurationSec
     });
 
     return jsonResponse({
@@ -279,17 +450,20 @@ Deno.serve(async (req) => {
       title: episode.title,
       status: episode.status,
       trendItemsCount: trendItems.length,
-      lettersCount: letters.length
+      lettersCount: letters.length,
+      estimatedDurationSec: built.estimatedDurationSec
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await failRun(runId, message, {
       step: "write-script-ja",
+      role: "editor-in-chief",
       episodeDate,
       idempotencyKey,
       title,
       trendItemsCount: trendItems.length,
-      lettersCount: letters.length
+      lettersCount: letters.length,
+      estimatedDurationSec: built.estimatedDurationSec
     });
 
     return jsonResponse({ ok: false, error: message }, 500);

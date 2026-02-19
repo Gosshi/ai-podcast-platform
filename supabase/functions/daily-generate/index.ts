@@ -19,6 +19,7 @@ type TrendItem = {
   url: string;
   summary: string;
   source: string;
+  category: string;
   score?: number;
   publishedAt?: string | null;
 };
@@ -106,6 +107,7 @@ type ScriptModerationResult =
 type SelectedTrendAuditItem = {
   id: string;
   title: string;
+  category?: string;
   score: number;
   publishedAt: string | null;
   clusterSize: number | null;
@@ -120,10 +122,47 @@ const orderedSteps = [
   "publish"
 ] as const;
 
-const MAX_TREND_ITEMS = 3;
+const MAX_TREND_ITEMS = 30;
 const MAX_LETTERS = 2;
 const MAX_LETTER_CANDIDATES = 20;
 const MAX_LETTER_SUMMARY_CHARS = 80;
+const TARGET_SCRIPT_DURATION_SEC = 20 * 60;
+
+const TREND_MIX_TARGET = {
+  hard: 4,
+  soft: 4,
+  entertainment: 2
+} as const;
+
+type TrendMixBucket = keyof typeof TREND_MIX_TARGET;
+
+type TrendMixAudit = {
+  target: typeof TREND_MIX_TARGET;
+  selected: Record<TrendMixBucket, number>;
+  achieved: boolean;
+  usedFallbackItems: number;
+};
+
+const HARD_CATEGORIES = new Set([
+  "news",
+  "politics",
+  "policy",
+  "economy",
+  "business",
+  "science",
+  "world"
+]);
+
+const ENTERTAINMENT_CATEGORIES = new Set([
+  "entertainment",
+  "culture",
+  "sports",
+  "music",
+  "movie",
+  "anime",
+  "game",
+  "gaming"
+]);
 
 const DEFAULT_EXCLUDED_SOURCE_CATEGORIES = [
   "investment",
@@ -166,21 +205,48 @@ const fallbackTrendItems: TrendItem[] = [
     title: "Fallback: Product update cadence",
     url: "https://example.com/fallback/product-update",
     summary: "Product roadmap updates were shared in public channels.",
-    source: "example.com"
+    source: "example.com",
+    category: "soft"
   },
   {
     title: "Fallback: Reliability improvements",
     url: "https://example.com/fallback/reliability",
     summary: "Reliability and operations improvements were highlighted.",
-    source: "example.com"
+    source: "example.com",
+    category: "hard"
   },
   {
     title: "Fallback: User feedback highlights",
     url: "https://example.com/fallback/user-feedback",
     summary: "Recent user feedback showed recurring product requests.",
-    source: "example.com"
+    source: "example.com",
+    category: "entertainment"
   }
 ];
+
+const fallbackByBucket: Record<TrendMixBucket, TrendItem> = {
+  hard: {
+    title: "Fallback hard topic: public policy and social impact",
+    url: "https://example.com/fallback/hard",
+    summary: "Policy and public impact context is added to keep the episode balanced.",
+    source: "fallback-editorial",
+    category: "hard"
+  },
+  soft: {
+    title: "Fallback soft topic: product and user experience",
+    url: "https://example.com/fallback/soft",
+    summary: "Product and user-focused context is added to keep the episode balanced.",
+    source: "fallback-editorial",
+    category: "soft"
+  },
+  entertainment: {
+    title: "Fallback entertainment topic: culture and lifestyle pulse",
+    url: "https://example.com/fallback/entertainment",
+    summary: "Culture and lifestyle context is added to keep the episode balanced.",
+    source: "fallback-editorial",
+    category: "entertainment"
+  }
+};
 
 const getFunctionsBaseUrl = (requestUrl: string): string => {
   const explicit = Deno.env.get("FUNCTIONS_BASE_URL") ?? Deno.env.get("SUPABASE_FUNCTIONS_URL");
@@ -258,6 +324,16 @@ const resolveSourceName = (row: TrendCandidateRow): string => {
     return row.trend_sources[0]?.name ?? "unknown";
   }
   return row.trend_sources?.name ?? "unknown";
+};
+
+const resolveTrendBucket = (category: string): TrendMixBucket => {
+  const normalized = normalizeToken(category);
+  if (normalized === "hard") return "hard";
+  if (normalized === "soft") return "soft";
+  if (normalized === "entertainment") return "entertainment";
+  if (HARD_CATEGORIES.has(normalized)) return "hard";
+  if (ENTERTAINMENT_CATEGORIES.has(normalized)) return "entertainment";
+  return "soft";
 };
 
 const sanitizeNarrationText = (value: string): string => {
@@ -361,6 +437,7 @@ const loadTopTrends = async (): Promise<TrendItem[]> => {
         (item.summary ?? "").trim() ||
         `${item.title as string} was highlighted in recent public reports and discussions.`,
       source: resolveSourceName(item),
+      category: resolveCategory(item),
       score: item.score as number,
       publishedAt: item.published_at
     }));
@@ -369,7 +446,8 @@ const loadTopTrends = async (): Promise<TrendItem[]> => {
     title: item.title,
     url: item.url,
     summary: item.summary,
-    source: item.source
+    source: item.source,
+    category: item.category
   }));
 };
 
@@ -570,6 +648,93 @@ const resolveTrendItems = async (
   }
 };
 
+const selectTrendsForMix = (trendItems: TrendItem[]): { selected: TrendItem[]; audit: TrendMixAudit } => {
+  const selected: TrendItem[] = [];
+  const used = new Set<number>();
+  const counts: Record<TrendMixBucket, number> = {
+    hard: 0,
+    soft: 0,
+    entertainment: 0
+  };
+  let usedFallbackItems = 0;
+
+  for (const bucket of Object.keys(TREND_MIX_TARGET) as TrendMixBucket[]) {
+    const targetCount = TREND_MIX_TARGET[bucket];
+    for (let i = 0; i < trendItems.length && counts[bucket] < targetCount; i += 1) {
+      if (used.has(i)) continue;
+      const item = trendItems[i];
+      if (resolveTrendBucket(item.category) !== bucket) continue;
+      selected.push(item);
+      used.add(i);
+      counts[bucket] += 1;
+    }
+  }
+
+  for (const bucket of Object.keys(TREND_MIX_TARGET) as TrendMixBucket[]) {
+    const targetCount = TREND_MIX_TARGET[bucket];
+    while (counts[bucket] < targetCount) {
+      const fallback = fallbackByBucket[bucket];
+      selected.push({
+        ...fallback,
+        id: `fallback-${bucket}-${usedFallbackItems + 1}`
+      });
+      counts[bucket] += 1;
+      usedFallbackItems += 1;
+    }
+  }
+
+  const totalTarget = TREND_MIX_TARGET.hard + TREND_MIX_TARGET.soft + TREND_MIX_TARGET.entertainment;
+  for (let i = 0; i < trendItems.length && selected.length < totalTarget; i += 1) {
+    if (used.has(i)) continue;
+    const item = trendItems[i];
+    selected.push(item);
+    used.add(i);
+    counts[resolveTrendBucket(item.category)] += 1;
+  }
+
+  const achieved =
+    counts.hard >= TREND_MIX_TARGET.hard &&
+    counts.soft >= TREND_MIX_TARGET.soft &&
+    counts.entertainment >= TREND_MIX_TARGET.entertainment;
+
+  return {
+    selected,
+    audit: {
+      target: TREND_MIX_TARGET,
+      selected: counts,
+      achieved,
+      usedFallbackItems
+    }
+  };
+};
+
+const extractEpisodeId = (stepResult: InvokeResult, stepName: string): string => {
+  const id = typeof stepResult.episodeId === "string" ? stepResult.episodeId : "";
+  if (!id) {
+    throw new Error(`missing_episode_id:${stepName}`);
+  }
+  return id;
+};
+
+const assertNoUrlsInEpisodeScript = async (episodeId: string): Promise<void> => {
+  const { data, error } = await supabaseAdmin
+    .from("episodes")
+    .select("script")
+    .eq("id", episodeId)
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error(`episode_not_found:${episodeId}`);
+  }
+
+  const script = typeof (data as { script?: string | null }).script === "string"
+    ? ((data as { script?: string | null }).script as string)
+    : "";
+  if (/https?:\/\/|www\./i.test(script)) {
+    throw new Error(`script_contains_url:${episodeId}`);
+  }
+};
+
 const toRecord = (value: unknown): Record<string, unknown> | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -591,6 +756,7 @@ const readPlanTrendItems = (plan: InvokeResult): TrendItem[] => {
       const url = typeof record.url === "string" ? record.url.trim() : "";
       const summary = typeof record.summary === "string" ? record.summary.trim() : "";
       const source = typeof record.source === "string" ? record.source.trim() : "";
+      const category = typeof record.category === "string" ? record.category.trim() : "";
 
       return {
         id: typeof record.id === "string" ? record.id : undefined,
@@ -598,6 +764,7 @@ const readPlanTrendItems = (plan: InvokeResult): TrendItem[] => {
         url,
         summary: summary || `${title} was highlighted in recent public reports and discussions.`,
         source: source || "unknown",
+        category: category || "general",
         score: typeof record.score === "number" && Number.isFinite(record.score) ? record.score : undefined,
         publishedAt: typeof record.publishedAt === "string" ? record.publishedAt : null
       } satisfies TrendItem;
@@ -615,6 +782,7 @@ const readPlanSelectedTrendItems = (plan: InvokeResult): SelectedTrendAuditItem[
 
       const id = typeof record.id === "string" ? record.id.trim() : "";
       const title = typeof record.title === "string" ? record.title.trim() : "";
+      const category = typeof record.category === "string" ? record.category.trim() : "";
       const score = typeof record.score === "number" && Number.isFinite(record.score) ? record.score : NaN;
       const publishedAt = typeof record.publishedAt === "string" ? record.publishedAt : null;
       const clusterSize =
@@ -624,7 +792,7 @@ const readPlanSelectedTrendItems = (plan: InvokeResult): SelectedTrendAuditItem[
 
       if (!id || !title || Number.isNaN(score)) return null;
 
-      return { id, title, score, publishedAt, clusterSize };
+      return { id, title, category: category || undefined, score, publishedAt, clusterSize };
     })
     .filter((item): item is SelectedTrendAuditItem => item !== null);
 };
@@ -652,42 +820,63 @@ Deno.serve(async (req) => {
       episodeDate,
       idempotencyKey
     );
+    const balancedTrends = selectTrendsForMix(fallbackTrendCandidates);
     const letterCandidates = await loadPrioritizedLetters().catch(() => []);
     const { letters, blockedIds } = await prepareLettersForScript(letterCandidates);
 
-    const plan = await invokeStep(functionsBaseUrl, "plan-topics", { episodeDate, idempotencyKey });
+    const plan = await invokeStep(functionsBaseUrl, "plan-topics", {
+      episodeDate,
+      idempotencyKey,
+      trendCandidates: balancedTrends.selected
+    });
     const plannedTrendItems = readPlanTrendItems(plan);
     const selectedTrendItems = readPlanSelectedTrendItems(plan);
-    const trendItems = plannedTrendItems.length > 0 ? plannedTrendItems : fallbackTrendCandidates;
+    const trendItems = plannedTrendItems.length > 0 ? plannedTrendItems : balancedTrends.selected;
     const usedTrendFallback =
       typeof plan.usedTrendFallback === "boolean" ? plan.usedTrendFallback : fallbackFromDaily;
     const trendFallbackReason =
       typeof plan.trendFallbackReason === "string" ? plan.trendFallbackReason : null;
+    const planProgramPlan =
+      plan.programPlan && typeof plan.programPlan === "object" && !Array.isArray(plan.programPlan)
+        ? plan.programPlan
+        : undefined;
 
     const writeJa = await invokeStep(functionsBaseUrl, "write-script-ja", {
       episodeDate,
       idempotencyKey,
       topic: plan.topic,
+      programPlan: planProgramPlan,
       trendItems,
       letters
     });
+    const writeJaEpisodeId = extractEpisodeId(writeJa, "write-script-ja");
+    const estimatedDurationSec =
+      typeof writeJa.estimatedDurationSec === "number" && Number.isFinite(writeJa.estimatedDurationSec)
+        ? writeJa.estimatedDurationSec
+        : null;
+    if (estimatedDurationSec !== null && estimatedDurationSec < TARGET_SCRIPT_DURATION_SEC) {
+      throw new Error(`script_too_short:${estimatedDurationSec}`);
+    }
+    await assertNoUrlsInEpisodeScript(writeJaEpisodeId);
 
     const ttsJa = await invokeStep(functionsBaseUrl, "tts-ja", {
       episodeDate,
       idempotencyKey,
-      episodeId: writeJa.episodeId
+      episodeId: writeJaEpisodeId
     });
 
     const adaptEn = await invokeStep(functionsBaseUrl, "adapt-script-en", {
       episodeDate,
       idempotencyKey,
-      masterEpisodeId: writeJa.episodeId
+      masterEpisodeId: writeJaEpisodeId
     });
+    const adaptEnEpisodeId = extractEpisodeId(adaptEn, "adapt-script-en");
+    await assertNoUrlsInEpisodeScript(adaptEnEpisodeId);
 
     const ttsEn = await invokeStep(functionsBaseUrl, "tts-en", {
       episodeDate,
       idempotencyKey,
-      episodeId: adaptEn.episodeId
+      episodeId: adaptEnEpisodeId
     });
 
     const publish = await invokeStep(functionsBaseUrl, "publish", {
@@ -710,7 +899,9 @@ Deno.serve(async (req) => {
       blockedLetterIds: blockedIds,
       usedTrendFallback,
       trendFallbackReason,
+      trendMix: balancedTrends.audit,
       selectedTrendItems,
+      estimatedDurationSec,
       outputs: {
         plan,
         writeJa,
@@ -732,7 +923,9 @@ Deno.serve(async (req) => {
       blockedLetterIds: blockedIds,
       usedTrendFallback,
       trendFallbackReason,
+      trendMix: balancedTrends.audit,
       selectedTrendItems,
+      estimatedDurationSec,
       outputs: {
         plan,
         writeJa,
