@@ -204,16 +204,22 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 ## Trend Ingestion (RSS Upgraded)
 - Function: `ingest_trends_rss`
 - source 設定: `supabase/functions/_shared/trendsConfig.ts`
-- `trend_sources` は `weight`, `category`, `theme` を持ち、entertainment/game/anime/youtube 系を含むRSSを10本以上追加済み
+- `trend_sources` は `weight`, `category`, `theme` を持ち、entertainment/game/anime/youtube/movie/music 系を中心に 20 本以上追加済み
 - `trend_items` は `normalized_url + normalized_title_hash` とタイトル類似クラスタで重複統合
-- `published_at` がRSSで欠損時は HTML メタ (`article:published_time` など) を取得し、失敗時は `fetched_at` を fallback として保存
+- `published_at` がRSSで欠損時は HTML メタ (`article:published_time` など) を取得し、`TREND_REQUIRE_PUBLISHED_AT=true` の場合は `fetched_at` fallback 項目を除外
 - `published_at_source` は `rss|meta|fetched`、`published_at_fallback` は fallback timestamp を保存
-- score 式: `freshness + source_weight + (cluster_size_bonus + diversity_bonus + entertainment_bonus) - clickbait_penalty`
+- score 式: `freshness + weighted_source + (cluster_size_bonus + diversity_bonus + entertainment_bonus + category_weight_bonus) - (clickbait_penalty + category_weight_penalty + hard_news_penalty)`
 - `trend_items.score_freshness/score_source/score_bonus/score_penalty` に内訳を保存し `/admin/trends` で表示
+- `trend_items` には source snapshot として `source_name` / `source_category` / `source_theme` を保持
 - clickbait 判定語は `TREND_CLICKBAIT_KEYWORDS` で上書き可能
+- 調整 knob:
+  - `TREND_MAX_ITEMS_TOTAL`（default: `60`）
+  - `TREND_MAX_ITEMS_PER_SOURCE`（default: `10`）
+  - `TREND_REQUIRE_PUBLISHED_AT`（default: `true`）
+  - `TREND_CATEGORY_WEIGHTS`（JSON; entertainment を優遇し hard-news を緩やかに減点）
 - `plan-topics` / `daily-generate` は `is_cluster_representative=true` の上位Nを採用
 - `daily-generate` は category を hard/soft/entertainment バケットへマップし、配分 4:4:3 を優先して候補を組む
-- 実行結果は `fetchedCount`, `insertedCount`, `dedupedCount`, `publishedAtFilledCount` を返す
+- 実行結果は `fetchedCount`, `insertedCount`, `dedupedCount`, `publishedAtFilledCount`, `publishedAtRequiredFilteredCount`, `droppedTotalCount`, `droppedPerSourceCount` を返す
 
 ### Local Run (deterministic)
 1. `supabase start`

@@ -404,6 +404,114 @@ export const TREND_SOURCE_THEMES: Record<string, TrendSourceSeed[]> = {
       weight: 1.26,
       category: "video",
       theme: "entertainment"
+    },
+    {
+      source_key: "google_news_movie_jp",
+      name: "Google News Movies (JP)",
+      url: "https://news.google.com/rss/search?q=%E6%98%A0%E7%94%BB&hl=ja&gl=JP&ceid=JP:ja",
+      enabled: true,
+      weight: 1.24,
+      category: "movie",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_hollywood",
+      name: "Google News Hollywood",
+      url: "https://news.google.com/rss/search?q=hollywood&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.2,
+      category: "movie",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_music_global",
+      name: "Google News Music",
+      url: "https://news.google.com/rss/search?q=music+industry&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.22,
+      category: "music",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_music_jp",
+      name: "Google News Music (JP)",
+      url: "https://news.google.com/rss/search?q=%E9%9F%B3%E6%A5%BD&hl=ja&gl=JP&ceid=JP:ja",
+      enabled: true,
+      weight: 1.24,
+      category: "music",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_kpop",
+      name: "Google News K-POP",
+      url: "https://news.google.com/rss/search?q=K-POP&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.18,
+      category: "music",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_disney",
+      name: "Google News Disney",
+      url: "https://news.google.com/rss/search?q=disney&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.16,
+      category: "movie",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_netflix",
+      name: "Google News Netflix",
+      url: "https://news.google.com/rss/search?q=netflix&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.18,
+      category: "movie",
+      theme: "entertainment"
+    },
+    {
+      source_key: "animenewsnetwork",
+      name: "Anime News Network",
+      url: "https://www.animenewsnetwork.com/all/rss.xml",
+      enabled: true,
+      weight: 1.34,
+      category: "anime",
+      theme: "entertainment"
+    },
+    {
+      source_key: "variety",
+      name: "Variety",
+      url: "https://variety.com/feed/",
+      enabled: true,
+      weight: 1.22,
+      category: "entertainment",
+      theme: "entertainment"
+    },
+    {
+      source_key: "hollywood_reporter",
+      name: "The Hollywood Reporter",
+      url: "https://www.hollywoodreporter.com/feed/",
+      enabled: true,
+      weight: 1.2,
+      category: "movie",
+      theme: "entertainment"
+    },
+    {
+      source_key: "ign_all",
+      name: "IGN",
+      url: "https://feeds.ign.com/ign/all",
+      enabled: true,
+      weight: 1.3,
+      category: "game",
+      theme: "entertainment"
+    },
+    {
+      source_key: "gamespot_all",
+      name: "GameSpot",
+      url: "https://www.gamespot.com/feeds/mashup/",
+      enabled: true,
+      weight: 1.28,
+      category: "game",
+      theme: "entertainment"
     }
   ]
 };
