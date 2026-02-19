@@ -75,6 +75,10 @@ type ScoredRepresentative = {
   clusterSize: number;
   clusterKey: string;
   score: number;
+  scoreFreshness: number;
+  scoreSource: number;
+  scoreBonus: number;
+  scorePenalty: number;
 };
 
 const DEFAULT_LIMIT_PER_SOURCE = 20;
@@ -85,6 +89,32 @@ const MAX_FRESHNESS_WINDOW_HOURS = 72;
 const TITLE_SIMILARITY_THRESHOLD = 0.66;
 const META_FETCH_TIMEOUT_MS = 3000;
 const META_FETCH_MAX_TEXT_CHARS = 200_000;
+const DEFAULT_ENTERTAINMENT_BONUS = 0.35;
+const ENTERTAINMENT_BONUS_CATEGORIES = new Set([
+  "entertainment",
+  "culture",
+  "sports",
+  "music",
+  "movie",
+  "anime",
+  "game",
+  "gaming",
+  "youtube",
+  "streaming",
+  "celebrity"
+]);
+
+const normalizeToken = (value: string): string => value.trim().toLowerCase();
+
+const resolveEntertainmentBonus = (): number => {
+  const raw = Number.parseFloat(
+    Deno.env.get("TREND_ENTERTAINMENT_BONUS") ?? `${DEFAULT_ENTERTAINMENT_BONUS}`
+  );
+  if (!Number.isFinite(raw)) return DEFAULT_ENTERTAINMENT_BONUS;
+  return Math.max(0, Math.min(raw, 3));
+};
+
+const ENTERTAINMENT_BONUS_VALUE = resolveEntertainmentBonus();
 
 const normalizeTitleForHash = (value: string): string => {
   return value
@@ -187,17 +217,36 @@ const resolveFreshnessScore = (publishedAt: string): number => {
 const calculateScore = (params: {
   publishedAt: string;
   sourceWeight: number;
+  sourceCategory: string;
   clusterSize: number;
   diversityBonus: number;
   hasClickbaitKeyword: boolean;
-}): number => {
+}): {
+  score: number;
+  scoreFreshness: number;
+  scoreSource: number;
+  scoreBonus: number;
+  scorePenalty: number;
+} => {
   const freshness = resolveFreshnessScore(params.publishedAt);
-  const sourceWeight = Number.isFinite(params.sourceWeight) ? Math.max(params.sourceWeight, 0) : 0;
+  const sourceWeightScore = Number.isFinite(params.sourceWeight) ? Math.max(params.sourceWeight, 0) : 0;
   const clusterSizeBonus = Math.log2(Math.max(params.clusterSize, 1));
+  const entertainmentBonus = ENTERTAINMENT_BONUS_CATEGORIES.has(
+    normalizeToken(params.sourceCategory)
+  )
+    ? ENTERTAINMENT_BONUS_VALUE
+    : 0;
+  const bonusScore = clusterSizeBonus + params.diversityBonus + entertainmentBonus;
   const clickbaitPenalty = params.hasClickbaitKeyword ? 1.1 : 0;
 
-  const raw = freshness + sourceWeight + clusterSizeBonus + params.diversityBonus - clickbaitPenalty;
-  return Number(raw.toFixed(6));
+  const raw = freshness + sourceWeightScore + bonusScore - clickbaitPenalty;
+  return {
+    score: Number(raw.toFixed(6)),
+    scoreFreshness: Number(freshness.toFixed(6)),
+    scoreSource: Number(sourceWeightScore.toFixed(6)),
+    scoreBonus: Number(bonusScore.toFixed(6)),
+    scorePenalty: Number(clickbaitPenalty.toFixed(6))
+  };
 };
 
 const decodeXmlText = (value: string): string => {
@@ -658,18 +707,24 @@ Deno.serve(async (req) => {
       const categoryCount = categoryCounts.get(representative.sourceCategory || "general") ?? 1;
       const diversityBonus = Number((1 / categoryCount).toFixed(6));
       const clusterKey = `${representative.normalizedTitleHash.slice(0, 16)}-${representative.urlHash.slice(0, 16)}`;
+      const score = calculateScore({
+        publishedAt: representative.publishedAt,
+        sourceWeight: representative.sourceWeight,
+        sourceCategory: representative.sourceCategory,
+        clusterSize,
+        diversityBonus,
+        hasClickbaitKeyword: representative.hasClickbaitKeyword
+      });
 
       return {
         item: representative,
         clusterSize,
         clusterKey,
-        score: calculateScore({
-          publishedAt: representative.publishedAt,
-          sourceWeight: representative.sourceWeight,
-          clusterSize,
-          diversityBonus,
-          hasClickbaitKeyword: representative.hasClickbaitKeyword
-        })
+        score: score.score,
+        scoreFreshness: score.scoreFreshness,
+        scoreSource: score.scoreSource,
+        scoreBonus: score.scoreBonus,
+        scorePenalty: score.scorePenalty
       };
     });
 
@@ -695,7 +750,11 @@ Deno.serve(async (req) => {
         cluster_key: entry.clusterKey,
         cluster_size: entry.clusterSize,
         is_cluster_representative: true,
-        score: entry.score
+        score: entry.score,
+        score_freshness: entry.scoreFreshness,
+        score_source: entry.scoreSource,
+        score_bonus: entry.scoreBonus,
+        score_penalty: entry.scorePenalty
       });
 
       if (error) {

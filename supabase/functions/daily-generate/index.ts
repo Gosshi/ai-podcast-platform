@@ -131,7 +131,7 @@ const TARGET_SCRIPT_DURATION_SEC = 20 * 60;
 const TREND_MIX_TARGET = {
   hard: 4,
   soft: 4,
-  entertainment: 2
+  entertainment: 3
 } as const;
 
 type TrendMixBucket = keyof typeof TREND_MIX_TARGET;
@@ -161,8 +161,13 @@ const ENTERTAINMENT_CATEGORIES = new Set([
   "movie",
   "anime",
   "game",
-  "gaming"
+  "gaming",
+  "youtube",
+  "streaming",
+  "celebrity"
 ]);
+
+const DEFAULT_ENTERTAINMENT_BONUS = 0.45;
 
 const DEFAULT_EXCLUDED_SOURCE_CATEGORIES = [
   "investment",
@@ -312,6 +317,14 @@ const normalizeToken = (value: string): string => {
   return value.trim().toLowerCase();
 };
 
+const resolveEntertainmentBonus = (): number => {
+  const raw = Number.parseFloat(
+    Deno.env.get("DAILY_ENTERTAINMENT_BONUS") ?? `${DEFAULT_ENTERTAINMENT_BONUS}`
+  );
+  if (!Number.isFinite(raw)) return DEFAULT_ENTERTAINMENT_BONUS;
+  return Math.max(0, Math.min(raw, 3));
+};
+
 const resolveCategory = (row: TrendCandidateRow): string => {
   if (Array.isArray(row.trend_sources)) {
     return row.trend_sources[0]?.category ?? "general";
@@ -392,6 +405,7 @@ const moderateLetterForScript = (rawText: string): ScriptModerationResult => {
 
 const loadTopTrends = async (): Promise<TrendItem[]> => {
   const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const entertainmentBonus = resolveEntertainmentBonus();
   const excludedCategories = new Set(
     parseCsvList(
       Deno.env.get("TREND_EXCLUDED_CATEGORIES") ?? undefined,
@@ -430,25 +444,33 @@ const loadTopTrends = async (): Promise<TrendItem[]> => {
       const haystack = `${item.title ?? ""} ${item.url ?? ""}`.toLowerCase();
       return !excludedKeywords.some((keyword) => haystack.includes(keyword));
     })
-    .map((item) => ({
-      title: item.title as string,
-      url: item.url as string,
-      summary:
-        (item.summary ?? "").trim() ||
-        `${item.title as string} was highlighted in recent public reports and discussions.`,
-      source: resolveSourceName(item),
-      category: resolveCategory(item),
-      score: item.score as number,
-      publishedAt: item.published_at
-    }));
+    .map((item) => {
+      const category = resolveCategory(item);
+      const normalizedCategory = normalizeToken(category);
+      const rawScore = item.score as number;
+      const bonus = ENTERTAINMENT_CATEGORIES.has(normalizedCategory) ? entertainmentBonus : 0;
+      return {
+        title: item.title as string,
+        url: item.url as string,
+        summary:
+          (item.summary ?? "").trim() ||
+          `${item.title as string} was highlighted in recent public reports and discussions.`,
+        source: resolveSourceName(item),
+        category,
+        score: Number((rawScore + bonus).toFixed(6)),
+        publishedAt: item.published_at
+      } satisfies TrendItem;
+    })
+    .sort((left, right) => {
+      const leftScore = left.score ?? 0;
+      const rightScore = right.score ?? 0;
+      if (rightScore !== leftScore) {
+        return rightScore - leftScore;
+      }
+      return (right.publishedAt ?? "").localeCompare(left.publishedAt ?? "");
+    });
 
-  return trendItems.slice(0, MAX_TREND_ITEMS).map((item) => ({
-    title: item.title,
-    url: item.url,
-    summary: item.summary,
-    source: item.source,
-    category: item.category
-  }));
+  return trendItems.slice(0, MAX_TREND_ITEMS);
 };
 
 const resolveJoinedLetterRow = (
@@ -708,6 +730,12 @@ const selectTrendsForMix = (trendItems: TrendItem[]): { selected: TrendItem[]; a
   };
 };
 
+const countEntertainmentTrends = (items: TrendItem[]): number => {
+  return items.reduce((count, item) => {
+    return resolveTrendBucket(item.category) === "entertainment" ? count + 1 : count;
+  }, 0);
+};
+
 const extractEpisodeId = (stepResult: InvokeResult, stepName: string): string => {
   const id = typeof stepResult.episodeId === "string" ? stepResult.episodeId : "";
   if (!id) {
@@ -832,6 +860,10 @@ Deno.serve(async (req) => {
     const plannedTrendItems = readPlanTrendItems(plan);
     const selectedTrendItems = readPlanSelectedTrendItems(plan);
     const trendItems = plannedTrendItems.length > 0 ? plannedTrendItems : balancedTrends.selected;
+    const entertainmentCount = countEntertainmentTrends(trendItems);
+    if (entertainmentCount < TREND_MIX_TARGET.entertainment) {
+      throw new Error(`insufficient_entertainment_topics:${entertainmentCount}`);
+    }
     const usedTrendFallback =
       typeof plan.usedTrendFallback === "boolean" ? plan.usedTrendFallback : fallbackFromDaily;
     const trendFallbackReason =
@@ -900,6 +932,7 @@ Deno.serve(async (req) => {
       usedTrendFallback,
       trendFallbackReason,
       trendMix: balancedTrends.audit,
+      entertainmentTopicCount: entertainmentCount,
       selectedTrendItems,
       estimatedDurationSec,
       outputs: {
@@ -924,6 +957,7 @@ Deno.serve(async (req) => {
       usedTrendFallback,
       trendFallbackReason,
       trendMix: balancedTrends.audit,
+      entertainmentTopicCount: entertainmentCount,
       selectedTrendItems,
       estimatedDurationSec,
       outputs: {

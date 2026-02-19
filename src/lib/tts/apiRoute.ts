@@ -10,6 +10,7 @@ import {
   type TtsLang,
   type TtsProviderName
 } from "./provider";
+import { preTtsNormalize } from "./preTtsNormalize";
 
 type RequestBody = {
   episodeId?: unknown;
@@ -170,6 +171,8 @@ const parseBody = async (request: Request): Promise<{
   if (!text) {
     text = await fetchEpisodeScript(episodeId, lang);
   }
+
+  text = preTtsNormalize(text, lang);
 
   if (text.length > MAX_TEXT_LENGTH) {
     throw new TtsApiError(400, "text_too_long", "text exceeds maximum length");

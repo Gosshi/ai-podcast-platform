@@ -412,6 +412,9 @@ export default async function JobRunsPage({
       {/* TODO: add auth guard before enabling outside local-only operation. */}
       <h1>{t.pageTitle}</h1>
       <p className={styles.caption}>{t.caption}</p>
+      <p className={styles.filter}>
+        <Link href="/admin/trends">/admin/trends</Link>
+      </p>
 
       <p className={styles.filter}>
         {t.filterPrefix}: {failedOnly ? t.filterFailedOnly : t.filterAll} [

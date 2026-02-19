@@ -179,6 +179,114 @@ export const TREND_SOURCE_THEMES: Record<string, TrendSourceSeed[]> = {
       weight: 1.04,
       category: "culture",
       theme: "entertainment"
+    },
+    {
+      source_key: "google_news_anime_global",
+      name: "Google News Anime",
+      url: "https://news.google.com/rss/search?q=anime&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.18,
+      category: "anime",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_anime_jp",
+      name: "Google News Anime (JP)",
+      url: "https://news.google.com/rss/search?q=%E3%82%A2%E3%83%8B%E3%83%A1&hl=ja&gl=JP&ceid=JP:ja",
+      enabled: true,
+      weight: 1.2,
+      category: "anime",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_manga_jp",
+      name: "Google News Manga (JP)",
+      url: "https://news.google.com/rss/search?q=%E6%BC%AB%E7%94%BB&hl=ja&gl=JP&ceid=JP:ja",
+      enabled: true,
+      weight: 1.16,
+      category: "anime",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_game_global",
+      name: "Google News Video Games",
+      url: "https://news.google.com/rss/search?q=video+games&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.2,
+      category: "game",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_game_jp",
+      name: "Google News Games (JP)",
+      url: "https://news.google.com/rss/search?q=%E3%82%B2%E3%83%BC%E3%83%A0&hl=ja&gl=JP&ceid=JP:ja",
+      enabled: true,
+      weight: 1.22,
+      category: "game",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_esports",
+      name: "Google News Esports",
+      url: "https://news.google.com/rss/search?q=esports&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.12,
+      category: "game",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_nintendo",
+      name: "Google News Nintendo",
+      url: "https://news.google.com/rss/search?q=nintendo&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.14,
+      category: "game",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_playstation",
+      name: "Google News PlayStation",
+      url: "https://news.google.com/rss/search?q=playstation&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.14,
+      category: "game",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_xbox",
+      name: "Google News Xbox",
+      url: "https://news.google.com/rss/search?q=xbox&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.12,
+      category: "game",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_youtube_creators",
+      name: "Google News YouTube Creators",
+      url: "https://news.google.com/rss/search?q=youtube+creator&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.2,
+      category: "youtube",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_youtube_jp",
+      name: "Google News YouTube (JP)",
+      url: "https://news.google.com/rss/search?q=YouTube&hl=ja&gl=JP&ceid=JP:ja",
+      enabled: true,
+      weight: 1.22,
+      category: "youtube",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_vtuber_jp",
+      name: "Google News VTuber (JP)",
+      url: "https://news.google.com/rss/search?q=VTuber&hl=ja&gl=JP&ceid=JP:ja",
+      enabled: true,
+      weight: 1.24,
+      category: "youtube",
+      theme: "entertainment"
     }
   ]
 };
