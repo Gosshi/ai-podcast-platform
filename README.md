@@ -42,7 +42,9 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - `daily-generate` は上記を spec 順で実行する orchestrator
 - `publish` は `episodes.status='published'` と `published_at=now()` を必ず設定
 - `plan-topics` は `editor-in-chief` ロールで `main_topics(3) / quick_news(4) / small_talk(2) / letters / ending` を返す
-- `write-script-ja` / `adapt-script-en` は script 生成後に `normalizeForSpeech` を適用し、URL を script から除去する（元URLは `trend_items.url` に保持）
+- `write-script-ja` は script 生成後に `scriptNormalize`（HTML除去/URL除去/placeholder除去/重複行削減）を適用し、`ENABLE_SCRIPT_EDITOR=1` のとき OpenAI 後編集を実施する
+- `daily-generate` は `write-script-ja` 後に再度 `scriptNormalize` と `scriptQualityCheck` を実施し、`<` / `http` / `&#` / `数式` / 重複率 / 文字数を gate する
+- `adapt-script-en` は script 生成後に `normalizeForSpeech` を適用し、URL を script から除去する（元URLは `trend_items.url` に保持）
 - `daily-generate` は trend category を hard:soft:entertainment = 4:4:3 目標で選定し、`entertainment_bonus` で娯楽カテゴリを加点する
 - `daily-generate` の script gate は `SCRIPT_MIN_CHARS_JA` / `SCRIPT_TARGET_CHARS_JA` / `SCRIPT_MAX_CHARS_JA`（＋`TARGET_SCRIPT_ESTIMATED_CHARS_PER_MIN`）で調整可能。`SCRIPT_MIN_CHARS_JA` 未設定時は `TARGET_SCRIPT_MIN_CHARS` を後方互換で参照
 
@@ -127,6 +129,7 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - `TTS_PROVIDER=openai` の場合は OpenAI `/v1/audio/speech` を使用し、失敗時は macOS local TTS（`say` + `afconvert`）へフォールバック
 - OpenAI TTS は 1リクエスト文字数制限を超える台本を文単位で分割し、複数チャンクを結合して1本の音声として保存（長尺時は `mp3` を使用）
 - `preTtsNormalize` で日本語読み仮名辞書（`src/lib/tts/dictionary.json`）を適用し、句点/改行単位で文を短く分割してから合成
+- `ENABLE_TTS_PREPROCESS=1` の場合、Edge Function 側で URL 置換・括弧除去・カタカナ置換・句読点調整・ポーズ挿入を行ってから `/api/tts` を呼ぶ
 - local provider は `say` + `afconvert` で WAV を生成し `public/audio` に保存
 - `/api/tts` は `LOCAL_TTS_API_KEY` 設定時に `x-local-tts-api-key` ヘッダ必須
 - 主要 env（任意）:
@@ -151,9 +154,12 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
   - `LOCAL_TTS_EN_VOICE`（英語voiceの最優先設定）
   - `LOCAL_TTS_VOICE_EN`（後方互換。`LOCAL_TTS_EN_VOICE` 未設定時のみ使用）
   - `ENABLE_LOCAL_TTS=true`（`NODE_ENV=development` でも有効）
+  - `ENABLE_TTS_PREPROCESS=1`（`tts-ja` / `tts-en` で TTS 前処理を有効化）
   - `SCRIPT_MIN_CHARS_JA`（default: `5500`）
   - `SCRIPT_TARGET_CHARS_JA`（default: `7000`）
   - `SCRIPT_MAX_CHARS_JA`（default: `9000`）
+  - `ENABLE_SCRIPT_EDITOR=1`（`write-script-ja` で OpenAI 後編集を有効化）
+  - `SCRIPT_EDITOR_MODEL`（default: `gpt-4o-mini`）
   - `TARGET_SCRIPT_MIN_CHARS`（後方互換。`SCRIPT_MIN_CHARS_JA` 未設定時に参照）
   - `TARGET_SCRIPT_ESTIMATED_CHARS_PER_MIN`（default: `300`）
   - `TARGET_SCRIPT_DURATION_SEC`（任意。未指定時は `SCRIPT_TARGET_CHARS_JA` と係数から算出）
@@ -182,6 +188,18 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 2. `curl -sS -X POST http://127.0.0.1:54321/functions/v1/ingest_trends_rss -H "Content-Type: application/json" -d '{"mockFeeds":[{"sourceKey":"local-rss","name":"Local RSS","url":"https://local.invalid/rss","weight":1.3,"category":"tech","xml":"<rss><channel><item><title>Topic A</title><link>https://example.com/a</link><description>A summary</description></item></channel></rss>"}]}'`
 3. `curl -sS -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H "Content-Type: application/json" -d '{"episodeDate":"2026-02-19"}'` を実行し、`outputs.plan/writeJa/ttsJa/adaptEn/ttsEn/publish` が揃うことを確認
 4. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -At -F $'\t' -c "select lang,status,coalesce(audio_url,'') from public.episodes where lang in ('ja','en') order by published_at desc nulls last, created_at desc limit 2;"` で `ja/en` とも `status=published` かつ `audio_url` 非空を確認
+
+### Troubleshooting
+- `daily-generate` が `step_failed:tts-ja` で止まる:
+  - `npm run dev -- --hostname 0.0.0.0` を起動し、`/api/tts` を Edge Function から到達可能にする
+  - `.env.local` で `TTS_API_URL` / `LOCAL_TTS_BASE_URL` がローカル開発 URL を指しているか確認する
+- script quality で `script_quality_failed:*`:
+  - `ENABLE_SCRIPT_EDITOR=1` を有効化して後編集を試す
+  - `SCRIPT_MIN_CHARS_JA` / `SCRIPT_TARGET_CHARS_JA` を見直す
+  - `node --experimental-strip-types scripts/scriptQualityCheck.mts --file <path>` で対象台本を単体検証する
+- TTS の読みが不自然:
+  - `ENABLE_TTS_PREPROCESS=1` を有効化する
+  - `src/lib/tts/dictionary.json` に固有名詞の読みを追加する
 
 ## Trend Ingestion (RSS Upgraded)
 - Function: `ingest_trends_rss`

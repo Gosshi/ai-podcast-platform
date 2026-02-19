@@ -18,11 +18,16 @@ import {
   type ScriptGateConfig
 } from "../_shared/scriptGate.ts";
 import {
+  normalizeScriptText,
+  type ScriptNormalizationMetrics
+} from "../_shared/scriptNormalize.ts";
+import {
   buildSectionsCharsBreakdown,
   renderScriptSections,
   type ScriptSection,
   type SectionsCharsBreakdown
 } from "../_shared/scriptSections.ts";
+import { postEditJapaneseScript } from "../_shared/scriptEditor.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -77,6 +82,7 @@ type ScriptBuildResult = {
   estimatedDurationSec: number;
   sectionsCharsBreakdown: SectionsCharsBreakdown;
   itemsUsedCount: ItemsUsedCount;
+  normalizationMetrics: ScriptNormalizationMetrics;
 };
 
 const MAX_TREND_ITEMS = 12;
@@ -611,12 +617,14 @@ const buildJapaneseScript = (params: {
     normalized = normalized.slice(0, params.scriptGate.maxChars).trimEnd();
   }
 
-  const scriptChars = normalized.length;
+  const finalNormalization = normalizeScriptText(normalized);
+  const finalScript = finalNormalization.text;
+  const scriptChars = finalScript.length;
   const estimatedDurationSec = estimateScriptDurationSec(scriptChars, params.scriptGate.charsPerMin);
-  const sectionsCharsBreakdown = buildSectionsCharsBreakdown(normalized);
+  const sectionsCharsBreakdown = buildSectionsCharsBreakdown(finalScript);
 
   return {
-    script: normalized,
+    script: finalScript,
     scriptChars,
     estimatedDurationSec,
     sectionsCharsBreakdown,
@@ -624,7 +632,8 @@ const buildJapaneseScript = (params: {
       deepdive: deepDiveSections.length,
       quicknews: quickNewsItems.length,
       letters: params.letters.length
-    }
+    },
+    normalizationMetrics: finalNormalization.metrics
   };
 };
 
@@ -656,7 +665,15 @@ Deno.serve(async (req) => {
   const scriptGate = resolveScriptGateConfig();
   const title = `Daily Topic ${episodeDate} (JA)`;
   const description = `Japanese episode for ${episodeDate}`;
-  const built = buildJapaneseScript({ topicTitle, trendItems, letters, programPlan, scriptGate });
+  const drafted = buildJapaneseScript({ topicTitle, trendItems, letters, programPlan, scriptGate });
+  const editorResult = await postEditJapaneseScript(drafted.script);
+  const finalScript = editorResult.script;
+  const finalScriptChars = finalScript.length;
+  const finalEstimatedDurationSec = estimateScriptDurationSec(finalScriptChars, scriptGate.charsPerMin);
+  const finalSectionsCharsBreakdown = buildSectionsCharsBreakdown(finalScript);
+  const normalizationMetrics = editorResult.edited
+    ? editorResult.normalizationMetrics
+    : drafted.normalizationMetrics;
 
   const runId = await startRun("write-script-ja", {
     step: "write-script-ja",
@@ -666,15 +683,22 @@ Deno.serve(async (req) => {
     title,
     trendItemsCount: trendItems.length,
     lettersCount: letters.length,
-    scriptChars: built.scriptChars,
-    estimatedDurationSec: built.estimatedDurationSec,
-    chars_actual: built.scriptChars,
+    scriptChars: finalScriptChars,
+    estimatedDurationSec: finalEstimatedDurationSec,
+    chars_actual: finalScriptChars,
     chars_min: scriptGate.minChars,
     chars_target: scriptGate.targetChars,
     chars_max: scriptGate.maxChars,
-    sections_chars_breakdown: built.sectionsCharsBreakdown,
+    sections_chars_breakdown: finalSectionsCharsBreakdown,
+    removed_html_count: normalizationMetrics.removedHtmlCount,
+    removed_url_count: normalizationMetrics.removedUrlCount,
+    deduped_lines_count: normalizationMetrics.dedupedLinesCount,
+    script_editor_enabled: editorResult.enabled,
+    script_editor_applied: editorResult.edited,
+    script_editor_model: editorResult.model,
+    script_editor_error: editorResult.error,
     expand_attempted: 0,
-    items_used_count: built.itemsUsedCount,
+    items_used_count: drafted.itemsUsedCount,
     scriptGate
   });
 
@@ -683,15 +707,15 @@ Deno.serve(async (req) => {
     let noOp = false;
 
     if (!episode) {
-      episode = await insertJapaneseEpisode({ title, description, script: built.script });
-      episode = await updateEpisode(episode.id, { duration_sec: built.estimatedDurationSec });
-    } else if (!episode.script || episode.status === "failed" || episode.script !== built.script) {
+      episode = await insertJapaneseEpisode({ title, description, script: finalScript });
+      episode = await updateEpisode(episode.id, { duration_sec: finalEstimatedDurationSec });
+    } else if (!episode.script || episode.status === "failed" || episode.script !== finalScript) {
       await updateEpisode(episode.id, { status: "generating" });
       episode = await updateEpisode(episode.id, {
-        script: built.script,
+        script: finalScript,
         description,
         status: "draft",
-        duration_sec: built.estimatedDurationSec
+        duration_sec: finalEstimatedDurationSec
       });
     } else {
       noOp = true;
@@ -707,15 +731,22 @@ Deno.serve(async (req) => {
       noOp,
       trendItemsCount: trendItems.length,
       lettersCount: letters.length,
-      scriptChars: built.scriptChars,
-      estimatedDurationSec: built.estimatedDurationSec,
-      chars_actual: built.scriptChars,
+      scriptChars: finalScriptChars,
+      estimatedDurationSec: finalEstimatedDurationSec,
+      chars_actual: finalScriptChars,
       chars_min: scriptGate.minChars,
       chars_target: scriptGate.targetChars,
       chars_max: scriptGate.maxChars,
-      sections_chars_breakdown: built.sectionsCharsBreakdown,
+      sections_chars_breakdown: finalSectionsCharsBreakdown,
+      removed_html_count: normalizationMetrics.removedHtmlCount,
+      removed_url_count: normalizationMetrics.removedUrlCount,
+      deduped_lines_count: normalizationMetrics.dedupedLinesCount,
+      script_editor_enabled: editorResult.enabled,
+      script_editor_applied: editorResult.edited,
+      script_editor_model: editorResult.model,
+      script_editor_error: editorResult.error,
       expand_attempted: 0,
-      items_used_count: built.itemsUsedCount,
+      items_used_count: drafted.itemsUsedCount,
       scriptGate
     });
 
@@ -728,15 +759,22 @@ Deno.serve(async (req) => {
       status: episode.status,
       trendItemsCount: trendItems.length,
       lettersCount: letters.length,
-      scriptChars: built.scriptChars,
-      estimatedDurationSec: built.estimatedDurationSec,
-      chars_actual: built.scriptChars,
+      scriptChars: finalScriptChars,
+      estimatedDurationSec: finalEstimatedDurationSec,
+      chars_actual: finalScriptChars,
       chars_min: scriptGate.minChars,
       chars_target: scriptGate.targetChars,
       chars_max: scriptGate.maxChars,
-      sections_chars_breakdown: built.sectionsCharsBreakdown,
+      sections_chars_breakdown: finalSectionsCharsBreakdown,
+      removed_html_count: normalizationMetrics.removedHtmlCount,
+      removed_url_count: normalizationMetrics.removedUrlCount,
+      deduped_lines_count: normalizationMetrics.dedupedLinesCount,
+      script_editor_enabled: editorResult.enabled,
+      script_editor_applied: editorResult.edited,
+      script_editor_model: editorResult.model,
+      script_editor_error: editorResult.error,
       expand_attempted: 0,
-      items_used_count: built.itemsUsedCount,
+      items_used_count: drafted.itemsUsedCount,
       scriptGate
     });
   } catch (error) {
@@ -749,15 +787,22 @@ Deno.serve(async (req) => {
       title,
       trendItemsCount: trendItems.length,
       lettersCount: letters.length,
-      scriptChars: built.scriptChars,
-      estimatedDurationSec: built.estimatedDurationSec,
-      chars_actual: built.scriptChars,
+      scriptChars: finalScriptChars,
+      estimatedDurationSec: finalEstimatedDurationSec,
+      chars_actual: finalScriptChars,
       chars_min: scriptGate.minChars,
       chars_target: scriptGate.targetChars,
       chars_max: scriptGate.maxChars,
-      sections_chars_breakdown: built.sectionsCharsBreakdown,
+      sections_chars_breakdown: finalSectionsCharsBreakdown,
+      removed_html_count: normalizationMetrics.removedHtmlCount,
+      removed_url_count: normalizationMetrics.removedUrlCount,
+      deduped_lines_count: normalizationMetrics.dedupedLinesCount,
+      script_editor_enabled: editorResult.enabled,
+      script_editor_applied: editorResult.edited,
+      script_editor_model: editorResult.model,
+      script_editor_error: editorResult.error,
       expand_attempted: 0,
-      items_used_count: built.itemsUsedCount,
+      items_used_count: drafted.itemsUsedCount,
       scriptGate
     });
 

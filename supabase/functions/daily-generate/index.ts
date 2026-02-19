@@ -3,6 +3,9 @@ import { jsonResponse } from "../_shared/http.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { parseCsvList } from "../_shared/trendsConfig.ts";
 import { estimateScriptDurationSec, resolveScriptGateConfig } from "../_shared/scriptGate.ts";
+import { normalizeScriptText } from "../_shared/scriptNormalize.ts";
+import { checkScriptQuality } from "../_shared/scriptQualityCheck.ts";
+import { buildSectionsCharsBreakdown } from "../_shared/scriptSections.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -122,6 +125,13 @@ type ScriptGateDiagnostic = {
   estimatedSec: number;
   targetSec: number;
   rule: string;
+};
+
+type ScriptNormalizationAudit = {
+  removedHtmlCount: number;
+  removedUrlCount: number;
+  dedupedLinesCount: number;
+  changed: boolean;
 };
 
 const orderedSteps = [
@@ -776,7 +786,7 @@ const assertNoUrlsInEpisodeScript = async (episodeId: string): Promise<void> => 
   }
 };
 
-const loadEpisodeScriptChars = async (episodeId: string): Promise<number> => {
+const loadEpisodeScript = async (episodeId: string): Promise<string> => {
   const { data, error } = await supabaseAdmin
     .from("episodes")
     .select("script")
@@ -791,7 +801,45 @@ const loadEpisodeScriptChars = async (episodeId: string): Promise<number> => {
     ? ((data as { script?: string | null }).script as string)
     : "";
 
+  return script;
+};
+
+const loadEpisodeScriptChars = async (episodeId: string): Promise<number> => {
+  const script = await loadEpisodeScript(episodeId);
   return script.length;
+};
+
+const applyNormalizationToEpisodeScript = async (
+  episodeId: string
+): Promise<{
+  script: string;
+  scriptChars: number;
+  metrics: ScriptNormalizationAudit;
+}> => {
+  const currentScript = await loadEpisodeScript(episodeId);
+  const normalized = normalizeScriptText(currentScript);
+
+  if (normalized.text !== currentScript) {
+    const { error } = await supabaseAdmin
+      .from("episodes")
+      .update({ script: normalized.text })
+      .eq("id", episodeId);
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  return {
+    script: normalized.text,
+    scriptChars: normalized.text.length,
+    metrics: {
+      removedHtmlCount: normalized.metrics.removedHtmlCount,
+      removedUrlCount: normalized.metrics.removedUrlCount,
+      dedupedLinesCount: normalized.metrics.dedupedLinesCount,
+      changed: normalized.text !== currentScript
+    }
+  };
 };
 
 const toRecord = (value: unknown): Record<string, unknown> | null => {
@@ -821,6 +869,14 @@ const readRecordField = (source: InvokeResult, key: string): Record<string, unkn
 
 const readItemsUsedCount = (source: InvokeResult): Record<string, unknown> => {
   return readRecordField(source, "items_used_count") ?? {};
+};
+
+const readNormalizationMetric = (source: InvokeResult, key: string): number => {
+  const value = source[key];
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.max(0, Math.round(value));
 };
 
 const readPlanTrendItems = (plan: InvokeResult): TrendItem[] => {
@@ -939,6 +995,12 @@ Deno.serve(async (req) => {
       letters
     });
     const writeJaEpisodeId = extractEpisodeId(writeJa, "write-script-ja");
+    let normalizationAudit: ScriptNormalizationAudit = {
+      removedHtmlCount: readNormalizationMetric(writeJa, "removed_html_count"),
+      removedUrlCount: readNormalizationMetric(writeJa, "removed_url_count"),
+      dedupedLinesCount: readNormalizationMetric(writeJa, "deduped_lines_count"),
+      changed: false
+    };
     const expandJaAttempts: InvokeResult[] = [];
     let actualChars =
       readNumberField(writeJa, ["chars_actual", "scriptChars"]) ??
@@ -973,6 +1035,18 @@ Deno.serve(async (req) => {
       }
     }
 
+    const normalizedJaScript = await applyNormalizationToEpisodeScript(writeJaEpisodeId);
+    normalizationAudit = {
+      removedHtmlCount: normalizationAudit.removedHtmlCount + normalizedJaScript.metrics.removedHtmlCount,
+      removedUrlCount: normalizationAudit.removedUrlCount + normalizedJaScript.metrics.removedUrlCount,
+      dedupedLinesCount: normalizationAudit.dedupedLinesCount + normalizedJaScript.metrics.dedupedLinesCount,
+      changed: normalizationAudit.changed || normalizedJaScript.metrics.changed
+    };
+    actualChars = normalizedJaScript.scriptChars;
+    estimatedDurationSec = estimateScriptDurationSec(actualChars, scriptGateConfig.charsPerMin);
+    sectionsCharsBreakdown = buildSectionsCharsBreakdown(normalizedJaScript.script);
+    const jaQuality = checkScriptQuality(normalizedJaScript.script);
+
     const scriptGateDiagnostic: ScriptGateDiagnostic = {
       minChars: scriptGateConfig.minChars,
       targetChars: scriptGateConfig.targetChars,
@@ -990,7 +1064,17 @@ Deno.serve(async (req) => {
       chars_max: scriptGateConfig.maxChars,
       sections_chars_breakdown: sectionsCharsBreakdown,
       expand_attempted: expandAttempted,
-      items_used_count: itemsUsedCount
+      items_used_count: itemsUsedCount,
+      removed_html_count: normalizationAudit.removedHtmlCount,
+      removed_url_count: normalizationAudit.removedUrlCount,
+      deduped_lines_count: normalizationAudit.dedupedLinesCount,
+      normalization_changed: normalizationAudit.changed,
+      quality: {
+        duplicate_ratio: Number(jaQuality.metrics.duplicateRatio.toFixed(4)),
+        duplicate_line_count: jaQuality.metrics.duplicateLineCount,
+        char_length: jaQuality.metrics.charLength,
+        violations: jaQuality.violations
+      }
     };
     if (actualChars < scriptGateConfig.minChars) {
       failureDetails = {
@@ -1007,6 +1091,14 @@ Deno.serve(async (req) => {
         scriptMetrics
       };
       throw new Error("script_too_long");
+    }
+    if (!jaQuality.ok) {
+      failureDetails = {
+        failedStep: "write-script-ja",
+        scriptGate: scriptGateDiagnostic,
+        scriptMetrics
+      };
+      throw new Error(`script_quality_failed:${jaQuality.violations.join(",")}`);
     }
     await assertNoUrlsInEpisodeScript(writeJaEpisodeId);
 
