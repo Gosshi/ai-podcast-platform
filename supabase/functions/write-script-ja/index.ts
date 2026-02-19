@@ -21,6 +21,7 @@ import {
   normalizeScriptText,
   type ScriptNormalizationMetrics
 } from "../_shared/scriptNormalize.ts";
+import { preprocessForTTS } from "../_shared/ttsPreprocess.ts";
 import {
   buildSectionsCharsBreakdown,
   renderScriptSections,
@@ -28,6 +29,11 @@ import {
   type SectionsCharsBreakdown
 } from "../_shared/scriptSections.ts";
 import { postEditJapaneseScript } from "../_shared/scriptEditor.ts";
+import {
+  resolveEpisodeStructureConfigFromRaw,
+  validateEpisodeScriptQuality,
+  type EpisodeStructureConfig
+} from "../_shared/episodeStructure.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -87,9 +93,14 @@ type ScriptBuildResult = {
 
 const MAX_TREND_ITEMS = 12;
 const MAX_LETTERS = 2;
-const DEEP_DIVE_COUNT = 3;
-const QUICK_NEWS_MIN_ITEMS = 5;
-const QUICK_NEWS_MAX_ITEMS = 8;
+
+const resolveEpisodeStructureConfig = (): EpisodeStructureConfig => {
+  return resolveEpisodeStructureConfigFromRaw({
+    deepDiveCount: Deno.env.get("EPISODE_DEEPDIVE_COUNT") ?? undefined,
+    quickNewsCount: Deno.env.get("EPISODE_QUICKNEWS_COUNT") ?? undefined,
+    totalTargetChars: Deno.env.get("EPISODE_TOTAL_TARGET_CHARS") ?? undefined
+  });
+};
 
 const fallbackTrend = (index: number): ScriptTrendItem => ({
   id: `fallback-${index}`,
@@ -138,12 +149,22 @@ const ensureSentence = (value: string, fallback: string, maxChars = 160): string
 
 const padSection = (body: string, minChars: number, expansions: string[]): string => {
   let padded = body.trim();
-  let index = 0;
+  const candidates = expansions
+    .map((expansion) => sanitizeNarrationText(expansion))
+    .filter((expansion) => expansion.length > 0);
+  if (candidates.length === 0) {
+    return padded;
+  }
 
-  while (padded.length < minChars) {
-    const expansion = expansions[index % expansions.length] ?? expansions[0] ?? "補足です。";
-    padded = `${padded}\n補足${index + 1}: ${expansion}`;
+  let index = 0;
+  let guard = 0;
+
+  while (padded.length < minChars && guard < 64) {
+    const expansion = candidates[index % candidates.length] ?? candidates[0];
+    if (!expansion) break;
+    padded = `${padded}\n${expansion}`;
     index += 1;
+    guard += 1;
   }
 
   return padded;
@@ -277,7 +298,8 @@ const ensureProgramPlan = (
 const buildQuickNewsItems = (
   quickNews: ProgramPlan["quick_news"],
   trendItems: ScriptTrendItem[],
-  mainTopics: ProgramPlan["main_topics"]
+  mainTopics: ProgramPlan["main_topics"],
+  targetQuickNewsCount: number
 ): ProgramPlan["quick_news"] => {
   const mainTopicTitles = new Set(mainTopics.map((topic) => topic.title));
   const usedTitles = new Set<string>();
@@ -291,7 +313,7 @@ const buildQuickNewsItems = (
   }
 
   for (const trend of trendItems) {
-    if (result.length >= QUICK_NEWS_MAX_ITEMS) break;
+    if (result.length >= targetQuickNewsCount) break;
     if (mainTopicTitles.has(trend.title)) continue;
     if (usedTitles.has(trend.title)) continue;
 
@@ -305,25 +327,30 @@ const buildQuickNewsItems = (
     });
   }
 
-  while (result.length < QUICK_NEWS_MIN_ITEMS) {
+  while (result.length < targetQuickNewsCount) {
     const fallbackIndex = result.length + 1;
     result.push({
-      title: `補足ニュース ${fallbackIndex}`,
+      title: `追加トピック ${fallbackIndex}`,
       source: "編集部メモ",
       category: "general",
-      summary: "ここは速報ではなく背景確認の時間です。断定を避け、明日更新される可能性も添えて整理します。",
+      summary: "ここは速報より背景整理を優先し、見出しの温度差を短く比較します。",
       durationSecTarget: 35
     });
   }
 
-  return result.slice(0, QUICK_NEWS_MAX_ITEMS);
+  return result.slice(0, targetQuickNewsCount);
 };
 
-const buildOp = (topicTitle: string, quickNewsCount: number, lettersCount: number): string => {
+const buildOp = (
+  topicTitle: string,
+  deepDiveCount: number,
+  quickNewsCount: number,
+  lettersCount: number
+): string => {
   const base = [
     `番組名: ${topicTitle}`,
     "OPです。今日も日本語で、テンポよく整理していきます。",
-    "最初に全体像をつかみます。次に深掘りを3本。続けてクイックニュース。最後にレターズとOutroです。",
+    `最初に全体像をつかみます。次に深掘りを${deepDiveCount}本。続けてクイックニュース。最後にレターズとOutroです。`,
     `QuickNewsは${quickNewsCount}本です。Lettersは${lettersCount > 0 ? `${lettersCount}通` : "募集と想定質問"}で進めます。`,
     "速報の勢いに流されず、事実と仮説を分けて話します。リンクは概要欄にまとめています。"
   ].join("\n");
@@ -334,8 +361,12 @@ const buildOp = (topicTitle: string, quickNewsCount: number, lettersCount: numbe
   ]);
 };
 
-const buildHeadline = (programPlan: ProgramPlan, quickNewsCount: number): string => {
-  const topLines = programPlan.main_topics.slice(0, DEEP_DIVE_COUNT).map((topic, index) => {
+const buildHeadline = (
+  programPlan: ProgramPlan,
+  deepDiveCount: number,
+  quickNewsCount: number
+): string => {
+  const topLines = programPlan.main_topics.slice(0, deepDiveCount).map((topic, index) => {
     return `- Headline ${index + 1}: ${ensureSentence(topic.title, `注目テーマ${index + 1}`)}`;
   });
 
@@ -550,12 +581,14 @@ const buildJapaneseScript = (params: {
   trendItems: ScriptTrendItem[];
   letters: ScriptLetter[];
   scriptGate: ScriptGateConfig;
+  episodeStructure: EpisodeStructureConfig;
 }): ScriptBuildResult => {
-  const deepDiveTopics = params.programPlan.main_topics.slice(0, DEEP_DIVE_COUNT);
+  const deepDiveTopics = params.programPlan.main_topics.slice(0, params.episodeStructure.deepDiveCount);
   const quickNewsItems = buildQuickNewsItems(
     params.programPlan.quick_news,
     params.trendItems,
-    deepDiveTopics
+    deepDiveTopics,
+    params.episodeStructure.quickNewsCount
   );
 
   const deepDiveSections = deepDiveTopics.map((topic, index) => {
@@ -571,11 +604,20 @@ const buildJapaneseScript = (params: {
   const sectionBlocks: ScriptSection[] = [
     {
       heading: "OP",
-      body: buildOp(params.topicTitle, quickNewsItems.length, params.letters.length)
+      body: buildOp(
+        params.topicTitle,
+        params.episodeStructure.deepDiveCount,
+        quickNewsItems.length,
+        params.letters.length
+      )
     },
     {
       heading: "HEADLINE",
-      body: buildHeadline(params.programPlan, quickNewsItems.length)
+      body: buildHeadline(
+        params.programPlan,
+        params.episodeStructure.deepDiveCount,
+        quickNewsItems.length
+      )
     },
     ...deepDiveSections,
     {
@@ -600,18 +642,8 @@ const buildJapaneseScript = (params: {
     }
   ];
 
-  let draft = renderScriptSections(sectionBlocks);
+  const draft = renderScriptSections(sectionBlocks);
   let normalized = normalizeForSpeech(draft, "ja");
-
-  let bonusIndex = 1;
-  while (normalized.length < params.scriptGate.targetChars) {
-    draft =
-      `${draft}\n\n[BONUS SUMMARY ${bonusIndex}]` +
-      "\n追加の本編補足です。具体例、比喩、背景補足を短く重ねて、今日の判断軸をもう一度整理します。" +
-      "\n明日の更新が来たときに差分を追いやすいよう、結論より前提条件を優先してメモしておきましょう。";
-    normalized = normalizeForSpeech(draft, "ja");
-    bonusIndex += 1;
-  }
 
   if (normalized.length > params.scriptGate.maxChars) {
     normalized = normalized.slice(0, params.scriptGate.maxChars).trimEnd();
@@ -650,6 +682,19 @@ const resolveTopicTitle = (rawTitle: string | undefined, episodeDate: string): s
   return normalized;
 };
 
+const mergeNormalizationMetrics = (
+  left: ScriptNormalizationMetrics,
+  right: ScriptNormalizationMetrics
+): ScriptNormalizationMetrics => {
+  return {
+    removedHtmlCount: left.removedHtmlCount + right.removedHtmlCount,
+    decodedHtmlEntityCount: left.decodedHtmlEntityCount + right.decodedHtmlEntityCount,
+    removedUrlCount: left.removedUrlCount + right.removedUrlCount,
+    removedPlaceholderCount: left.removedPlaceholderCount + right.removedPlaceholderCount,
+    dedupedLinesCount: left.dedupedLinesCount + right.dedupedLinesCount
+  };
+};
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
@@ -663,17 +708,36 @@ Deno.serve(async (req) => {
   const letters = normalizeLetters(body.letters);
   const programPlan = ensureProgramPlan(body.programPlan, topicTitle, trendItems);
   const scriptGate = resolveScriptGateConfig();
+  const episodeStructure = resolveEpisodeStructureConfig();
   const title = `Daily Topic ${episodeDate} (JA)`;
   const description = `Japanese episode for ${episodeDate}`;
-  const drafted = buildJapaneseScript({ topicTitle, trendItems, letters, programPlan, scriptGate });
+  const drafted = buildJapaneseScript({
+    topicTitle,
+    trendItems,
+    letters,
+    programPlan,
+    scriptGate,
+    episodeStructure
+  });
   const editorResult = await postEditJapaneseScript(drafted.script);
-  const finalScript = editorResult.script;
+  const ttsPreprocessed = preprocessForTTS(editorResult.script, "ja");
+  const postTtsNormalization = normalizeScriptText(ttsPreprocessed.text);
+  const finalScript = postTtsNormalization.text;
   const finalScriptChars = finalScript.length;
   const finalEstimatedDurationSec = estimateScriptDurationSec(finalScriptChars, scriptGate.charsPerMin);
   const finalSectionsCharsBreakdown = buildSectionsCharsBreakdown(finalScript);
-  const normalizationMetrics = editorResult.edited
+  const baseNormalizationMetrics = editorResult.edited
     ? editorResult.normalizationMetrics
     : drafted.normalizationMetrics;
+  const normalizationMetrics = mergeNormalizationMetrics(
+    baseNormalizationMetrics,
+    postTtsNormalization.metrics
+  );
+  const scriptQualityGate = validateEpisodeScriptQuality({
+    script: finalScript,
+    itemsUsedCount: drafted.itemsUsedCount,
+    config: episodeStructure
+  });
 
   const runId = await startRun("write-script-ja", {
     step: "write-script-ja",
@@ -697,12 +761,20 @@ Deno.serve(async (req) => {
     script_editor_applied: editorResult.edited,
     script_editor_model: editorResult.model,
     script_editor_error: editorResult.error,
+    tts_preprocess_applied: ttsPreprocessed.changed,
+    tts_preprocess_metrics: ttsPreprocessed.metrics,
+    script_quality_gate: scriptQualityGate,
     expand_attempted: 0,
     items_used_count: drafted.itemsUsedCount,
+    episodeStructure,
     scriptGate
   });
 
   try {
+    if (!scriptQualityGate.ok) {
+      throw new Error(`script_quality_gate_failed:${scriptQualityGate.violations.join(",")}`);
+    }
+
     let episode = await findJapaneseEpisodeByTitle(title);
     let noOp = false;
 
@@ -745,8 +817,12 @@ Deno.serve(async (req) => {
       script_editor_applied: editorResult.edited,
       script_editor_model: editorResult.model,
       script_editor_error: editorResult.error,
+      tts_preprocess_applied: ttsPreprocessed.changed,
+      tts_preprocess_metrics: ttsPreprocessed.metrics,
+      script_quality_gate: scriptQualityGate,
       expand_attempted: 0,
       items_used_count: drafted.itemsUsedCount,
+      episodeStructure,
       scriptGate
     });
 
@@ -773,8 +849,12 @@ Deno.serve(async (req) => {
       script_editor_applied: editorResult.edited,
       script_editor_model: editorResult.model,
       script_editor_error: editorResult.error,
+      tts_preprocess_applied: ttsPreprocessed.changed,
+      tts_preprocess_metrics: ttsPreprocessed.metrics,
+      script_quality_gate: scriptQualityGate,
       expand_attempted: 0,
       items_used_count: drafted.itemsUsedCount,
+      episodeStructure,
       scriptGate
     });
   } catch (error) {
@@ -801,8 +881,12 @@ Deno.serve(async (req) => {
       script_editor_applied: editorResult.edited,
       script_editor_model: editorResult.model,
       script_editor_error: editorResult.error,
+      tts_preprocess_applied: ttsPreprocessed.changed,
+      tts_preprocess_metrics: ttsPreprocessed.metrics,
+      script_quality_gate: scriptQualityGate,
       expand_attempted: 0,
       items_used_count: drafted.itemsUsedCount,
+      episodeStructure,
       scriptGate
     });
 

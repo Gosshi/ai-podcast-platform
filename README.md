@@ -44,6 +44,7 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - `plan-topics` は `editor-in-chief` ロールで `trend digest` を作成し、`main_topics(3) / quick_news(4) / small_talk(2) / letters / ending` を返す
 - `trend digest` は HTML/URL を除去し、`cleanedTitle / whatHappened / whyItMatters / toneTag` を生成して planning に利用する
 - `write-script-ja` は script 生成後に `scriptNormalize`（HTML除去/URL除去/placeholder除去/重複行削減）を適用し、`ENABLE_SCRIPT_EDITOR=1` のとき OpenAI 後編集を実施する
+- `write-script-ja` は `EPISODE_DEEPDIVE_COUNT` / `EPISODE_QUICKNEWS_COUNT` / `EPISODE_TOTAL_TARGET_CHARS` に基づいて構成を決定し、最終台本を `ttsPreprocess` + `scriptNormalize` 後に quality gate で検証する
 - `daily-generate` は `write-script-ja` 後に再度 `scriptNormalize` と `scriptQualityCheck` を実施し、`<` / `http` / `&#` / `数式` / 重複率 / 文字数を gate する
 - `adapt-script-en` は script 生成後に `normalizeForSpeech` を適用し、URL を script から除去する（元URLは `trend_items.url` に保持）
 - `daily-generate` は trend category を hard:soft:entertainment = 4:4:3 目標で選定し、`entertainment_bonus` で娯楽カテゴリを加点する
@@ -156,9 +157,12 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
   - `LOCAL_TTS_VOICE_EN`（後方互換。`LOCAL_TTS_EN_VOICE` 未設定時のみ使用）
   - `ENABLE_LOCAL_TTS=true`（`NODE_ENV=development` でも有効）
   - `ENABLE_TTS_PREPROCESS=1`（`tts-ja` / `tts-en` で TTS 前処理を有効化）
-  - `SCRIPT_MIN_CHARS_JA`（default: `5500`）
-  - `SCRIPT_TARGET_CHARS_JA`（default: `7000`）
-  - `SCRIPT_MAX_CHARS_JA`（default: `9000`）
+  - `SCRIPT_MIN_CHARS_JA`（default: `2500`）
+  - `SCRIPT_TARGET_CHARS_JA`（default: `3200`）
+  - `SCRIPT_MAX_CHARS_JA`（default: `5200`）
+  - `EPISODE_DEEPDIVE_COUNT`（default: `2`）
+  - `EPISODE_QUICKNEWS_COUNT`（default: `8`）
+  - `EPISODE_TOTAL_TARGET_CHARS`（default: `2800`）
   - `ENABLE_SCRIPT_EDITOR=1`（`write-script-ja` で OpenAI 後編集を有効化）
   - `SCRIPT_EDITOR_MODEL`（default: `gpt-4o-mini`）
   - `TARGET_SCRIPT_MIN_CHARS`（後方互換。`SCRIPT_MIN_CHARS_JA` 未設定時に参照）
