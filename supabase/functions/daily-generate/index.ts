@@ -2,6 +2,7 @@ import { failRun, finishRun, startRun } from "../_shared/jobRuns.ts";
 import { jsonResponse } from "../_shared/http.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { parseCsvList } from "../_shared/trendsConfig.ts";
+import { estimateScriptDurationSec, resolveScriptGateConfig } from "../_shared/scriptGate.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -113,6 +114,14 @@ type SelectedTrendAuditItem = {
   clusterSize: number | null;
 };
 
+type ScriptGateDiagnostic = {
+  minChars: number;
+  actualChars: number;
+  estimatedSec: number;
+  targetSec: number;
+  rule: string;
+};
+
 const orderedSteps = [
   "plan-topics",
   "write-script-ja",
@@ -126,7 +135,6 @@ const MAX_TREND_ITEMS = 30;
 const MAX_LETTERS = 2;
 const MAX_LETTER_CANDIDATES = 20;
 const MAX_LETTER_SUMMARY_CHARS = 80;
-const TARGET_SCRIPT_DURATION_SEC = 20 * 60;
 
 const TREND_MIX_TARGET = {
   hard: 4,
@@ -764,6 +772,24 @@ const assertNoUrlsInEpisodeScript = async (episodeId: string): Promise<void> => 
   }
 };
 
+const loadEpisodeScriptChars = async (episodeId: string): Promise<number> => {
+  const { data, error } = await supabaseAdmin
+    .from("episodes")
+    .select("script")
+    .eq("id", episodeId)
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error(`episode_not_found:${episodeId}`);
+  }
+
+  const script = typeof (data as { script?: string | null }).script === "string"
+    ? ((data as { script?: string | null }).script as string)
+    : "";
+
+  return script.length;
+};
+
 const toRecord = (value: unknown): Record<string, unknown> | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -834,13 +860,17 @@ Deno.serve(async (req) => {
   const body = (await req.json().catch(() => ({}))) as RequestBody;
   const episodeDate = body.episodeDate ?? new Date().toISOString().slice(0, 10);
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
+  const scriptGateConfig = resolveScriptGateConfig();
 
   const runId = await startRun("daily-generate", {
     step: "daily-generate",
     episodeDate,
     idempotencyKey,
-    orderedSteps
+    orderedSteps,
+    scriptGate: scriptGateConfig
   });
+
+  let failureDetails: Record<string, unknown> | null = null;
 
   try {
     const functionsBaseUrl = getFunctionsBaseUrl(req.url);
@@ -883,12 +913,27 @@ Deno.serve(async (req) => {
       letters
     });
     const writeJaEpisodeId = extractEpisodeId(writeJa, "write-script-ja");
+    const actualChars =
+      typeof writeJa.scriptChars === "number" && Number.isFinite(writeJa.scriptChars)
+        ? Math.max(0, Math.round(writeJa.scriptChars))
+        : await loadEpisodeScriptChars(writeJaEpisodeId);
     const estimatedDurationSec =
       typeof writeJa.estimatedDurationSec === "number" && Number.isFinite(writeJa.estimatedDurationSec)
-        ? writeJa.estimatedDurationSec
-        : null;
-    if (estimatedDurationSec !== null && estimatedDurationSec < TARGET_SCRIPT_DURATION_SEC) {
-      throw new Error(`script_too_short:${estimatedDurationSec}`);
+        ? Math.max(0, Math.round(writeJa.estimatedDurationSec))
+        : estimateScriptDurationSec(actualChars, scriptGateConfig.charsPerMin);
+    const scriptGateDiagnostic: ScriptGateDiagnostic = {
+      minChars: scriptGateConfig.minChars,
+      actualChars,
+      estimatedSec: estimatedDurationSec,
+      targetSec: scriptGateConfig.targetSec,
+      rule: scriptGateConfig.rule
+    };
+    if (actualChars < scriptGateConfig.minChars || estimatedDurationSec < scriptGateConfig.targetSec) {
+      failureDetails = {
+        failedStep: "write-script-ja",
+        scriptGate: scriptGateDiagnostic
+      };
+      throw new Error("script_too_short");
     }
     await assertNoUrlsInEpisodeScript(writeJaEpisodeId);
 
@@ -936,6 +981,10 @@ Deno.serve(async (req) => {
       entertainmentTopicCount: entertainmentCount,
       selectedTrendItems,
       estimatedDurationSec,
+      scriptGate: {
+        ...scriptGateDiagnostic,
+        targetSecSource: scriptGateConfig.targetSecSource
+      },
       outputs: {
         plan,
         writeJa,
@@ -961,6 +1010,10 @@ Deno.serve(async (req) => {
       entertainmentTopicCount: entertainmentCount,
       selectedTrendItems,
       estimatedDurationSec,
+      scriptGate: {
+        ...scriptGateDiagnostic,
+        targetSecSource: scriptGateConfig.targetSecSource
+      },
       outputs: {
         plan,
         writeJa,
@@ -976,9 +1029,16 @@ Deno.serve(async (req) => {
       step: "daily-generate",
       episodeDate,
       idempotencyKey,
-      orderedSteps
+      orderedSteps,
+      scriptGate: scriptGateConfig,
+      ...(failureDetails ?? {})
     });
 
-    return jsonResponse({ ok: false, error: message, runId }, 500);
+    return jsonResponse({
+      ok: false,
+      error: message,
+      runId,
+      ...(failureDetails ? { details: failureDetails } : {})
+    }, 500);
   }
 });

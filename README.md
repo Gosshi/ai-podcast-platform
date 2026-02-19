@@ -44,7 +44,7 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - `plan-topics` は `editor-in-chief` ロールで `main_topics(3) / quick_news(4) / small_talk(2) / letters / ending` を返す
 - `write-script-ja` / `adapt-script-en` は script 生成後に `normalizeForSpeech` を適用し、URL を script から除去する（元URLは `trend_items.url` に保持）
 - `daily-generate` は trend category を hard:soft:entertainment = 4:4:3 目標で選定し、`entertainment_bonus` で娯楽カテゴリを加点する
-- `write-script-ja.estimatedDurationSec` が 20分未満なら失敗扱いにする
+- `daily-generate` の script gate は `TARGET_SCRIPT_MIN_CHARS` / `TARGET_SCRIPT_ESTIMATED_CHARS_PER_MIN` / `TARGET_SCRIPT_DURATION_SEC` で調整可能（`TARGET_SCRIPT_DURATION_SEC` 未指定時は前2つから算出）
 
 ### Manual Run (curl)
 1. `supabase start`
@@ -151,6 +151,9 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
   - `LOCAL_TTS_EN_VOICE`（英語voiceの最優先設定）
   - `LOCAL_TTS_VOICE_EN`（後方互換。`LOCAL_TTS_EN_VOICE` 未設定時のみ使用）
   - `ENABLE_LOCAL_TTS=true`（`NODE_ENV=development` でも有効）
+  - `TARGET_SCRIPT_MIN_CHARS`（default: `4200`）
+  - `TARGET_SCRIPT_ESTIMATED_CHARS_PER_MIN`（default: `300`）
+  - `TARGET_SCRIPT_DURATION_SEC`（任意。未指定時は `TARGET_SCRIPT_MIN_CHARS` と係数から算出）
 
 ## Ops Audit UI (Local)
 - Page: `/admin/job-runs`
@@ -170,6 +173,12 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - `scripts/e2e-local.sh` が MVP Acceptance の主要チェックを自動判定します。
 - 実行: `bash scripts/e2e-local.sh`
 - 成功時: `[RESULT] PASS (...)`
+
+### Local Verification (script gate)
+1. `supabase db reset --local --yes`
+2. `curl -sS -X POST http://127.0.0.1:54321/functions/v1/ingest_trends_rss -H "Content-Type: application/json" -d '{"mockFeeds":[{"sourceKey":"local-rss","name":"Local RSS","url":"https://local.invalid/rss","weight":1.3,"category":"tech","xml":"<rss><channel><item><title>Topic A</title><link>https://example.com/a</link><description>A summary</description></item></channel></rss>"}]}'`
+3. `curl -sS -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H "Content-Type: application/json" -d '{"episodeDate":"2026-02-19"}'` を実行し、`outputs.plan/writeJa/ttsJa/adaptEn/ttsEn/publish` が揃うことを確認
+4. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -At -F $'\t' -c "select lang,status,coalesce(audio_url,'') from public.episodes where lang in ('ja','en') order by published_at desc nulls last, created_at desc limit 2;"` で `ja/en` とも `status=published` かつ `audio_url` 非空を確認
 
 ## Trend Ingestion (RSS Upgraded)
 - Function: `ingest_trends_rss`
