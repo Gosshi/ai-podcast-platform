@@ -41,6 +41,9 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - Functions: `daily-generate`, `plan-topics`, `write-script-ja`, `tts-ja`, `adapt-script-en`, `tts-en`, `publish`
 - `daily-generate` は上記を spec 順で実行する orchestrator
 - `publish` は `episodes.status='published'` と `published_at=now()` を必ず設定
+- `plan-topics` は `editor-in-chief` ロールで `main_topics(3) / quick_news(4) / small_talk(2) / letters / ending` を返す
+- `write-script-ja` / `adapt-script-en` は script 生成後に `normalizeForSpeech` を適用し、URL を script から除去する（元URLは `trend_items.url` に保持）
+- `daily-generate` は trend category を hard:soft:entertainment = 4:4:2 目標で選定し、`write-script-ja.estimatedDurationSec` が 20分未満なら失敗扱いにする
 
 ### Manual Run (curl)
 1. `supabase start`
@@ -164,13 +167,14 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 ## Trend Ingestion (RSS Upgraded)
 - Function: `ingest_trends_rss`
 - source 設定: `supabase/functions/_shared/trendsConfig.ts`
-- `trend_sources` は `weight`, `category`, `theme` を持ち、テーマ別RSSを10本以上定義可能
+- `trend_sources` は `weight`, `category`, `theme` を持ち、テーマ別RSSを10本以上定義可能（entertainment 系含む）
 - `trend_items` は `normalized_url + normalized_title_hash` とタイトル類似クラスタで重複統合
 - `published_at` がRSSで欠損時は HTML メタ (`article:published_time` など) を取得し、失敗時は `fetched_at` を fallback として保存
 - `published_at_source` は `rss|meta|fetched`、`published_at_fallback` は fallback timestamp を保存
 - score 式: `freshness + source_weight + cluster_size_bonus + diversity_bonus - clickbait_penalty`
 - clickbait 判定語は `TREND_CLICKBAIT_KEYWORDS` で上書き可能
 - `plan-topics` / `daily-generate` は `is_cluster_representative=true` の上位Nを採用
+- `daily-generate` は category を hard/soft/entertainment バケットへマップし、配分 4:4:2 を優先して候補を組む
 - 実行結果は `fetchedCount`, `insertedCount`, `dedupedCount`, `publishedAtFilledCount` を返す
 
 ### Local Run (deterministic)
