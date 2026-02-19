@@ -8,6 +8,7 @@ import {
   resolveTtsSignatureConfig
 } from "../_shared/audioVersion.ts";
 import { synthesizeEpisodeAudio, TTS_API_TIMEOUT_MS, TtsRequestError } from "../_shared/localTts.ts";
+import { isTtsPreprocessEnabled, preprocessForTTS } from "../_shared/ttsPreprocess.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -93,8 +94,22 @@ Deno.serve(async (req) => {
   try {
     const episode = await fetchEpisodeById(body.episodeId);
     const script = typeof episode.script === "string" ? episode.script.trim() : "";
+    const ttsPreprocessEnabled = isTtsPreprocessEnabled();
+    const ttsPreprocessResult = ttsPreprocessEnabled
+      ? preprocessForTTS(script, "ja")
+      : {
+          text: script,
+          changed: false,
+          metrics: {
+            urlReplacedCount: 0,
+            bracketRemovedCount: 0,
+            mappedWordCount: 0,
+            pauseInsertedCount: 0
+          }
+        };
+    const scriptForTts = ttsPreprocessResult.text;
     const ttsConfig = resolveTtsSignatureConfig("ja");
-    const baseAudioVersion = await buildAudioVersion(script, ttsConfig);
+    const baseAudioVersion = await buildAudioVersion(scriptForTts, ttsConfig);
     const failureCount = await countFailedRunsForAudioVersion({
       jobType: "tts-ja",
       episodeId: episode.id,
@@ -122,6 +137,12 @@ Deno.serve(async (req) => {
           timeout_ms: TTS_API_TIMEOUT_MS,
           provider: ttsConfig.provider,
           model: ttsConfig.model,
+          tts_preprocess_enabled: ttsPreprocessEnabled,
+          tts_preprocess_applied: ttsPreprocessResult.changed,
+          tts_preprocess_url_replaced_count: ttsPreprocessResult.metrics.urlReplacedCount,
+          tts_preprocess_bracket_removed_count: ttsPreprocessResult.metrics.bracketRemovedCount,
+          tts_preprocess_mapped_word_count: ttsPreprocessResult.metrics.mappedWordCount,
+          tts_preprocess_pause_inserted_count: ttsPreprocessResult.metrics.pauseInsertedCount,
           voice: ttsConfig.voice,
           format: ttsConfig.format,
           speed: ttsConfig.speed,
@@ -157,6 +178,12 @@ Deno.serve(async (req) => {
         timeout_ms: TTS_API_TIMEOUT_MS,
         provider: ttsConfig.provider,
         model: ttsConfig.model,
+        tts_preprocess_enabled: ttsPreprocessEnabled,
+        tts_preprocess_applied: ttsPreprocessResult.changed,
+        tts_preprocess_url_replaced_count: ttsPreprocessResult.metrics.urlReplacedCount,
+        tts_preprocess_bracket_removed_count: ttsPreprocessResult.metrics.bracketRemovedCount,
+        tts_preprocess_mapped_word_count: ttsPreprocessResult.metrics.mappedWordCount,
+        tts_preprocess_pause_inserted_count: ttsPreprocessResult.metrics.pauseInsertedCount,
         tts_provider: ttsConfig.provider,
         voice: ttsConfig.voice,
         format: ttsConfig.format,
@@ -170,7 +197,8 @@ Deno.serve(async (req) => {
     const synthesized = await synthesizeEpisodeAudio({
       episodeId: episode.id,
       lang: "ja",
-      audioVersion
+      audioVersion,
+      text: scriptForTts
     });
     const audioUrl = synthesized.audioUrl;
     const updated = await updateEpisode(episode.id, {
@@ -194,6 +222,12 @@ Deno.serve(async (req) => {
       timeout_ms: TTS_API_TIMEOUT_MS,
       provider: synthesized.provider,
       model: synthesized.model,
+      tts_preprocess_enabled: ttsPreprocessEnabled,
+      tts_preprocess_applied: ttsPreprocessResult.changed,
+      tts_preprocess_url_replaced_count: ttsPreprocessResult.metrics.urlReplacedCount,
+      tts_preprocess_bracket_removed_count: ttsPreprocessResult.metrics.bracketRemovedCount,
+      tts_preprocess_mapped_word_count: ttsPreprocessResult.metrics.mappedWordCount,
+      tts_preprocess_pause_inserted_count: ttsPreprocessResult.metrics.pauseInsertedCount,
       tts_provider: synthesized.provider,
       requested_provider: synthesized.requestedProvider,
       voice: synthesized.voice,

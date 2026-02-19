@@ -178,6 +178,16 @@ assert_not_contains() {
   fi
 }
 
+assert_script_quality() {
+  local label="$1"
+  local script="$2"
+  if printf "%s" "$script" | node --experimental-strip-types scripts/scriptQualityCheck.mts >/dev/null; then
+    pass "$label"
+  else
+    fail "$label"
+  fi
+}
+
 extract_json_string_field() {
   local json="$1"
   local key="$2"
@@ -404,6 +414,9 @@ for episode_date in "$EPISODE_DATE_1" "$EPISODE_DATE_2" "$EPISODE_DATE_3"; do
   EN_TITLE_COUNT="$(psql_query "select count(*) from public.episodes where lang='en' and title='Daily Topic ${episode_date} (EN)';")"
   assert_count_eq "ja episode generated for ${episode_date}" "$JA_TITLE_COUNT" 1
   assert_count_eq "en episode generated for ${episode_date}" "$EN_TITLE_COUNT" 1
+
+  JA_SCRIPT="$(psql_query "select coalesce(script,'') from public.episodes where lang='ja' and title='Daily Topic ${episode_date} (JA)' limit 1;")"
+  assert_script_quality "ja script quality gate for ${episode_date}" "$JA_SCRIPT"
 done
 
 DAILY_RECENT_SUCCESS_COUNT="$(psql_query "select count(*) from (select id from public.job_runs where job_type='daily-generate' and status='success' order by created_at desc limit 3) t;")"

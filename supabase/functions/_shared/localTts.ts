@@ -4,6 +4,7 @@ type SynthesizeEpisodeAudioInput = {
   episodeId: string;
   lang: TtsLang;
   audioVersion?: string;
+  text?: string;
 };
 
 type TtsApiResponse = {
@@ -171,7 +172,10 @@ export const synthesizeEpisodeAudio = async (
         body: JSON.stringify({
           episodeId: input.episodeId,
           lang: input.lang,
-          audioVersion: input.audioVersion
+          audioVersion: input.audioVersion,
+          ...(typeof input.text === "string" && input.text.trim().length > 0
+            ? { text: input.text }
+            : {})
         }),
         signal: AbortSignal.timeout(TTS_API_TIMEOUT_MS)
       });
