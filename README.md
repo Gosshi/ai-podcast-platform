@@ -43,7 +43,8 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - `publish` は `episodes.status='published'` と `published_at=now()` を必ず設定
 - `plan-topics` は `editor-in-chief` ロールで `main_topics(3) / quick_news(4) / small_talk(2) / letters / ending` を返す
 - `write-script-ja` / `adapt-script-en` は script 生成後に `normalizeForSpeech` を適用し、URL を script から除去する（元URLは `trend_items.url` に保持）
-- `daily-generate` は trend category を hard:soft:entertainment = 4:4:2 目標で選定し、`write-script-ja.estimatedDurationSec` が 20分未満なら失敗扱いにする
+- `daily-generate` は trend category を hard:soft:entertainment = 4:4:3 目標で選定し、`entertainment_bonus` で娯楽カテゴリを加点する
+- `write-script-ja.estimatedDurationSec` が 20分未満なら失敗扱いにする
 
 ### Manual Run (curl)
 1. `supabase start`
@@ -124,12 +125,13 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - API route: `POST /api/tts`（Node runtime, `/api/tts-local` は互換エイリアス）
 - `tts-ja` / `tts-en` は `/api/tts` を呼び、`episodes.audio_url` を `/audio/<episodeId>.<lang>.<audioVersion>.<ext>` に更新
 - `TTS_PROVIDER=openai` の場合は OpenAI `/v1/audio/speech` を使用し、失敗時は macOS local TTS（`say` + `afconvert`）へフォールバック
+- `preTtsNormalize` で日本語読み仮名辞書（`src/lib/tts/dictionary.json`）を適用し、句点/改行単位で文を短く分割してから合成
 - local provider は `say` + `afconvert` で WAV を生成し `public/audio` に保存
 - `/api/tts` は `LOCAL_TTS_API_KEY` 設定時に `x-local-tts-api-key` ヘッダ必須
 - 主要 env（任意）:
   - `TTS_PROVIDER` (`local` or `openai`, default: `local`)
   - `OPENAI_API_KEY`（`TTS_PROVIDER=openai` で必須）
-  - `OPENAI_TTS_MODEL`（default: `tts-1`）
+  - `OPENAI_TTS_MODEL`（default: `gpt-4o-mini-tts`）
   - `OPENAI_TTS_VOICE_JA`
   - `OPENAI_TTS_VOICE_EN`
   - `OPENAI_TTS_FORMAT`（`mp3|opus|aac|flac|wav|pcm`, default: `wav`）
@@ -148,6 +150,7 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 
 ## Ops Audit UI (Local)
 - Page: `/admin/job-runs`
+- Page: `/admin/trends`（`trend_items` の score 内訳可視化）
 - `job_runs` を実行単位（`daily-generate` run）でグルーピング表示
 - 失敗 run を強調表示し、各 step の `status / error / elapsed` を確認可能
 - `Recent Episodes` と `Related Runs` で episode と run の紐付きを確認可能
@@ -167,14 +170,15 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 ## Trend Ingestion (RSS Upgraded)
 - Function: `ingest_trends_rss`
 - source 設定: `supabase/functions/_shared/trendsConfig.ts`
-- `trend_sources` は `weight`, `category`, `theme` を持ち、テーマ別RSSを10本以上定義可能（entertainment 系含む）
+- `trend_sources` は `weight`, `category`, `theme` を持ち、entertainment/game/anime/youtube 系を含むRSSを10本以上追加済み
 - `trend_items` は `normalized_url + normalized_title_hash` とタイトル類似クラスタで重複統合
 - `published_at` がRSSで欠損時は HTML メタ (`article:published_time` など) を取得し、失敗時は `fetched_at` を fallback として保存
 - `published_at_source` は `rss|meta|fetched`、`published_at_fallback` は fallback timestamp を保存
-- score 式: `freshness + source_weight + cluster_size_bonus + diversity_bonus - clickbait_penalty`
+- score 式: `freshness + source_weight + (cluster_size_bonus + diversity_bonus + entertainment_bonus) - clickbait_penalty`
+- `trend_items.score_freshness/score_source/score_bonus/score_penalty` に内訳を保存し `/admin/trends` で表示
 - clickbait 判定語は `TREND_CLICKBAIT_KEYWORDS` で上書き可能
 - `plan-topics` / `daily-generate` は `is_cluster_representative=true` の上位Nを採用
-- `daily-generate` は category を hard/soft/entertainment バケットへマップし、配分 4:4:2 を優先して候補を組む
+- `daily-generate` は category を hard/soft/entertainment バケットへマップし、配分 4:4:3 を優先して候補を組む
 - 実行結果は `fetchedCount`, `insertedCount`, `dedupedCount`, `publishedAtFilledCount` を返す
 
 ### Local Run (deterministic)
@@ -184,4 +188,5 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 4. `curl -i -X POST http://127.0.0.1:54321/functions/v1/ingest_trends_rss -H "Content-Type: application/json" -d '{"mockFeeds":[{"sourceKey":"local-rss","name":"Local RSS","url":"https://local.invalid/rss","weight":1.3,"category":"tech","xml":"<rss><channel><item><title>Topic A</title><link>https://example.com/a</link><description>A summary</description></item><item><title>Topic A!!!</title><link>https://example.com/a?utm_source=test</link><description>Duplicate summary</description></item></channel></rss>"}]}'`
 5. `curl -i -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H "Content-Type: application/json" -d '{"episodeDate":"2026-02-18"}'`
 6. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c "select title,score,cluster_size,published_at_source from public.trend_items order by score desc limit 5;"`
-7. `trend_runs.payload` に `dedupedCount` / `publishedAtFilledCount` が入り、`daily-generate` がクラスタ代表を採用することを確認
+7. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -At -F $'\t' -c "select coalesce((payload->'trendMix'->'selected'->>'entertainment')::int,0) from public.job_runs where job_type='daily-generate' order by created_at desc limit 1;"`
+8. `trend_runs.payload` に `dedupedCount` / `publishedAtFilledCount` が入り、`daily-generate` の entertainment 件数が3以上であることを確認

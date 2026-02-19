@@ -216,7 +216,7 @@ const sanitizeEnglishTextForTts = (text: string): string => {
 
 const resolveOpenAiModel = (): string => {
   const raw = process.env.OPENAI_TTS_MODEL?.trim();
-  return raw || "tts-1";
+  return raw || "gpt-4o-mini-tts";
 };
 
 const resolveOpenAiFormat = (format?: TtsAudioFormat): TtsAudioFormat => {
