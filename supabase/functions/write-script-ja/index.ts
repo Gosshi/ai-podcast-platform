@@ -165,12 +165,17 @@ const buildMainTopicNarration = (
   topic: ProgramPlan["main_topics"][number],
   index: number
 ): string => {
-  const intro = `導入: ${topic.intro} 冒頭では、話題の見出しだけでなく、どの意思決定に影響するかを先に示します。`;
-  const background = `背景: ${topic.background} 直近の変化だけを見るのではなく、時系列で前提を確認し、誤解されやすい論点を切り分けます。`;
-  const impact = `影響: ${topic.impact} 現場実装、利用者体験、コスト、ガバナンスの四点で見たときの優先順位を具体化します。`;
-  const supplement = `補足: ${topic.supplement} 反対意見や未確定情報も同時に扱い、断定を避けて解像度を上げる運用に寄せます。`;
-  const summary = `まとめ: メイントピック${index + 1}では、短期の対応と中長期の設計を同時に考えることが重要です。`;
-  const narrative = [intro, background, impact, supplement, summary].join("\n");
+  const intro =
+    `導入: さあメイントピック${index + 1}です。${topic.intro} 最初に、何が起きたかと、なぜ今この話題が伸びているのかを1分でつかみます。`;
+  const tsukkomi =
+    `ツッコミ: ここで一回ツッコミます。「それ、本当にそこまで言い切れるの？」という目線です。${topic.background} 速報の勢いだけで判断せず、抜け落ちた前提と数字の根拠を拾っていきます。`;
+  const impact =
+    `展開: ${topic.impact} 現場実装、利用者体験、コスト、ガバナンスの4軸で、明日からどこが先に変わるかを具体化します。`;
+  const supplement =
+    `補足: ${topic.supplement} 反対意見や未確定情報も同時に扱って、断定を避けつつ解像度を上げる運用に寄せます。`;
+  const summary =
+    `まとめ: メイントピック${index + 1}は、短期対応と中長期設計を同時に見るのがポイントでした。ここまでを踏まえて、次のニュースにつなげます。`;
+  const narrative = [intro, tsukkomi, impact, supplement, summary].join("\n");
 
   return repeatSentenceUntilMinLength(
     narrative,
@@ -326,7 +331,8 @@ const buildJapaneseScript = (params: {
 }): { script: string; estimatedDurationSec: number } => {
   const opening = `[OPENING]
 番組タイトル: ${params.topicTitle}
-編集長ロールで進行します。今日はメイントピック3本、クイックニュース4本、スモールトーク2本、レターズ、エンディングの順でお届けします。
+今夜の進行はラジオ司会者スタイルでお送りします。テンポよく、でも大事なところは丁寧に整理していきます。
+今日はメイントピック3本、クイックニュース4本、スモールトーク2本、レターズ、エンディングの順でお届けします。
 この番組は一般的な情報提供を目的とし、断定的な医療・投資助言は行いません。`;
 
   const mainTopicSections = params.programPlan.main_topics.map((topic, index) => {
@@ -343,7 +349,8 @@ ${body}`;
   const lettersSection = buildLettersSection(params.letters, params.programPlan.letters.host_prompt);
   const closing = `[CLOSING]
 ${params.programPlan.ending.message}
-以上、今日の番組でした。次回も背景と影響を分けて丁寧に整理します。`;
+以上、今日の番組でした。最後までありがとうございます。
+次回も、導入で全体像を押さえ、ツッコミで論点を磨き、まとめで持ち帰りを残す構成でお届けします。`;
   const { sources, sourceReferences } = buildSourcesSection(params.trendItems, params.programPlan);
 
   let draft = [

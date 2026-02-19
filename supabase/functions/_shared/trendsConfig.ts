@@ -168,7 +168,7 @@ export const TREND_SOURCE_THEMES: Record<string, TrendSourceSeed[]> = {
       url: "https://news.google.com/rss/search?q=%E3%82%B9%E3%83%9D%E3%83%BC%E3%83%84&hl=ja&gl=JP&ceid=JP:ja",
       enabled: true,
       weight: 1.05,
-      category: "sports",
+      category: "entertainment",
       theme: "entertainment"
     },
     {
@@ -177,7 +177,7 @@ export const TREND_SOURCE_THEMES: Record<string, TrendSourceSeed[]> = {
       url: "https://news.google.com/rss/search?q=culture&hl=en-US&gl=US&ceid=US:en",
       enabled: true,
       weight: 1.04,
-      category: "culture",
+      category: "entertainment",
       theme: "entertainment"
     },
     {
@@ -267,7 +267,7 @@ export const TREND_SOURCE_THEMES: Record<string, TrendSourceSeed[]> = {
       url: "https://news.google.com/rss/search?q=youtube+creator&hl=en-US&gl=US&ceid=US:en",
       enabled: true,
       weight: 1.2,
-      category: "youtube",
+      category: "video",
       theme: "entertainment"
     },
     {
@@ -276,7 +276,7 @@ export const TREND_SOURCE_THEMES: Record<string, TrendSourceSeed[]> = {
       url: "https://news.google.com/rss/search?q=YouTube&hl=ja&gl=JP&ceid=JP:ja",
       enabled: true,
       weight: 1.22,
-      category: "youtube",
+      category: "video",
       theme: "entertainment"
     },
     {
@@ -285,7 +285,124 @@ export const TREND_SOURCE_THEMES: Record<string, TrendSourceSeed[]> = {
       url: "https://news.google.com/rss/search?q=VTuber&hl=ja&gl=JP&ceid=JP:ja",
       enabled: true,
       weight: 1.24,
-      category: "youtube",
+      category: "video",
+      theme: "entertainment"
+    },
+    {
+      source_key: "oricon_news",
+      name: "ORICON NEWS",
+      url: "https://www.oricon.co.jp/rss/news.xml",
+      enabled: true,
+      weight: 1.28,
+      category: "entertainment",
+      theme: "entertainment"
+    },
+    {
+      source_key: "modelpress",
+      name: "モデルプレス",
+      url: "https://mdpr.jp/rss/index.xml",
+      enabled: true,
+      weight: 1.26,
+      category: "entertainment",
+      theme: "entertainment"
+    },
+    {
+      source_key: "animeanime",
+      name: "アニメ！アニメ！",
+      url: "https://animeanime.jp/rss/index.xml",
+      enabled: true,
+      weight: 1.32,
+      category: "anime",
+      theme: "entertainment"
+    },
+    {
+      source_key: "gamer_4gamer",
+      name: "4Gamer",
+      url: "https://www.4gamer.net/rss/index.xml",
+      enabled: true,
+      weight: 1.34,
+      category: "game",
+      theme: "entertainment"
+    },
+    {
+      source_key: "eigacom",
+      name: "映画.com",
+      url: "https://eiga.com/rss/all.xml",
+      enabled: true,
+      weight: 1.24,
+      category: "entertainment",
+      theme: "entertainment"
+    },
+    {
+      source_key: "natalie_all",
+      name: "ナタリー総合",
+      url: "https://natalie.mu/rss/all.xml",
+      enabled: true,
+      weight: 1.28,
+      category: "entertainment",
+      theme: "entertainment"
+    },
+    {
+      source_key: "natalie_music",
+      name: "ナタリー音楽",
+      url: "https://natalie.mu/music/rss",
+      enabled: true,
+      weight: 1.26,
+      category: "entertainment",
+      theme: "entertainment"
+    },
+    {
+      source_key: "natalie_comic",
+      name: "ナタリーコミック",
+      url: "https://natalie.mu/comic/rss",
+      enabled: true,
+      weight: 1.3,
+      category: "anime",
+      theme: "entertainment"
+    },
+    {
+      source_key: "famitsu",
+      name: "ファミ通",
+      url: "https://www.famitsu.com/rss/famitsu.rss",
+      enabled: true,
+      weight: 1.3,
+      category: "game",
+      theme: "entertainment"
+    },
+    {
+      source_key: "game_watch",
+      name: "GAME Watch",
+      url: "https://game.watch.impress.co.jp/data/rss/1.0/gmw/feed.rdf",
+      enabled: true,
+      weight: 1.28,
+      category: "game",
+      theme: "entertainment"
+    },
+    {
+      source_key: "inside_games",
+      name: "INSIDE",
+      url: "https://www.inside-games.jp/rss20/index.rdf",
+      enabled: true,
+      weight: 1.24,
+      category: "game",
+      theme: "entertainment"
+    },
+    {
+      source_key: "youtube_trending_jp",
+      name: "YouTube急上昇 (JP)",
+      url: "https://news.google.com/rss/search?q=YouTube+%E6%80%A5%E4%B8%8A%E6%98%87&hl=ja&gl=JP&ceid=JP:ja",
+      enabled: true,
+      weight: 1.34,
+      category: "video",
+      theme: "entertainment"
+    },
+    {
+      source_key: "youtube_trending_global",
+      name: "YouTube Trending",
+      url: "https://news.google.com/rss/search?q=youtube+trending&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.26,
+      category: "video",
       theme: "entertainment"
     }
   ]

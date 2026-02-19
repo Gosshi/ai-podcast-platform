@@ -162,6 +162,7 @@ const ENTERTAINMENT_CATEGORIES = new Set([
   "anime",
   "game",
   "gaming",
+  "video",
   "youtube",
   "streaming",
   "celebrity"
