@@ -45,6 +45,18 @@ const applyJaDictionary = (value: string): string => {
   return output;
 };
 
+const normalizeJaScriptMarkers = (value: string): string => {
+  return value
+    .replace(/^\[[^\]]+\]\s*$/gm, "")
+    .replace(/^-+\s*/gm, "")
+    .replace(/[【】]/g, "")
+    .replace(/：/g, "。")
+    .replace(/:/g, "。")
+    .replace(/…+/g, "。")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+};
+
 const splitLongJaSentence = (sentence: string): string[] => {
   const trimmed = sentence.trim();
   if (!trimmed) return [];
@@ -81,7 +93,10 @@ const splitLongJaSentence = (sentence: string): string[] => {
 };
 
 const splitJaBySentence = (value: string): string => {
-  const lines = value.split(/\n+/).map((line) => line.trim()).filter((line) => line.length > 0);
+  const lines = value
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
   const sentences: string[] = [];
 
   for (const line of lines) {
@@ -101,6 +116,7 @@ export const preTtsNormalize = (text: string, lang: TtsLang): string => {
   if (!normalized) return normalized;
   if (lang !== "ja") return normalized;
 
-  const dictionaryApplied = applyJaDictionary(normalized);
+  const markerNormalized = normalizeJaScriptMarkers(normalized);
+  const dictionaryApplied = applyJaDictionary(markerNormalized);
   return splitJaBySentence(dictionaryApplied);
 };

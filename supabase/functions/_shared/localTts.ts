@@ -26,7 +26,12 @@ const FALLBACK_TTS_API_URLS = [
   "http://172.17.0.1:3000/api/tts",
   "http://gateway.docker.internal:3000/api/tts"
 ];
-export const TTS_API_TIMEOUT_MS = 45_000;
+const resolveTtsApiTimeoutMs = (): number => {
+  const raw = Number.parseInt(Deno.env.get("TTS_API_TIMEOUT_MS") ?? "180000", 10);
+  if (!Number.isFinite(raw)) return 180_000;
+  return Math.max(30_000, Math.min(raw, 600_000));
+};
+export const TTS_API_TIMEOUT_MS = resolveTtsApiTimeoutMs();
 
 let cachedReachableTtsApiUrl: string | null = null;
 

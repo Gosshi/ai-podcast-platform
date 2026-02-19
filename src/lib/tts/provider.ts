@@ -31,7 +31,18 @@ export interface TtsProvider {
 
 const JAPANESE_CHAR_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
 const OPENAI_TTS_FORMATS = new Set<TtsAudioFormat>(["mp3", "opus", "aac", "flac", "wav", "pcm"]);
-const OPENAI_TTS_TIMEOUT_MS = 45_000;
+const resolveOpenAiTimeoutMs = (): number => {
+  const raw = Number.parseInt(process.env.OPENAI_TTS_TIMEOUT_MS ?? "120000", 10);
+  if (!Number.isFinite(raw)) return 120_000;
+  return Math.max(30_000, Math.min(raw, 300_000));
+};
+const OPENAI_TTS_TIMEOUT_MS = resolveOpenAiTimeoutMs();
+const resolveOpenAiMaxInputChars = (): number => {
+  const raw = Number.parseInt(process.env.OPENAI_TTS_MAX_INPUT_CHARS ?? "1500", 10);
+  if (!Number.isFinite(raw)) return 1500;
+  return Math.max(200, Math.min(raw, 4000));
+};
+const OPENAI_TTS_MAX_INPUT_CHARS = resolveOpenAiMaxInputChars();
 
 const runCommand = async (command: string, args: string[]): Promise<void> => {
   await new Promise<void>((resolve, reject) => {
@@ -270,6 +281,132 @@ const resolveOpenAiInstructions = (lang: TtsLang, instructions?: string): string
   return configured || undefined;
 };
 
+const splitTextForOpenAiTts = (text: string, maxChars: number): string[] => {
+  const normalized = text.replace(/\r\n/g, "\n").trim();
+  if (!normalized) return [];
+  if (normalized.length <= maxChars) return [normalized];
+
+  const sentenceLikeUnits = normalized
+    .split(/(?<=[。！？!?])\s+|\n+/u)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+
+  const chunks: string[] = [];
+  let current = "";
+  for (const unit of sentenceLikeUnits) {
+    if (unit.length > maxChars) {
+      if (current) {
+        chunks.push(current);
+        current = "";
+      }
+      for (let cursor = 0; cursor < unit.length; cursor += maxChars) {
+        chunks.push(unit.slice(cursor, cursor + maxChars));
+      }
+      continue;
+    }
+
+    if (!current) {
+      current = unit;
+      continue;
+    }
+
+    const next = `${current}\n${unit}`;
+    if (next.length <= maxChars) {
+      current = next;
+    } else {
+      chunks.push(current);
+      current = unit;
+    }
+  }
+
+  if (current) {
+    chunks.push(current);
+  }
+
+  return chunks.length > 0 ? chunks : [normalized];
+};
+
+const findWavChunk = (
+  bytes: Uint8Array,
+  chunkName: string
+): { dataOffset: number; dataSize: number } | null => {
+  if (bytes.length < 44) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let cursor = 12;
+  while (cursor + 8 <= bytes.length) {
+    const id = String.fromCharCode(
+      view.getUint8(cursor),
+      view.getUint8(cursor + 1),
+      view.getUint8(cursor + 2),
+      view.getUint8(cursor + 3)
+    );
+    const chunkSize = view.getUint32(cursor + 4, true);
+    const dataOffset = cursor + 8;
+    if (id === chunkName) {
+      if (dataOffset + chunkSize > bytes.length) return null;
+      return { dataOffset, dataSize: chunkSize };
+    }
+    cursor = dataOffset + chunkSize + (chunkSize % 2);
+  }
+  return null;
+};
+
+const concatWavPcm = (chunks: Uint8Array[]): Uint8Array => {
+  if (chunks.length === 0) {
+    return new Uint8Array();
+  }
+  if (chunks.length === 1) {
+    return chunks[0];
+  }
+
+  const first = chunks[0];
+  const firstData = findWavChunk(first, "data");
+  if (!firstData) {
+    throw new Error("openai_tts_invalid_wav_header");
+  }
+
+  const head = first.slice(0, firstData.dataOffset);
+  const pcmDataParts: Uint8Array[] = [];
+  let totalPcmBytes = 0;
+  for (const chunk of chunks) {
+    const data = findWavChunk(chunk, "data");
+    if (!data) {
+      throw new Error("openai_tts_invalid_wav_header");
+    }
+    const pcm = chunk.slice(data.dataOffset, data.dataOffset + data.dataSize);
+    pcmDataParts.push(pcm);
+    totalPcmBytes += pcm.length;
+  }
+
+  const out = new Uint8Array(head.length + totalPcmBytes);
+  out.set(head, 0);
+
+  let cursor = head.length;
+  for (const pcm of pcmDataParts) {
+    out.set(pcm, cursor);
+    cursor += pcm.length;
+  }
+
+  const outView = new DataView(out.buffer, out.byteOffset, out.byteLength);
+  outView.setUint32(4, out.length - 8, true);
+  outView.setUint32(firstData.dataOffset - 4, totalPcmBytes, true);
+  return out;
+};
+
+const concatBytes = (chunks: Uint8Array[]): Uint8Array => {
+  if (chunks.length === 0) return new Uint8Array();
+  if (chunks.length === 1) return chunks[0];
+
+  const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const out = new Uint8Array(total);
+  let cursor = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, cursor);
+    cursor += chunk.length;
+  }
+  return out;
+};
+
 export const localTtsProvider: TtsProvider = {
   async synthesize(input) {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "local-tts-"));
@@ -341,60 +478,78 @@ export const openAiTtsProvider: TtsProvider = {
     const voice = resolveOpenAiVoice(input.lang, input.voice);
     const format = resolveOpenAiFormat(input.format);
     const speed = resolveOpenAiSpeed(input.speed);
-    const body: Record<string, unknown> = {
-      model,
-      voice,
-      input: input.text,
-      response_format: format
-    };
-
-    if (speed !== undefined) {
-      body.speed = speed;
+    const instructions = resolveOpenAiInstructions(input.lang, input.instructions);
+    const textChunks = splitTextForOpenAiTts(input.text, OPENAI_TTS_MAX_INPUT_CHARS);
+    if (textChunks.length === 0) {
+      throw new Error("openai_tts_empty_input");
     }
+    const requestFormat: TtsAudioFormat =
+      format === "wav" && textChunks.length > 1 ? "mp3" : format;
 
-    if (model === "gpt-4o-mini-tts") {
-      const instructions = resolveOpenAiInstructions(input.lang, input.instructions);
-      if (instructions) {
+    const synthesizeChunk = async (textChunk: string): Promise<Uint8Array> => {
+      const body: Record<string, unknown> = {
+        model,
+        voice,
+        input: textChunk,
+        response_format: requestFormat
+      };
+
+      if (speed !== undefined) {
+        body.speed = speed;
+      }
+      if (model === "gpt-4o-mini-tts" && instructions) {
         body.instructions = instructions;
       }
-    }
 
-    let response: Response;
-    try {
-      response = await fetch("https://api.openai.com/v1/audio/speech", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(OPENAI_TTS_TIMEOUT_MS)
-      });
-    } catch (error) {
-      if (
-        (error instanceof DOMException && (error.name === "AbortError" || error.name === "TimeoutError")) ||
-        (error instanceof Error && error.name === "AbortError")
-      ) {
-        throw new Error("openai_tts_timeout");
+      let response: Response;
+      try {
+        response = await fetch("https://api.openai.com/v1/audio/speech", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(OPENAI_TTS_TIMEOUT_MS)
+        });
+      } catch (error) {
+        if (
+          (error instanceof DOMException && (error.name === "AbortError" || error.name === "TimeoutError")) ||
+          (error instanceof Error &&
+            (error.name === "AbortError" ||
+              error.name === "TimeoutError" ||
+              error.message.includes("aborted due to timeout")))
+        ) {
+          throw new Error("openai_tts_timeout");
+        }
+        throw error;
       }
-      throw error;
-    }
 
-    if (!response.ok) {
-      const errorBody = await response.text().catch(() => "");
-      throw new Error(
-        `openai_tts_http_${response.status}:${errorBody.slice(0, 200) || "request_failed"}`
-      );
-    }
+      if (!response.ok) {
+        const errorBody = await response.text().catch(() => "");
+        throw new Error(
+          `openai_tts_http_${response.status}:${errorBody.slice(0, 200) || "request_failed"}`
+        );
+      }
+      return new Uint8Array(await response.arrayBuffer());
+    };
 
-    const bytes = new Uint8Array(await response.arrayBuffer());
+    const chunkBytes: Uint8Array[] = [];
+    for (const textChunk of textChunks) {
+      chunkBytes.push(await synthesizeChunk(textChunk));
+    }
+    const bytes =
+      requestFormat === "wav"
+        ? concatWavPcm(chunkBytes)
+        : concatBytes(chunkBytes);
+
     return {
       bytes,
-      contentType: response.headers.get("content-type") ?? "application/octet-stream",
+      contentType: requestFormat === "wav" ? "audio/wav" : "audio/mpeg",
       provider: "openai" as const,
       model,
       voice,
-      format
+      format: requestFormat
     };
   }
 };
