@@ -124,7 +124,7 @@ const requestOpenAiEdit = async (params: {
 };
 
 export const postEditJapaneseScript = async (script: string): Promise<ScriptEditorResult> => {
-  const initialNormalized = normalizeScriptText(script);
+  const initialNormalized = normalizeScriptText(script, { preserveSourceUrls: true });
 
   if (!isEnabled()) {
     return {
@@ -144,7 +144,7 @@ export const postEditJapaneseScript = async (script: string): Promise<ScriptEdit
       script: initialNormalized.text,
       model
     });
-    const editedNormalized = normalizeScriptText(editedRaw);
+    const editedNormalized = normalizeScriptText(editedRaw, { preserveSourceUrls: true });
 
     if (editedNormalized.text.length < MIN_EDITED_CHARS) {
       throw new Error("editor_output_too_short");

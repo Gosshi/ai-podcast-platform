@@ -32,3 +32,16 @@ test("checkScriptQuality flags banned tokens and short text", () => {
   assert.equal(result.violations.includes("contains_math_token"), true);
   assert.equal(result.violations.includes("too_short"), true);
 });
+
+test("checkScriptQuality allows urls in SOURCES section", () => {
+  const script = [
+    "[OP]",
+    "本文にはURLを出しません。",
+    "",
+    "[SOURCES]",
+    "- URL: https://example.com/a"
+  ].join("\n");
+  const result = checkScriptQuality(script, { minChars: 10 });
+
+  assert.equal(result.violations.includes("contains_http"), false);
+});

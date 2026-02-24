@@ -6,7 +6,10 @@ import {
   insertEnglishEpisode,
   updateEpisode
 } from "../_shared/episodes.ts";
-import { normalizeForSpeech } from "../_shared/speechNormalization.ts";
+import {
+  assertNoBadTokens,
+  sanitizeScriptText
+} from "../_shared/scriptSanitizer.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -76,24 +79,33 @@ const normalizeWhitespace = (value: string): string => value.replace(/\s+/g, " "
 
 const hasJapaneseText = (value: string): boolean => JAPANESE_CHAR_PATTERN.test(value);
 
+const sanitizeEnglishText = (value: string): string => {
+  const sanitized = sanitizeScriptText(value)
+    .replace(/#8217;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+  return sanitized;
+};
+
+const toEnglishSentence = (value: string, fallback: string, maxChars = 220): string => {
+  const sanitized = sanitizeEnglishText(value);
+  if (!sanitized || hasJapaneseText(sanitized)) {
+    return fallback;
+  }
+
+  const clipped = sanitized.length <= maxChars
+    ? sanitized
+    : `${sanitized.slice(0, maxChars).trimEnd()}...`;
+
+  if (/[.!?]$/.test(clipped)) {
+    return clipped;
+  }
+  return `${clipped}.`;
+};
+
 const readField = (text: string, label: string): string | null => {
   const match = text.match(new RegExp(`(?:^|\\n)${label}\\s*:?\\s*(.+)`));
   return match ? match[1].trim() : null;
-};
-
-const toEnglishSourceLabel = (value: string): string => {
-  const normalized = normalizeWhitespace(value);
-  if (!normalized) {
-    return "Japanese media";
-  }
-  return hasJapaneseText(normalized) ? "Japanese media" : normalized;
-};
-
-const toEnglishSentence = (value: string, fallback: string): string => {
-  const normalized = normalizeWhitespace(value);
-  if (!normalized) return fallback;
-  if (hasJapaneseText(normalized)) return fallback;
-  return normalized;
 };
 
 type MainTopicBlock = {
@@ -103,235 +115,199 @@ type MainTopicBlock = {
   intro: string;
   background: string;
   impact: string;
-  supplement: string;
+  nextWatch: string;
 };
 
 const extractMainTopicBlock = (text: string, index: number): MainTopicBlock => {
-  const title = readField(text, "見出し") ?? `Main topic ${index}`;
+  const title = readField(text, "導入") ?? readField(text, "見出し") ?? `Main topic ${index}`;
   const category = readField(text, "カテゴリ") ?? "general";
-  const source = readField(text, "参照媒体") ?? "Japanese media";
-  const intro = readField(text, "導入") ?? "We open by framing the key question and scope.";
+  const source = readField(text, "参照媒体") ?? "Public source";
+  const intro = readField(text, "導入") ?? "We frame what changed and why it matters now.";
   const background =
-    readField(text, "背景") ??
+    readField(text, "要点1(何が起きた)") ??
     readField(text, "要点1") ??
-    "We review the timeline and assumptions behind the latest update.";
-  const impact = readField(text, "影響") ?? "We break down likely operational and user impact.";
-  const point2 = readField(text, "要点2");
-  const point3 = readField(text, "要点3");
-  const supplement =
-    readField(text, "補足") ??
-    readField(text, "一言ツッコミ") ??
+    "We summarize the key update using public reports.";
+  const impact =
+    readField(text, "要点3(生活への影響)") ??
+    readField(text, "要点2") ??
+    "We explain likely impact on daily usage and workflow decisions.";
+  const nextWatch =
+    readField(text, "次の注目点") ??
     readField(text, "まとめ") ??
-    "We include uncertainty and alternative interpretations.";
+    "We track primary-source updates and avoid overconfident conclusions.";
+
   return {
     title,
     category,
     source,
     intro,
     background,
-    impact: point2 || point3 ? [impact, point2, point3].filter(Boolean).join(" ") : impact,
-    supplement
-  };
-};
-
-const extractLegacyTrendBlock = (text: string, index: number): MainTopicBlock => {
-  const title = readField(text, "トピック") ?? `Main topic ${index}`;
-  const source = readField(text, "- 参照メディア") ?? "Japanese media";
-  const intro = `We begin with ${title} and define why this story matters now.`;
-  const background =
-    readField(text, "- 何が起きた") ?? "Recent updates were observed from public reports.";
-  const impact =
-    readField(text, "- なぜ話題") ?? "The topic gained traction because practical decisions may change.";
-  const supplement =
-    readField(text, "- ひとこと見解") ?? "We avoid overconfident claims and track verified updates.";
-  return {
-    title,
-    category: "general",
-    source,
-    intro,
-    background,
     impact,
-    supplement
+    nextWatch
   };
 };
 
 const parseQuickNewsLines = (text: string): string[] => {
-  return text
+  const lines = text
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter((line) => /^-\s*(クイックニュース|QuickNews)\s*\d*/i.test(line))
-    .map((line) => line.replace(/^-\s*(クイックニュース|QuickNews)\s*\d*(（[^）]*）)?\s*:?\s*/i, "").trim())
     .filter((line) => line.length > 0);
-};
 
-const parseSmallTalkLines = (text: string): string[] => {
-  return text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => /^-\s*スモールトーク\d*/.test(line))
-    .map((line) => line.replace(/^-\s*スモールトーク\d*（[^）]*）:\s*/, "").trim())
+  const summaryLines = lines
+    .filter((line) => /^要約[:：]/.test(line))
+    .map((line) => line.replace(/^要約[:：]\s*/, "").trim())
+    .filter((line) => line.length > 0);
+  if (summaryLines.length > 0) {
+    return summaryLines;
+  }
+
+  return lines
+    .filter((line) => /^クイックニュース\s*\d+/i.test(line) || /^-\s*(クイックニュース|QuickNews)\s*\d*/i.test(line))
+    .map((line) =>
+      line
+        .replace(/^クイックニュース\s*\d+（[^）]*）\s*:?\s*/i, "")
+        .replace(/^-\s*(クイックニュース|QuickNews)\s*\d*(（[^）]*）)?\s*:?\s*/i, "")
+        .trim()
+    )
     .filter((line) => line.length > 0);
 };
 
 const extractLetters = (lettersSection: string): { name: string; text: string }[] => {
-  if (
-    !lettersSection ||
-    lettersSection.includes("今日はお便りはお休み") ||
-    lettersSection.includes("お便りは0通")
-  ) {
+  if (!lettersSection) {
     return [];
   }
 
-  const oldFormat = lettersSection
+  const lines = lettersSection
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .map((line) => line.match(/^- お便り\d*（(.+?)）:\s*(.+)$/))
+    .filter((line) => line.length > 0);
+
+  const modern: { name: string; text: string }[] = [];
+  let currentName = "Listener";
+
+  for (const line of lines) {
+    const letterMatch = line.match(/^レター\d+[:：]\s*(.+)$/);
+    if (letterMatch) {
+      const candidate = sanitizeEnglishText(letterMatch[1]);
+      currentName = candidate && !hasJapaneseText(candidate) ? candidate : "Listener";
+      continue;
+    }
+
+    const summaryMatch = line.match(/^本文要約[:：]\s*(.+)$/);
+    if (summaryMatch) {
+      modern.push({
+        name: currentName,
+        text: summaryMatch[1].trim()
+      });
+    }
+  }
+
+  if (modern.length > 0) {
+    return modern;
+  }
+
+  return lines
+    .map((line) => line.match(/^-\s*お便り\d*（(.+?)）:\s*(.+)$/))
     .filter((match): match is RegExpMatchArray => Boolean(match))
     .map((match) => ({
       name: match[1].trim(),
       text: match[2].trim()
     }));
-
-  if (oldFormat.length > 0) {
-    return oldFormat;
-  }
-
-  const lines = lettersSection.split(/\r?\n/).map((line) => line.trim());
-  const result: { name: string; text: string }[] = [];
-  let currentName = "Listener";
-
-  for (const line of lines) {
-    const nameMatch = line.match(/^感謝:\s*(.+?)さん/);
-    if (nameMatch) {
-      currentName = nameMatch[1].trim();
-      continue;
-    }
-
-    const bodyMatch = line.match(/^本文要約:\s*(.+)$/);
-    if (bodyMatch) {
-      result.push({ name: currentName, text: bodyMatch[1].trim() });
-    }
-  }
-
-  return result;
 };
 
 const extractSourceRows = (sourcesSection: string): string[] => {
   return sourcesSection
     .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith("- "));
+    .map((line) => sanitizeEnglishText(line))
+    .filter((line) => line.length > 0)
+    .map((line) => line.replace(/\bURL:\s*\S+/gi, "URL stored in DB"));
 };
 
 const buildEnglishScript = (title: string, sections: Record<Marker, string>): string => {
-  const deepDiveSections = [1, 2, 3]
+  const mainTopics = [1, 2, 3]
     .map((index) => sections[`DEEPDIVE ${index}` as Marker])
     .filter((section) => section.length > 0)
     .map((section, index) => extractMainTopicBlock(section, index + 1));
 
-  const mainTopicSections = [1, 2, 3]
-    .map((index) => sections[`MAIN TOPIC ${index}` as Marker])
-    .filter((section) => section.length > 0)
-    .map((section, index) => extractMainTopicBlock(section, index + 1));
-
-  const mainTopics =
-    deepDiveSections.length > 0
-      ? deepDiveSections
-      : mainTopicSections.length > 0
-      ? mainTopicSections
-      : [1, 2, 3].map((index) => extractLegacyTrendBlock(sections[`TREND ${index}` as Marker], index));
-
   const quickNews = parseQuickNewsLines(sections["QUICK NEWS"]);
-  const smallTalk = parseSmallTalkLines(sections["SMALL TALK"]);
   const letters = extractLetters(sections.LETTERS || sections["LETTERS CORNER"]);
   const sourceRows = extractSourceRows(sections.SOURCES);
 
   const opening = `[OPENING]
-Welcome back. This English edition follows the editor-in-chief format:
-three main topics, quick news briefs, two small-talk segments, letters, and a short ending.
-Today's title is "${title}".`;
+Welcome back. This English edition keeps the same structure as the Japanese master script:
+opening, headline, three deep dives, six quick updates, letters, and closing.
+Today's title is "${toEnglishSentence(title, "Daily update")}".`;
 
   const mainTopicBlocks = mainTopics.map((topic, index) => {
-    const source = toEnglishSourceLabel(topic.source);
     return `[MAIN TOPIC ${index + 1}]
 Headline: ${toEnglishSentence(topic.title, `Main topic ${index + 1}`)}
 Category: ${toEnglishSentence(topic.category, "general")}
-Source: ${source}
-Intro: ${toEnglishSentence(topic.intro, "We frame the topic and define the decision context.")}
-Background: ${toEnglishSentence(
-      topic.background,
-      "We summarize the timeline and assumptions using public information."
-    )}
-Impact: ${toEnglishSentence(
-      topic.impact,
-      "We discuss likely effects on operations, users, and governance."
-    )}
-Supplement: ${toEnglishSentence(
-      topic.supplement,
-      "We include uncertainty and alternate interpretations instead of overconfident claims."
-    )}`;
+Source: ${toEnglishSentence(topic.source, "Public source")}
+Intro: ${toEnglishSentence(topic.intro, "We frame the key update and context.")}
+What happened: ${toEnglishSentence(topic.background, "We summarize what changed based on public information.")}
+Daily impact: ${toEnglishSentence(topic.impact, "We explain likely impact on audience routines and workflow.")}
+Next watchpoint: ${toEnglishSentence(topic.nextWatch, "We keep tracking verified updates and avoid overreach.")}`;
   });
 
   const quickNewsSection = `[QUICK NEWS]
 ${
   quickNews.length === 0
-    ? "- No quick news items in this run."
+    ? "- No quick updates in this run."
     : quickNews
-        .slice(0, 8)
-        .map((line, index) => `- Quick news ${index + 1} (about 30 seconds): ${toEnglishSentence(line, "Update in progress.")}`)
-        .join("\n")
-}`;
-
-  const smallTalkSection = `[SMALL TALK]
-${
-  smallTalk.length === 0
-    ? "- No small-talk segment today."
-    : smallTalk
-        .slice(0, 2)
-        .map((line, index) => `- Small talk ${index + 1}: ${toEnglishSentence(line, "A light listener-facing reflection.")}`)
+        .slice(0, 6)
+        .map((line, index) => `- Quick update ${index + 1} (about 25 seconds): ${toEnglishSentence(line, "Update in progress.")}`)
         .join("\n")
 }`;
 
   const lettersSection =
     letters.length === 0
       ? `[LETTERS CORNER]
-- No listener letters today.`
+- No listener letters today. Please send one question for a future episode.`
       : `[LETTERS CORNER]
 ${letters
   .slice(0, 2)
   .map(
     (letter, index) =>
-      `- Letter ${index + 1} from ${letter.name}: ${toEnglishSentence(letter.text, "Thanks for your message.")}\n- Host reply: Thank you. We will keep improving the show with your feedback.`
+      `- Letter ${index + 1} from ${toEnglishSentence(letter.name, "Listener")}: ${toEnglishSentence(letter.text, "Thanks for your message.")}`
   )
   .join("\n")}`;
 
   const closing = `[CLOSING]
-That wraps today's episode. We will keep tracking verified updates and return with deeper follow-ups next time.`;
+That wraps today's episode. We focused on what changed, why it matters, and what to watch next.`;
 
   const sourcesSection = `[SOURCES]
 ${
   sourceRows.length === 0
-    ? "- Source list is being prepared."
-    : sourceRows.map((row) => toEnglishSentence(row, "Source metadata available in the database.")).join("\n")
+    ? "- Source metadata is being prepared."
+    : sourceRows.map((row) => toEnglishSentence(row, "Source metadata is available in the database.", 180)).join("\n")
 }`;
 
   const referencesSection = `[SOURCES_FOR_UI]
-- Script URLs are intentionally removed for speech quality.
-- Original URLs remain stored in trend-related database records.`;
+- Japanese script may keep URL references only in SOURCES.
+- English adaptation removes URLs to keep speech clean.
+- Original URLs remain in trend-related database records.`;
 
   const raw = [
-    `TITLE: ${title}`,
+    `TITLE: ${toEnglishSentence(title, "Daily update")}`,
     opening,
     ...mainTopicBlocks,
     quickNewsSection,
-    smallTalkSection,
     lettersSection,
     closing,
     sourcesSection,
     referencesSection
   ].join("\n\n");
 
-  return normalizeForSpeech(raw, "en");
+  const sanitized = sanitizeEnglishText(raw);
+  assertNoBadTokens(sanitized, ["<a href", "数式", "アンド#8217;"]);
+  if (/https?:\/\//i.test(sanitized) || /\bwww\./i.test(sanitized)) {
+    throw new Error("english_script_contains_url");
+  }
+
+  return raw
+    .replace(/\r\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 };
 
 Deno.serve(async (req) => {

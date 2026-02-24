@@ -5,13 +5,7 @@ import {
   insertJapaneseEpisode,
   updateEpisode
 } from "../_shared/episodes.ts";
-import {
-  PROGRAM_MAIN_TOPICS_COUNT,
-  PROGRAM_QUICK_NEWS_COUNT,
-  PROGRAM_SMALL_TALK_COUNT,
-  type ProgramPlan
-} from "../_shared/programPlan.ts";
-import { normalizeForSpeech } from "../_shared/speechNormalization.ts";
+import { type ProgramPlan } from "../_shared/programPlan.ts";
 import {
   estimateScriptDurationSec,
   resolveScriptGateConfig,
@@ -21,9 +15,9 @@ import {
   normalizeScriptText,
   type ScriptNormalizationMetrics
 } from "../_shared/scriptNormalize.ts";
-import { preprocessForTTS } from "../_shared/ttsPreprocess.ts";
 import {
   buildSectionsCharsBreakdown,
+  parseScriptSections,
   renderScriptSections,
   type ScriptSection,
   type SectionsCharsBreakdown
@@ -34,6 +28,11 @@ import {
   validateEpisodeScriptQuality,
   type EpisodeStructureConfig
 } from "../_shared/episodeStructure.ts";
+import {
+  assertNoBadTokens,
+  decodeEntities,
+  sanitizeScriptText
+} from "../_shared/scriptSanitizer.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -67,6 +66,7 @@ type ScriptTrendItem = {
   url: string | null;
   source: string;
   category: string;
+  isHard: boolean;
 };
 
 type ScriptLetter = {
@@ -91,52 +91,73 @@ type ScriptBuildResult = {
   normalizationMetrics: ScriptNormalizationMetrics;
 };
 
-const MAX_TREND_ITEMS = 12;
+const REQUIRED_DEEPDIVE_COUNT = 3;
+const REQUIRED_QUICKNEWS_COUNT = 6;
+const MAX_TREND_ITEMS = 20;
 const MAX_LETTERS = 2;
+const SCRIPT_MIN_CHARS_FLOOR = 3500;
+const MAX_HARD_TOPICS = 1;
+const SECTION_BAD_TOKENS = ["http://", "https://", "<a href", "数式", "アンド#8217;"];
+
+const HARD_CATEGORIES = new Set([
+  "news",
+  "politics",
+  "policy",
+  "government",
+  "economy",
+  "business",
+  "science",
+  "world",
+  "crime",
+  "accident",
+  "disaster",
+  "war",
+  "hard"
+]);
 
 const resolveEpisodeStructureConfig = (): EpisodeStructureConfig => {
   return resolveEpisodeStructureConfigFromRaw({
-    deepDiveCount: Deno.env.get("EPISODE_DEEPDIVE_COUNT") ?? undefined,
-    quickNewsCount: Deno.env.get("EPISODE_QUICKNEWS_COUNT") ?? undefined,
+    deepDiveCount: `${REQUIRED_DEEPDIVE_COUNT}`,
+    quickNewsCount: `${REQUIRED_QUICKNEWS_COUNT}`,
     totalTargetChars: Deno.env.get("EPISODE_TOTAL_TARGET_CHARS") ?? undefined
   });
 };
 
-const fallbackTrend = (index: number): ScriptTrendItem => ({
-  id: `fallback-${index}`,
-  title: `補足トレンド ${index}`,
-  summary: "公開情報を確認中です。未確認情報は断定せず、事実ベースでお伝えします。",
-  url: null,
-  source: "確認中",
-  category: "general"
-});
-
-const sanitizeNarrationText = (value: string): string => {
-  return value
-    .replace(/<[^>]+>/g, " ")
-    .replace(/https?:\/\/\S+/g, " ")
-    .replace(/&#45;/g, "-")
-    .replace(/&amp;/g, "&")
+const sanitizeNarrationText = (value: string, fallback = ""): string => {
+  const cleaned = sanitizeScriptText(value)
+    .replace(/(?:続きを読む|続きを読む|read more)\s*\.{0,3}/gi, " ")
+    .replace(/\b(?:確認中|未確認|編集中)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+  return cleaned || fallback;
+};
+
+const sanitizeUrl = (value: string | undefined): string | null => {
+  const raw = decodeEntities((value ?? "").trim()).replace(/<[^>]+>/g, "").replace(/\s+/g, "");
+  if (!raw) return null;
+  try {
+    return new URL(raw).toString();
+  } catch {
+    return null;
+  }
 };
 
 const resolveSourceName = (source: string | undefined, url: string | undefined): string => {
-  if (source && source.trim().length > 0) {
-    return source.trim();
+  const cleanedSource = sanitizeNarrationText(source ?? "");
+  if (cleanedSource) {
+    return cleanedSource;
   }
 
-  if (!url) return "出典不明";
-
+  if (!url) return "公開ソース";
   try {
     return new URL(url).hostname.replace(/^www\./, "");
   } catch {
-    return "出典不明";
+    return "公開ソース";
   }
 };
 
-const ensureSentence = (value: string, fallback: string, maxChars = 160): string => {
-  const normalized = sanitizeNarrationText(value) || fallback;
+const ensureSentence = (value: string, fallback: string, maxChars = 180): string => {
+  const normalized = sanitizeNarrationText(value, fallback);
   const clipped = normalized.length <= maxChars
     ? normalized
     : `${normalized.slice(0, maxChars).trimEnd()}…`;
@@ -147,46 +168,134 @@ const ensureSentence = (value: string, fallback: string, maxChars = 160): string
   return `${clipped}。`;
 };
 
-const padSection = (body: string, minChars: number, expansions: string[]): string => {
-  let padded = body.trim();
-  const candidates = expansions
-    .map((expansion) => sanitizeNarrationText(expansion))
-    .filter((expansion) => expansion.length > 0);
-  if (candidates.length === 0) {
-    return padded;
-  }
-
-  let index = 0;
-  let guard = 0;
-
-  while (padded.length < minChars && guard < 64) {
-    const expansion = candidates[index % candidates.length] ?? candidates[0];
-    if (!expansion) break;
-    padded = `${padded}\n${expansion}`;
-    index += 1;
-    guard += 1;
-  }
-
-  return padded;
+const splitSentences = (value: string): string[] => {
+  return value
+    .split(/(?<=[。.!?！？])\s+/u)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
 };
 
+const dedupeExactLines = (value: string): { text: string; dedupedCount: number } => {
+  const lines = value.replace(/\r\n/g, "\n").split("\n");
+  const seen = new Set<string>();
+  const kept: string[] = [];
+  let dedupedCount = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (kept.length === 0 || kept[kept.length - 1] !== "") {
+        kept.push("");
+      }
+      continue;
+    }
+
+    if (/^\[[^\]]+\]$/.test(trimmed)) {
+      kept.push(trimmed);
+      continue;
+    }
+
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) {
+      dedupedCount += 1;
+      continue;
+    }
+
+    seen.add(key);
+    kept.push(trimmed);
+  }
+
+  return {
+    text: kept.join("\n").replace(/\n{3,}/g, "\n\n").trim(),
+    dedupedCount
+  };
+};
+
+const limitSectionBody = (
+  body: string,
+  options: {
+    maxLines: number;
+    maxChars: number;
+    maxLineChars: number;
+  }
+): string => {
+  const limitedLines: string[] = [];
+
+  for (const rawLine of body.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const clipped = line.length <= options.maxLineChars
+      ? line
+      : `${line.slice(0, options.maxLineChars).trimEnd()}…`;
+    limitedLines.push(clipped);
+    if (limitedLines.length >= options.maxLines) {
+      break;
+    }
+  }
+
+  const joined = limitedLines.join("\n");
+  if (joined.length <= options.maxChars) {
+    return joined;
+  }
+
+  return `${joined.slice(0, options.maxChars).trimEnd()}…`;
+};
+
+const clipScriptAtLineBoundary = (value: string, maxChars: number): string => {
+  if (value.length <= maxChars) {
+    return value;
+  }
+
+  let clipped = value.slice(0, maxChars);
+  const lastBreak = clipped.lastIndexOf("\n");
+  if (lastBreak > 0) {
+    clipped = clipped.slice(0, lastBreak);
+  }
+  return clipped.trimEnd();
+};
+
+const fallbackTrend = (index: number): ScriptTrendItem => ({
+  id: `fallback-${index}`,
+  title: `追加トレンド${index}`,
+  summary: "公開情報ベースで論点を整理し、断定を避けながら背景と影響を短く確認します。",
+  url: `https://example.com/fallback/${index}`,
+  source: "fallback-editorial",
+  category: "general",
+  isHard: false
+});
+
 const normalizeTrendItems = (trendItems: RequestBody["trendItems"]): ScriptTrendItem[] => {
+  const seenTitles = new Set<string>();
   const normalized = (trendItems ?? [])
-    .filter((item) => Boolean(item?.title))
     .slice(0, MAX_TREND_ITEMS)
     .map((item, index) => {
-      const title = (item?.title ?? "").trim();
-      const summary =
-        sanitizeNarrationText(item?.summary ?? "") ||
-        `${title}に関する最新トピックです。公開情報ベースで確認します。`;
-      const url = (item?.url ?? "").trim() || null;
-      const source = resolveSourceName(item?.source, item?.url);
-      const id = (item?.id ?? "").trim() || `trend-${index + 1}`;
-      const category = (item?.category ?? "").trim() || "general";
-      return { id, title, summary, url, source, category };
-    });
+      const title = sanitizeNarrationText(item?.title ?? "");
+      if (!title) return null;
 
-  while (normalized.length < MAX_TREND_ITEMS) {
+      const normalizedTitle = title.toLowerCase();
+      if (seenTitles.has(normalizedTitle)) return null;
+      seenTitles.add(normalizedTitle);
+
+      const summary = sanitizeNarrationText(
+        item?.summary ?? "",
+        `${title}に関する更新があり、何が起きたのかと生活への影響を確認します。`
+      );
+      const url = sanitizeUrl(item?.url);
+      const source = resolveSourceName(item?.source, item?.url);
+      const category = sanitizeNarrationText(item?.category ?? "general", "general").toLowerCase();
+      return {
+        id: sanitizeNarrationText(item?.id ?? "") || `trend-${index + 1}`,
+        title,
+        summary,
+        url,
+        source,
+        category,
+        isHard: HARD_CATEGORIES.has(category)
+      } satisfies ScriptTrendItem;
+    })
+    .filter((item): item is ScriptTrendItem => item !== null);
+
+  while (normalized.length < REQUIRED_DEEPDIVE_COUNT + REQUIRED_QUICKNEWS_COUNT + 1) {
     normalized.push(fallbackTrend(normalized.length + 1));
   }
 
@@ -200,7 +309,7 @@ const normalizeLetters = (letters: RequestBody["letters"]): ScriptLetter[] => {
       return "応援メッセージをいただきました。";
     }
 
-    const maxSummaryChars = 130;
+    const maxSummaryChars = 140;
     return sanitized.length <= maxSummaryChars
       ? sanitized
       : `${sanitized.slice(0, maxSummaryChars).trimEnd()}…`;
@@ -210,7 +319,7 @@ const normalizeLetters = (letters: RequestBody["letters"]): ScriptLetter[] => {
     .filter((letter) => Boolean(letter?.display_name && letter?.text))
     .slice(0, MAX_LETTERS)
     .map((letter) => ({
-      displayName: (letter?.display_name ?? "").trim(),
+      displayName: sanitizeNarrationText(letter?.display_name ?? "", "リスナー"),
       summarizedText: summarizeLetterText(letter?.text ?? ""),
       tipAmount: typeof letter?.tip_amount === "number" ? letter.tip_amount : null,
       tipCurrency: typeof letter?.tip_currency === "string" ? letter.tip_currency : null
@@ -230,349 +339,361 @@ const formatTipAmount = (tipAmount: number | null, tipCurrency: string | null): 
   return `${(tipAmount / 100).toFixed(2)} ${currency.toUpperCase()}`;
 };
 
-const buildFallbackProgramPlan = (topicTitle: string, trendItems: ScriptTrendItem[]): ProgramPlan => {
-  const mainTopics = trendItems.slice(0, PROGRAM_MAIN_TOPICS_COUNT).map((trend, index) => ({
-    title: trend.title || `${topicTitle} 補足 ${index + 1}`,
-    source: trend.source,
-    category: trend.category,
-    intro: `${trend.title}について、導入で論点の全体像を確認します。`,
-    background: `${trend.summary} 背景では公開情報の時系列と前提を確認します。`,
-    impact: "影響では、利用者と実務の両面で生じる変化を整理します。",
-    supplement: "補足では、反証可能性や未確定情報を明示して誤読を避けます。"
-  }));
-  const quickNews = trendItems
-    .slice(PROGRAM_MAIN_TOPICS_COUNT, PROGRAM_MAIN_TOPICS_COUNT + PROGRAM_QUICK_NEWS_COUNT)
-    .map((trend) => ({
-      title: trend.title,
-      source: trend.source,
-      category: trend.category,
-      summary: trend.summary,
-      durationSecTarget: 35
-    }));
-  const smallTalk = trendItems
-    .slice(
-      PROGRAM_MAIN_TOPICS_COUNT + PROGRAM_QUICK_NEWS_COUNT,
-      PROGRAM_MAIN_TOPICS_COUNT + PROGRAM_QUICK_NEWS_COUNT + PROGRAM_SMALL_TALK_COUNT
-    )
-    .map((trend, index) => ({
-      title: trend.title,
-      mood: index % 2 === 0 ? "calm" : "light",
-      talkingPoint: `${trend.summary} をきっかけに、リスナーと距離の近い視点で会話します。`
-    }));
+const pickDeepDiveItems = (trendItems: ScriptTrendItem[]): ScriptTrendItem[] => {
+  const chosen: ScriptTrendItem[] = [];
+  let hardCount = 0;
 
-  return {
-    role: "editor-in-chief",
-    main_topics: mainTopics,
-    quick_news: quickNews,
-    small_talk: smallTalk,
-    letters: {
-      host_prompt:
-        "お便りには感謝を伝えた上で、断定を避け、次の行動に繋がる短い提案を添えて回答します。"
-    },
-    ending: {
-      message: "本編で扱った論点の再確認と、次回の予告を一言で締めます。"
+  for (const item of trendItems) {
+    if (chosen.length >= REQUIRED_DEEPDIVE_COUNT) break;
+    if (item.isHard && hardCount >= MAX_HARD_TOPICS) continue;
+    chosen.push(item);
+    if (item.isHard) hardCount += 1;
+  }
+
+  let cursor = 0;
+  while (chosen.length < REQUIRED_DEEPDIVE_COUNT) {
+    const fallback = trendItems[cursor] ?? fallbackTrend(cursor + 1);
+    if (!chosen.some((item) => item.id === fallback.id)) {
+      chosen.push(fallback);
     }
-  };
-};
-
-const ensureProgramPlan = (
-  plan: ProgramPlan | undefined,
-  topicTitle: string,
-  trendItems: ScriptTrendItem[]
-): ProgramPlan => {
-  const fallback = buildFallbackProgramPlan(topicTitle, trendItems);
-  if (!plan || plan.role !== "editor-in-chief") {
-    return fallback;
+    cursor += 1;
   }
 
-  return {
-    role: "editor-in-chief",
-    main_topics: [...plan.main_topics, ...fallback.main_topics].slice(0, PROGRAM_MAIN_TOPICS_COUNT),
-    quick_news: [...plan.quick_news, ...fallback.quick_news].slice(0, PROGRAM_QUICK_NEWS_COUNT),
-    small_talk: [...plan.small_talk, ...fallback.small_talk].slice(0, PROGRAM_SMALL_TALK_COUNT),
-    letters: plan.letters ?? fallback.letters,
-    ending: plan.ending ?? fallback.ending
-  };
+  return chosen;
 };
 
-const buildQuickNewsItems = (
-  quickNews: ProgramPlan["quick_news"],
-  trendItems: ScriptTrendItem[],
-  mainTopics: ProgramPlan["main_topics"],
-  targetQuickNewsCount: number
-): ProgramPlan["quick_news"] => {
-  const mainTopicTitles = new Set(mainTopics.map((topic) => topic.title));
-  const usedTitles = new Set<string>();
-  const result: ProgramPlan["quick_news"] = [];
+const pickQuickNewsItems = (trendItems: ScriptTrendItem[], deepDiveItems: ScriptTrendItem[]): ScriptTrendItem[] => {
+  const deepDiveIds = new Set(deepDiveItems.map((item) => item.id));
+  const quickNews: ScriptTrendItem[] = [];
+  let hardCount = deepDiveItems.filter((item) => item.isHard).length;
 
-  for (const item of quickNews) {
-    const title = item.title.trim();
-    if (!title || usedTitles.has(title)) continue;
-    usedTitles.add(title);
-    result.push(item);
+  for (const item of trendItems) {
+    if (quickNews.length >= REQUIRED_QUICKNEWS_COUNT) break;
+    if (deepDiveIds.has(item.id)) continue;
+    if (item.isHard && hardCount >= MAX_HARD_TOPICS) continue;
+    quickNews.push(item);
+    if (item.isHard) hardCount += 1;
   }
 
-  for (const trend of trendItems) {
-    if (result.length >= targetQuickNewsCount) break;
-    if (mainTopicTitles.has(trend.title)) continue;
-    if (usedTitles.has(trend.title)) continue;
-
-    usedTitles.add(trend.title);
-    result.push({
-      title: trend.title,
-      source: trend.source,
-      category: trend.category,
-      summary: trend.summary,
-      durationSecTarget: 35
-    });
+  let cursor = 0;
+  while (quickNews.length < REQUIRED_QUICKNEWS_COUNT) {
+    const fallback = fallbackTrend(cursor + 200);
+    quickNews.push(fallback);
+    cursor += 1;
   }
 
-  while (result.length < targetQuickNewsCount) {
-    const fallbackIndex = result.length + 1;
-    result.push({
-      title: `追加トピック ${fallbackIndex}`,
-      source: "編集部メモ",
-      category: "general",
-      summary: "ここは速報より背景整理を優先し、見出しの温度差を短く比較します。",
-      durationSecTarget: 35
-    });
-  }
-
-  return result.slice(0, targetQuickNewsCount);
+  return quickNews;
 };
 
-const buildOp = (
-  topicTitle: string,
-  deepDiveCount: number,
-  quickNewsCount: number,
-  lettersCount: number
-): string => {
-  const base = [
-    `番組名: ${topicTitle}`,
-    "OPです。今日も日本語で、テンポよく整理していきます。",
-    `最初に全体像をつかみます。次に深掘りを${deepDiveCount}本。続けてクイックニュース。最後にレターズとOutroです。`,
-    `QuickNewsは${quickNewsCount}本です。Lettersは${lettersCount > 0 ? `${lettersCount}通` : "募集と想定質問"}で進めます。`,
-    "速報の勢いに流されず、事実と仮説を分けて話します。リンクは概要欄にまとめています。"
-  ].join("\n");
-
-  return padSection(base, 380, [
-    "聞きながらメモしやすいように、1トピックごとに結論を短く言い切ってから補足に入ります。",
-    "断定しにくい話題は、前提条件を先に置いてから解釈を重ねます。"
-  ]);
+const resolveTopicTitle = (rawTitle: string | undefined, episodeDate: string): string => {
+  const normalized = sanitizeNarrationText(rawTitle ?? "");
+  if (!normalized || /^staging topic\b/i.test(normalized)) {
+    return `Daily Topic ${episodeDate}`;
+  }
+  return normalized;
 };
 
-const buildHeadline = (
+const pickPlanTopicByTitle = (
   programPlan: ProgramPlan,
-  deepDiveCount: number,
-  quickNewsCount: number
-): string => {
-  const topLines = programPlan.main_topics.slice(0, deepDiveCount).map((topic, index) => {
-    return `- Headline ${index + 1}: ${ensureSentence(topic.title, `注目テーマ${index + 1}`)}`;
-  });
+  title: string
+): ProgramPlan["main_topics"][number] | null => {
+  const normalizedTitle = title.toLowerCase();
+  return programPlan.main_topics.find((topic) => topic.title.toLowerCase() === normalizedTitle) ?? null;
+};
 
-  const base = [
-    "Headlineです。今日の地図を30秒で確認します。",
-    ...topLines,
-    `- QuickNewsの本数: ${quickNewsCount}本。短く回して、深掘りとの差をはっきり出します。`,
-    "- レターズ: 最後に1〜2通。質問がない日は募集メッセージと想定質問で埋めます。",
-    "このあと、各DeepDiveは導入、要点3つ、ツッコミ、まとめの順で進めます。"
-  ].join("\n");
+const toNarrationSummary = (summary: string, maxSentences: number): string => {
+  const sentences = splitSentences(summary);
+  if (sentences.length === 0) {
+    return "公開情報を横断して、事実ベースで更新点を確認します。";
+  }
+  return ensureSentence(sentences.slice(0, maxSentences).join(" "), "公開情報を整理します。", 260);
+};
 
-  return padSection(base, 620, [
-    "全体像を先に置くことで、途中参加でも話題の位置関係が崩れません。",
-    "ここで挙げる順番は、影響範囲と更新頻度のバランスで決めています。"
-  ]);
+const buildOp = (topicTitle: string): string => {
+  return limitSectionBody(
+    [
+      `おはようございます。今日の番組テーマは「${ensureSentence(topicTitle, "今日のトレンド")}"です。`,
+      "まず30秒で全体地図を確認し、そのあとDeepDiveを3本、QuickNewsを6本、最後にレターズとエンディングで締めます。",
+      "速報の熱量に引きずられないように、事実、解釈、次のアクションを分けて話します。",
+      "URLは本文では読まず、最後のSOURCESにだけまとめます。"
+    ].join("\n"),
+    {
+      maxLines: 8,
+      maxChars: 560,
+      maxLineChars: 180
+    }
+  );
+};
+
+const buildHeadline = (deepDiveItems: ScriptTrendItem[], quickNewsItems: ScriptTrendItem[]): string => {
+  const mainLine = deepDiveItems
+    .map((item, index) => `注目${index + 1}は${ensureSentence(item.title, `トピック${index + 1}`, 72)}`)
+    .join(" ");
+
+  return limitSectionBody(
+    [
+      "HEADLINEです。今日の全体地図を30秒で確認します。",
+      mainLine,
+      `QuickNewsは${quickNewsItems.length}本です。短く回しながら、なぜ話題かだけを押さえます。`,
+      "流し聞きでも追えるように、各セクションの最後で持ち帰りを一行で言い切ります。"
+    ].join("\n"),
+    {
+      maxLines: 10,
+      maxChars: 700,
+      maxLineChars: 190
+    }
+  );
 };
 
 const buildDeepDive = (
-  topic: ProgramPlan["main_topics"][number],
+  trend: ScriptTrendItem,
   index: number,
-  trendHint: ScriptTrendItem | undefined
+  programPlan: ProgramPlan
 ): string => {
-  const intro = ensureSentence(
-    topic.intro,
-    `${topic.title}の今を確認します。何が変わったのかを最初に押さえます。`,
-    190
-  );
-  const point1 = ensureSentence(
-    topic.background,
-    "要点1は背景です。時系列で見ると、判断に必要な前提が見えてきます。",
-    190
-  );
-  const point2 = ensureSentence(
-    topic.impact,
-    "要点2は影響です。ユーザー体験、運用コスト、現場の意思決定を順に見ます。",
-    190
-  );
-  const point3 = ensureSentence(
-    topic.supplement,
-    "要点3は補足です。反証や未確定要素を一緒に置いて、過剰な断定を避けます。",
-    190
-  );
-  const tsukkomi = ensureSentence(
-    `${topic.title}を巡る空気感には勢いがあります。ただ、数字の定義と比較対象が曖昧なまま拡散されると誤読が起きます。`,
-    "ここで一言ツッコミです。早い結論ほど、前提確認を増やした方が安全です。",
-    190
-  );
-  const summary = ensureSentence(
-    `まとめです。${topic.title}は、短期の反応だけでなく中期の運用設計まで含めて見るのが要点でした。`,
-    "まとめです。判断を急ぎすぎず、更新を前提に追う姿勢が今日の持ち帰りです。",
+  const planTopic = pickPlanTopicByTitle(programPlan, trend.title);
+  const whatHappened = toNarrationSummary(planTopic?.background ?? trend.summary, 2);
+  const whyTopic = ensureSentence(
+    planTopic?.intro ?? `${trend.title}は、更新が早く、判断の前提が短時間で変わるため話題化しています。`,
+    "更新頻度が高く、同じ見出しでも前提が変わるため話題になっています。",
     200
   );
+  const lifeImpact = ensureSentence(
+    planTopic?.impact ?? `${trend.category}領域の動きとして、視聴体験や作業の優先順位に小さく効く変化が出ています。`,
+    "日常では、情報収集の順番と意思決定の速さに影響します。",
+    200
+  );
+  const watchPoint = ensureSentence(
+    planTopic?.supplement ?? `${trend.source}の続報と一次情報の更新頻度を追い、見出しだけで断定しないことが次の注目点です。`,
+    "次は一次情報の更新点と、見出しとの差分に注目します。",
+    200
+  );
+  const tsukkomi = ensureSentence(
+    `${trend.title}は勢いのある見出しですが、比較対象を省くと誤読しやすいので、前提をひとつ固定して読むのが安全です。`,
+    "勢いが強い話題ほど、前提を固定して読むと誤読を防げます。",
+    180
+  );
+  const closing = ensureSentence(
+    `まとめると、${trend.title}は短期反応だけでなく、生活や運用の変化まで見て初めて意味が見えてきます。`,
+    "まとめると、更新差分を追う視点が今日の持ち帰りです。",
+    180
+  );
 
-  const trendSupplement = trendHint
-    ? ensureSentence(
-        `${trendHint.title}の文脈も合わせると、同じ論点でも見出しだけでは温度差が読めません。背景の差分まで見る必要があります。`,
-        "関連トレンドを照合すると、似た見出しでも前提が異なるケースが見つかります。",
-        180
-      )
-    : "";
-
-  const base = [
-    `見出し: ${ensureSentence(topic.title, `DeepDive ${index + 1}`)}`,
-    `カテゴリ: ${ensureSentence(topic.category, "general")}`,
-    `参照媒体: ${ensureSentence(topic.source, "公開ソース")}`,
-    `導入: ${intro}`,
-    `要点1: ${point1}`,
-    `要点2: ${point2}`,
-    `要点3: ${point3}`,
-    `一言ツッコミ: ${tsukkomi}`,
-    trendSupplement ? `背景補足: ${trendSupplement}` : "",
-    `まとめ: ${summary}`
-  ]
-    .filter((line) => line.length > 0)
-    .join("\n");
-
-  return padSection(base, 980, [
-    "具体例として、導入時の期待値と実装後の運用負荷がずれる場面を先に想定しておくと、判断ミスを減らせます。",
-    "比喩で言えば、地図だけ見て登山するより、天候と装備を確認してから歩く方が安全です。",
-    "最後に短い振り返りを入れておくと、次の更新が来たときに差分を追いやすくなります。"
-  ]);
+  return limitSectionBody(
+    [
+      `導入: DeepDive${index + 1}は「${ensureSentence(trend.title, `トピック${index + 1}`, 78)}」。`,
+      `要点1(何が起きた): ${whatHappened}`,
+      `要点2(なぜ話題): ${whyTopic}`,
+      `要点3(生活への影響): ${lifeImpact}`,
+      `一言ツッコミ: ${tsukkomi}`,
+      `次の注目点: ${watchPoint}`,
+      `まとめ: ${closing}`
+    ].join("\n"),
+    {
+      maxLines: 14,
+      maxChars: 1350,
+      maxLineChars: 220
+    }
+  );
 };
 
-const buildQuickNewsSection = (quickNews: ProgramPlan["quick_news"]): string => {
-  const lines = quickNews.map((item, index) => {
-    const title = ensureSentence(item.title, `クイックニュース${index + 1}`, 96);
-    const summary = ensureSentence(item.summary, "公開情報の更新がありました。", 140);
-    const source = ensureSentence(item.source, "公開ソース", 80);
-    const category = ensureSentence(item.category, "general", 80);
+const buildQuickNewsSection = (quickNewsItems: ScriptTrendItem[]): string => {
+  const lines: string[] = ["QuickNewsです。ここはテンポ重視で6本続けます。"];
 
-    return [
-      `- QuickNews ${index + 1}（約35秒）`,
-      `  見出し: ${title}`,
-      `  要点: ${summary}`,
-      `  出典カテゴリ: ${category} / 参照媒体: ${source}`,
-      "  ひとこと: 詳細リンクは概要欄にあります。ここでは要点だけ短く確認します。"
-    ].join("\n");
-  });
-
-  const base = [
-    "QuickNewsです。ここはテンポ優先でいきます。",
-    ...lines,
-    "以上、QuickNewsでした。深掘りとの温度差を意識して、ここで一度頭を整理します。"
-  ].join("\n");
-
-  return padSection(base, 980, [
-    "短い枠でも、事実と見解を分けるだけで聞きやすさが上がります。",
-    "見出しをそのまま読まず、背景を一言添えると誤解が減ります。"
-  ]);
-};
-
-const buildLettersSection = (letters: ScriptLetter[], hostPrompt: string): string => {
-  if (letters.length === 0) {
-    const base = [
-      "今日は実際のお便りは0通です。",
-      "募集: 最近のエピソードで、もっと深掘りしてほしいテーマを教えてください。",
-      "想定質問: 情報が更新され続ける話題を、どの時点で判断すべきですか。",
-      "回答: まず締切を置きます。次に一次情報の更新を待つ条件を決めます。最後に、誤りが出たら即修正する前提で公開します。",
-      `進行メモ: ${ensureSentence(hostPrompt, "短く感謝を伝え、次の行動につながる返答にする。", 140)}`
-    ].join("\n");
-
-    return padSection(base, 620, [
-      "もう一つの想定質問です。話題が多すぎる日は、重要度と期限で優先順位を切るのが実務的です。",
-      "募集告知は毎回同じでも、回答例を変えるとリスナーが送りやすくなります。"
-    ]);
+  for (const [index, item] of quickNewsItems.entries()) {
+    const summary = toNarrationSummary(item.summary, 1);
+    const why = ensureSentence(
+      `${item.category}カテゴリの更新として、${item.source}で短時間に拡散したためです。`,
+      "更新速度が速く、判断の材料になるためです。",
+      140
+    );
+    lines.push(`クイックニュース${index + 1}（約25秒）: ${ensureSentence(item.title, `ニュース${index + 1}`, 78)}`);
+    lines.push(`要約: ${summary}`);
+    lines.push(`なぜ話題: ${why}`);
   }
 
-  const lines = letters.map((letter, index) => {
-    const tipAmount = formatTipAmount(letter.tipAmount, letter.tipCurrency);
-    const thanksLine = tipAmount
-      ? `感謝: ${letter.displayName}さん、${tipAmount}のサポートありがとうございます。`
-      : `感謝: ${letter.displayName}さん、お便りありがとうございます。`;
+  lines.push("以上、QuickNewsでした。あとで深掘りしたい項目は、タイトルと理由だけ先にメモしておくと追いやすいです。");
 
-    return [
-      `- レター${index + 1}`,
-      `  ${thanksLine}`,
-      `  本文要約: ${ensureSentence(letter.summarizedText, "応援のメッセージをいただきました。", 170)}`,
-      "  返答: 結論を先に短く伝えます。次に根拠を一つ。最後に次のアクションを一つ提案します。"
-    ].join("\n");
+  return limitSectionBody(lines.join("\n"), {
+    maxLines: 26,
+    maxChars: 1650,
+    maxLineChars: 220
   });
-
-  const base = [
-    "Lettersです。",
-    ...lines,
-    `進行メモ: ${ensureSentence(hostPrompt, "断定を避け、行動につながる答えを返す。", 140)}`
-  ].join("\n");
-
-  return padSection(base, 640, [
-    "回答は長くしすぎず、聞き終わった直後に実行できる一歩を残します。",
-    "意見が割れるテーマは、判断軸を二つ提示してリスナー側で選べる形にします。"
-  ]);
 };
 
-const buildOutro = (endingMessage: string): string => {
-  const base = [
-    "Outroです。",
-    ensureSentence(
-      endingMessage,
-      "今日は、導入で全体像を押さえ、DeepDiveで論点を深め、QuickNewsで更新を確認しました。"
-    ),
-    "明日も同じ形式で、更新差分を追っていきます。",
-    "リンクは概要欄にまとめています。ここでは読み上げず、耳で追いやすい形を優先しました。",
-    "最後までありがとうございます。"
-  ].join("\n");
+const buildLettersSection = (letters: ScriptLetter[]): string => {
+  if (letters.length === 0) {
+    return limitSectionBody(
+      [
+        "Lettersです。今日は実際のお便りがないので、募集と想定質問で進めます。",
+        "募集: いま追っているトレンドで、番組に取り上げてほしいものを一行で送ってください。",
+        "想定質問: 情報更新が速い話題で、どの時点で判断すべきですか。",
+        "回答: まず判断期限を先に決めます。次に、その期限までに確認する一次情報を2つだけ固定します。"
+      ].join("\n"),
+      {
+        maxLines: 10,
+        maxChars: 760,
+        maxLineChars: 200
+      }
+    );
+  }
 
-  return padSection(base, 360, [
-    "聞き逃したポイントは、DeepDiveのまとめ行だけ追えば要点を再確認できます。"
-  ]);
+  const lines = ["Lettersです。いただいたメッセージに短く返していきます。"];
+  for (const [index, letter] of letters.entries()) {
+    const tipAmount = formatTipAmount(letter.tipAmount, letter.tipCurrency);
+    const thanks = tipAmount
+      ? `${letter.displayName}さん、${tipAmount}のサポートありがとうございます。`
+      : `${letter.displayName}さん、お便りありがとうございます。`;
+    lines.push(`レター${index + 1}: ${thanks}`);
+    lines.push(`本文要約: ${ensureSentence(letter.summarizedText, "応援メッセージをいただきました。", 170)}`);
+    lines.push("返答: まず結論を一行、その根拠を一行、最後に次の行動を一行で返します。");
+  }
+
+  return limitSectionBody(lines.join("\n"), {
+    maxLines: 12,
+    maxChars: 880,
+    maxLineChars: 200
+  });
+};
+
+const buildOutro = (): string => {
+  return limitSectionBody(
+    [
+      "OUTROです。今日は全体地図、DeepDive3本、QuickNews6本で更新差分を追いました。",
+      "明日も同じ構成で、変化した点だけを短く重ねていきます。",
+      "URLはSOURCESに置いてあります。本文は耳で追えるテンポを優先しました。",
+      "最後までありがとうございました。"
+    ].join("\n"),
+    {
+      maxLines: 8,
+      maxChars: 540,
+      maxLineChars: 180
+    }
+  );
 };
 
 const buildSourcesSection = (
   trendItems: ScriptTrendItem[],
-  programPlan: ProgramPlan
+  deepDiveItems: ScriptTrendItem[],
+  quickNewsItems: ScriptTrendItem[]
 ): { sources: string; sourceReferences: string } => {
-  const mainTitles = new Set(programPlan.main_topics.map((item) => item.title));
-  const quickTitles = new Set(programPlan.quick_news.map((item) => item.title));
-  const smallTalkTitles = new Set(programPlan.small_talk.map((item) => item.title));
+  const deepDiveIds = new Set(deepDiveItems.map((item) => item.id));
+  const quickNewsIds = new Set(quickNewsItems.map((item) => item.id));
+  const compactUrl = (value: string | null): string => {
+    if (!value) return "(url unavailable)";
+    try {
+      const parsed = new URL(value);
+      const pathSegments = parsed.pathname
+        .split("/")
+        .map((segment) => segment.trim())
+        .filter((segment) => segment.length > 0);
+      const shortPath = pathSegments.length > 0 ? `/${pathSegments.slice(0, 2).join("/")}` : "/";
+      const hasMore = pathSegments.length > 2 || parsed.search.length > 0 || parsed.hash.length > 0;
+      const compact = `${parsed.origin}${shortPath}${hasMore ? "/..." : ""}`;
+      if (compact.length <= 96) return compact;
+      return `${compact.slice(0, 96).trimEnd()}…`;
+    } catch {
+      return value.length <= 96 ? value : `${value.slice(0, 96).trimEnd()}…`;
+    }
+  };
 
-  const uniqueItems = trendItems.filter(
-    (item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index
-  );
-  const sourceLines = uniqueItems.map((item) => {
-    const section = mainTitles.has(item.title)
-      ? "deepdive"
-      : quickTitles.has(item.title)
-        ? "quicknews"
-        : smallTalkTitles.has(item.title)
-          ? "small_talk"
-          : "other";
-    return `- セクション: ${section} / 媒体名: ${item.source} / カテゴリ: ${item.category} / タイトル: ${item.title}`;
-  });
+  const prioritized = [...deepDiveItems, ...quickNewsItems, ...trendItems]
+    .filter((item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index)
+    .slice(0, 6);
 
-  const referenceLines = uniqueItems.map((item) => {
-    return `- trend_item_id: ${item.id}`;
-  });
+  const rows = prioritized
+    .map((item, index) => {
+      const section = deepDiveIds.has(item.id) ? "DeepDive" : quickNewsIds.has(item.id) ? "QuickNews" : "Reference";
+      const url = compactUrl(item.url);
+      return `${index + 1}. [${section}] ${item.source} | ${item.category} | URL: ${url}`;
+    });
+
+  const referenceLines = prioritized
+    .map((item, index) => `${index + 1}. trend_item_id=${item.id}`);
 
   return {
-    sources: sourceLines.length === 0 ? "- 本日の参照情報は準備中です。" : sourceLines.join("\n"),
-    sourceReferences:
-      referenceLines.length === 0
-        ? "- 元URLはtrend_itemsテーブルを参照してください。"
-        : [
-            "- 本文からURLは除去済みです。元URLはtrend_itemsテーブルを参照してください。",
-            ...referenceLines
-          ].join("\n")
+    sources: rows.join("\n"),
+    sourceReferences: [
+      "本文にはURLを出しません。URLはSOURCESセクションのみです。",
+      ...referenceLines
+    ].join("\n")
   };
+};
+
+const buildFallbackProgramPlan = (topicTitle: string): ProgramPlan => {
+  return {
+    role: "editor-in-chief",
+    main_topics: new Array(REQUIRED_DEEPDIVE_COUNT).fill(0).map((_, index) => ({
+      title: `${topicTitle} の論点 ${index + 1}`,
+      source: "公開ソース",
+      category: "general",
+      intro: `${topicTitle}で、いま何が変化しているかを短く確認します。`,
+      background: "背景は一次情報の更新順に整理し、先に事実を固定します。",
+      impact: "生活側の体験と、運用側の判断コストの両方に分けて影響を確認します。",
+      supplement: "次の更新で見直すべきポイントを明示し、断定を避けます。"
+    })),
+    quick_news: [],
+    small_talk: [],
+    letters: {
+      host_prompt: "感謝を伝えたうえで、次の一歩につながる返答を短く返します。"
+    },
+    ending: {
+      message: "今日の論点を一行で振り返り、次回の注目点を添えて締めます。"
+    }
+  };
+};
+
+const ensureProgramPlan = (plan: ProgramPlan | undefined, topicTitle: string): ProgramPlan => {
+  if (!plan || plan.role !== "editor-in-chief") {
+    return buildFallbackProgramPlan(topicTitle);
+  }
+
+  return {
+    role: "editor-in-chief",
+    main_topics: plan.main_topics,
+    quick_news: plan.quick_news,
+    small_talk: plan.small_talk,
+    letters: plan.letters ?? { host_prompt: "感謝を伝え、次の行動を提案します。" },
+    ending: plan.ending ?? { message: "本日の更新は以上です。" }
+  };
+};
+
+const stripSourcesForValidation = (script: string): string => {
+  const sections = parseScriptSections(script);
+  if (sections.length === 0) {
+    return script;
+  }
+  return sections
+    .filter((section) => !/^SOURCES(?:_FOR_UI)?$/i.test(section.heading))
+    .map((section) => section.body)
+    .join("\n");
+};
+
+const assertScriptRules = (script: string): void => {
+  const narrationOnly = stripSourcesForValidation(script);
+  assertNoBadTokens(narrationOnly, SECTION_BAD_TOKENS);
+
+  if (/補足\s*\d+/u.test(narrationOnly)) {
+    throw new Error("bad_tokens_detected:補足N");
+  }
+
+  if (/https?:\/\//i.test(narrationOnly) || /\bwww\./i.test(narrationOnly)) {
+    throw new Error("bad_tokens_detected:url_in_narration");
+  }
+};
+
+const padDeepDiveForLength = (value: string, topicTitle: string): string => {
+  const additions = [
+    `${topicTitle}を追うときは、更新日時と引用元をセットで確認すると誤読を防げます。`,
+    "短期の盛り上がりだけで判断せず、翌日の更新で前提が変わる可能性を残しておくのが実務的です。"
+  ];
+  let padded = value;
+  for (const addition of additions) {
+    if (padded.length >= 980) break;
+    if (!padded.includes(addition)) {
+      padded = `${padded}\n${addition}`;
+    }
+  }
+  return padded;
 };
 
 const buildJapaneseScript = (params: {
@@ -583,41 +704,31 @@ const buildJapaneseScript = (params: {
   scriptGate: ScriptGateConfig;
   episodeStructure: EpisodeStructureConfig;
 }): ScriptBuildResult => {
-  const deepDiveTopics = params.programPlan.main_topics.slice(0, params.episodeStructure.deepDiveCount);
-  const quickNewsItems = buildQuickNewsItems(
-    params.programPlan.quick_news,
-    params.trendItems,
-    deepDiveTopics,
-    params.episodeStructure.quickNewsCount
-  );
+  const deepDiveItems = pickDeepDiveItems(params.trendItems);
+  const quickNewsItems = pickQuickNewsItems(params.trendItems, deepDiveItems);
 
-  const deepDiveSections = deepDiveTopics.map((topic, index) => {
-    const trendHint = params.trendItems[index + 1];
+  const deepDiveSections = deepDiveItems.map((item, index) => {
+    const body = padDeepDiveForLength(buildDeepDive(item, index, params.programPlan), item.title);
     return {
       heading: `DEEPDIVE ${index + 1}`,
-      body: buildDeepDive(topic, index, trendHint)
+      body
     } satisfies ScriptSection;
   });
 
-  const { sources, sourceReferences } = buildSourcesSection(params.trendItems, params.programPlan);
+  const { sources, sourceReferences } = buildSourcesSection(
+    params.trendItems,
+    deepDiveItems,
+    quickNewsItems
+  );
 
   const sectionBlocks: ScriptSection[] = [
     {
       heading: "OP",
-      body: buildOp(
-        params.topicTitle,
-        params.episodeStructure.deepDiveCount,
-        quickNewsItems.length,
-        params.letters.length
-      )
+      body: buildOp(params.topicTitle)
     },
     {
       heading: "HEADLINE",
-      body: buildHeadline(
-        params.programPlan,
-        params.episodeStructure.deepDiveCount,
-        quickNewsItems.length
-      )
+      body: buildHeadline(deepDiveItems, quickNewsItems)
     },
     ...deepDiveSections,
     {
@@ -626,11 +737,11 @@ const buildJapaneseScript = (params: {
     },
     {
       heading: "LETTERS",
-      body: buildLettersSection(params.letters, params.programPlan.letters.host_prompt)
+      body: buildLettersSection(params.letters)
     },
     {
       heading: "OUTRO",
-      body: buildOutro(params.programPlan.ending.message)
+      body: buildOutro()
     },
     {
       heading: "SOURCES",
@@ -642,44 +753,75 @@ const buildJapaneseScript = (params: {
     }
   ];
 
-  const draft = renderScriptSections(sectionBlocks);
-  let normalized = normalizeForSpeech(draft, "ja");
+  const normalizedSectionBlocks = sectionBlocks.map((section) => {
+    const normalizedBody = section.body
+      .split(/\r?\n/)
+      .map((line) => sanitizeNarrationText(line))
+      .filter((line) => line.length > 0)
+      .join("\n")
+      .trim();
 
-  if (normalized.length > params.scriptGate.maxChars) {
-    normalized = normalized.slice(0, params.scriptGate.maxChars).trimEnd();
+    const restoredBody = section.heading === "SOURCES" || section.heading === "SOURCES_FOR_UI"
+      ? section.body
+      : normalizedBody;
+
+    return {
+      heading: section.heading,
+      body: restoredBody
+    } satisfies ScriptSection;
+  });
+
+  const draft = renderScriptSections(normalizedSectionBlocks);
+  const deduped = dedupeExactLines(draft);
+  let normalized = deduped.text;
+
+  let finalNormalization = normalizeScriptText(normalized, { preserveSourceUrls: true });
+
+  const minCharsTarget = Math.max(params.scriptGate.minChars, SCRIPT_MIN_CHARS_FLOOR);
+  if (finalNormalization.text.length < minCharsTarget) {
+    const sections = parseScriptSections(finalNormalization.text);
+    const expanded = sections.map((section) => {
+      if (!/^DEEPDIVE\s+\d+$/i.test(section.heading)) {
+        return section;
+      }
+      const expansion = "実務の観点では、同じ話題でも前提条件の差分を先に整理しておくと、翌日の更新に追従しやすくなります。";
+      const body = section.body.includes(expansion) ? section.body : `${section.body}\n${expansion}`;
+      return { heading: section.heading, body };
+    });
+
+    finalNormalization = normalizeScriptText(renderScriptSections(expanded), {
+      preserveSourceUrls: true
+    });
   }
 
-  const finalNormalization = normalizeScriptText(normalized);
-  const finalScript = finalNormalization.text;
-  const scriptChars = finalScript.length;
+  if (finalNormalization.text.length > params.scriptGate.maxChars) {
+    finalNormalization = {
+      ...finalNormalization,
+      text: clipScriptAtLineBoundary(finalNormalization.text, params.scriptGate.maxChars)
+    };
+  }
+
+  assertScriptRules(finalNormalization.text);
+
+  const scriptChars = finalNormalization.text.length;
   const estimatedDurationSec = estimateScriptDurationSec(scriptChars, params.scriptGate.charsPerMin);
-  const sectionsCharsBreakdown = buildSectionsCharsBreakdown(finalScript);
+  const sectionsCharsBreakdown = buildSectionsCharsBreakdown(finalNormalization.text);
 
   return {
-    script: finalScript,
+    script: finalNormalization.text,
     scriptChars,
     estimatedDurationSec,
     sectionsCharsBreakdown,
     itemsUsedCount: {
-      deepdive: deepDiveSections.length,
+      deepdive: deepDiveItems.length,
       quicknews: quickNewsItems.length,
       letters: params.letters.length
     },
-    normalizationMetrics: finalNormalization.metrics
+    normalizationMetrics: {
+      ...finalNormalization.metrics,
+      dedupedLinesCount: finalNormalization.metrics.dedupedLinesCount + deduped.dedupedCount
+    }
   };
-};
-
-const resolveTopicTitle = (rawTitle: string | undefined, episodeDate: string): string => {
-  const normalized = (rawTitle ?? "").trim();
-  if (!normalized) {
-    return `Daily Topic ${episodeDate}`;
-  }
-
-  if (/^staging topic\b/i.test(normalized)) {
-    return `Daily Topic ${episodeDate}`;
-  }
-
-  return normalized;
 };
 
 const mergeNormalizationMetrics = (
@@ -706,7 +848,7 @@ Deno.serve(async (req) => {
   const topicTitle = resolveTopicTitle(body.topic?.title, episodeDate);
   const trendItems = normalizeTrendItems(body.trendItems);
   const letters = normalizeLetters(body.letters);
-  const programPlan = ensureProgramPlan(body.programPlan, topicTitle, trendItems);
+  const programPlan = ensureProgramPlan(body.programPlan, topicTitle);
   const scriptGate = resolveScriptGateConfig();
   const episodeStructure = resolveEpisodeStructureConfig();
   const title = `Daily Topic ${episodeDate} (JA)`;
@@ -719,10 +861,25 @@ Deno.serve(async (req) => {
     scriptGate,
     episodeStructure
   });
+
   const editorResult = await postEditJapaneseScript(drafted.script);
-  const ttsPreprocessed = preprocessForTTS(editorResult.script, "ja");
-  const postTtsNormalization = normalizeScriptText(ttsPreprocessed.text);
-  const finalScript = postTtsNormalization.text;
+  const ttsPreprocessed = {
+    text: editorResult.script,
+    changed: false,
+    metrics: {
+      urlReplacedCount: 0,
+      bracketRemovedCount: 0,
+      mappedWordCount: 0,
+      pauseInsertedCount: 0
+    }
+  };
+  const postTtsNormalization = normalizeScriptText(ttsPreprocessed.text, { preserveSourceUrls: true });
+  const boundedScript = postTtsNormalization.text.length > scriptGate.maxChars
+    ? postTtsNormalization.text.slice(0, scriptGate.maxChars).trimEnd()
+    : postTtsNormalization.text;
+  assertScriptRules(boundedScript);
+
+  const finalScript = boundedScript;
   const finalScriptChars = finalScript.length;
   const finalEstimatedDurationSec = estimateScriptDurationSec(finalScriptChars, scriptGate.charsPerMin);
   const finalSectionsCharsBreakdown = buildSectionsCharsBreakdown(finalScript);
@@ -733,13 +890,14 @@ Deno.serve(async (req) => {
     baseNormalizationMetrics,
     postTtsNormalization.metrics
   );
+
   const scriptQualityGate = validateEpisodeScriptQuality({
     script: finalScript,
     itemsUsedCount: drafted.itemsUsedCount,
     config: episodeStructure
   });
 
-  const runId = await startRun("write-script-ja", {
+  const runPayloadBase = {
     step: "write-script-ja",
     role: "editor-in-chief",
     episodeDate,
@@ -748,6 +906,7 @@ Deno.serve(async (req) => {
     trendItemsCount: trendItems.length,
     lettersCount: letters.length,
     scriptChars: finalScriptChars,
+    scriptLength: finalScriptChars,
     estimatedDurationSec: finalEstimatedDurationSec,
     chars_actual: finalScriptChars,
     chars_min: scriptGate.minChars,
@@ -766,9 +925,13 @@ Deno.serve(async (req) => {
     script_quality_gate: scriptQualityGate,
     expand_attempted: 0,
     items_used_count: drafted.itemsUsedCount,
+    deepDiveCount: drafted.itemsUsedCount.deepdive,
+    quickNewsCount: drafted.itemsUsedCount.quicknews,
     episodeStructure,
     scriptGate
-  });
+  };
+
+  const runId = await startRun("write-script-ja", runPayloadBase);
 
   try {
     if (!scriptQualityGate.ok) {
@@ -794,36 +957,10 @@ Deno.serve(async (req) => {
     }
 
     await finishRun(runId, {
-      step: "write-script-ja",
-      role: "editor-in-chief",
-      episodeDate,
-      idempotencyKey,
+      ...runPayloadBase,
       episodeId: episode.id,
       status: episode.status,
-      noOp,
-      trendItemsCount: trendItems.length,
-      lettersCount: letters.length,
-      scriptChars: finalScriptChars,
-      estimatedDurationSec: finalEstimatedDurationSec,
-      chars_actual: finalScriptChars,
-      chars_min: scriptGate.minChars,
-      chars_target: scriptGate.targetChars,
-      chars_max: scriptGate.maxChars,
-      sections_chars_breakdown: finalSectionsCharsBreakdown,
-      removed_html_count: normalizationMetrics.removedHtmlCount,
-      removed_url_count: normalizationMetrics.removedUrlCount,
-      deduped_lines_count: normalizationMetrics.dedupedLinesCount,
-      script_editor_enabled: editorResult.enabled,
-      script_editor_applied: editorResult.edited,
-      script_editor_model: editorResult.model,
-      script_editor_error: editorResult.error,
-      tts_preprocess_applied: ttsPreprocessed.changed,
-      tts_preprocess_metrics: ttsPreprocessed.metrics,
-      script_quality_gate: scriptQualityGate,
-      expand_attempted: 0,
-      items_used_count: drafted.itemsUsedCount,
-      episodeStructure,
-      scriptGate
+      noOp
     });
 
     return jsonResponse({
@@ -836,6 +973,7 @@ Deno.serve(async (req) => {
       trendItemsCount: trendItems.length,
       lettersCount: letters.length,
       scriptChars: finalScriptChars,
+      scriptLength: finalScriptChars,
       estimatedDurationSec: finalEstimatedDurationSec,
       chars_actual: finalScriptChars,
       chars_min: scriptGate.minChars,
@@ -854,42 +992,14 @@ Deno.serve(async (req) => {
       script_quality_gate: scriptQualityGate,
       expand_attempted: 0,
       items_used_count: drafted.itemsUsedCount,
+      deepDiveCount: drafted.itemsUsedCount.deepdive,
+      quickNewsCount: drafted.itemsUsedCount.quicknews,
       episodeStructure,
       scriptGate
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await failRun(runId, message, {
-      step: "write-script-ja",
-      role: "editor-in-chief",
-      episodeDate,
-      idempotencyKey,
-      title,
-      trendItemsCount: trendItems.length,
-      lettersCount: letters.length,
-      scriptChars: finalScriptChars,
-      estimatedDurationSec: finalEstimatedDurationSec,
-      chars_actual: finalScriptChars,
-      chars_min: scriptGate.minChars,
-      chars_target: scriptGate.targetChars,
-      chars_max: scriptGate.maxChars,
-      sections_chars_breakdown: finalSectionsCharsBreakdown,
-      removed_html_count: normalizationMetrics.removedHtmlCount,
-      removed_url_count: normalizationMetrics.removedUrlCount,
-      deduped_lines_count: normalizationMetrics.dedupedLinesCount,
-      script_editor_enabled: editorResult.enabled,
-      script_editor_applied: editorResult.edited,
-      script_editor_model: editorResult.model,
-      script_editor_error: editorResult.error,
-      tts_preprocess_applied: ttsPreprocessed.changed,
-      tts_preprocess_metrics: ttsPreprocessed.metrics,
-      script_quality_gate: scriptQualityGate,
-      expand_attempted: 0,
-      items_used_count: drafted.itemsUsedCount,
-      episodeStructure,
-      scriptGate
-    });
-
+    await failRun(runId, message, runPayloadBase);
     return jsonResponse({ ok: false, error: message }, 500);
   }
 });

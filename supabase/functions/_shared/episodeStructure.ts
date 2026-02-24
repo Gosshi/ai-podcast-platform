@@ -30,9 +30,9 @@ export type EpisodeScriptQualityResult = {
   };
 };
 
-const DEFAULT_DEEPDIVE_COUNT = 2;
-const DEFAULT_QUICKNEWS_COUNT = 8;
-const DEFAULT_TOTAL_TARGET_CHARS = 2800;
+const DEFAULT_DEEPDIVE_COUNT = 3;
+const DEFAULT_QUICKNEWS_COUNT = 6;
+const DEFAULT_TOTAL_TARGET_CHARS = 4600;
 const MIN_DEEPDIVE_COUNT = 1;
 const MAX_DEEPDIVE_COUNT = 4;
 const MIN_QUICKNEWS_COUNT = 1;
@@ -43,6 +43,7 @@ const MIN_TOLERANCE_RATIO = 0.85;
 const MAX_TOLERANCE_RATIO = 2.6;
 
 const BANNED_SCRIPT_TOKENS = ["http", "<a", "&#", "#8217", "数式"];
+const SOURCES_SECTION_PATTERN = /\[SOURCES(?:_FOR_UI)?\][\s\S]*?(?=\n\[[^\]]+\]\s*\n?|$)/gi;
 
 const clamp = (value: number, min: number, max: number): number => {
   return Math.max(min, Math.min(max, value));
@@ -90,9 +91,10 @@ export const validateEpisodeScriptQuality = (params: {
   config: EpisodeStructureConfig;
 }): EpisodeScriptQualityResult => {
   const script = params.script.trim();
+  const scriptWithoutSources = script.replace(SOURCES_SECTION_PATTERN, " ");
   const actualChars = script.length;
   const bannedTokenHits = BANNED_SCRIPT_TOKENS.filter((token) =>
-    script.toLowerCase().includes(token.toLowerCase())
+    scriptWithoutSources.toLowerCase().includes(token.toLowerCase())
   );
 
   const violations: EpisodeScriptQualityViolation[] = [];

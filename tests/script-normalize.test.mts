@@ -55,3 +55,17 @@ test("normalizeScriptText removes html/url/placeholders and reports metrics", ()
   assert.equal(result.metrics.removedUrlCount > 0, true);
   assert.equal(result.metrics.dedupedLinesCount, 1);
 });
+
+test("normalizeScriptText can preserve urls in SOURCES section", () => {
+  const input = [
+    "[OP]",
+    "本文です https://example.com は除去されるべきです。",
+    "",
+    "[SOURCES]",
+    "1. URL: https://example.com/source"
+  ].join("\n");
+
+  const result = normalizeScriptText(input, { preserveSourceUrls: true });
+  assert.equal(result.text.includes("https://example.com/source"), true);
+  assert.equal(result.text.includes("本文です https://example.com"), false);
+});
