@@ -181,6 +181,42 @@ export const TREND_SOURCE_THEMES: Record<string, TrendSourceSeed[]> = {
       theme: "entertainment"
     },
     {
+      source_key: "google_news_streaming_global",
+      name: "Google News Streaming",
+      url: "https://news.google.com/rss/search?q=streaming+platform&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.2,
+      category: "streaming",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_streaming_jp",
+      name: "Google News Streaming (JP)",
+      url: "https://news.google.com/rss/search?q=%E9%85%8D%E4%BF%A1+%E3%82%B5%E3%83%BC%E3%83%93%E3%82%B9&hl=ja&gl=JP&ceid=JP:ja",
+      enabled: true,
+      weight: 1.2,
+      category: "streaming",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_celebrity_global",
+      name: "Google News Celebrity",
+      url: "https://news.google.com/rss/search?q=celebrity+entertainment&hl=en-US&gl=US&ceid=US:en",
+      enabled: true,
+      weight: 1.14,
+      category: "celebrity",
+      theme: "entertainment"
+    },
+    {
+      source_key: "google_news_celebrity_jp",
+      name: "Google News Celebrity (JP)",
+      url: "https://news.google.com/rss/search?q=%E8%8A%B8%E8%83%BD%E4%BA%BA&hl=ja&gl=JP&ceid=JP:ja",
+      enabled: true,
+      weight: 1.14,
+      category: "celebrity",
+      theme: "entertainment"
+    },
+    {
       source_key: "google_news_anime_global",
       name: "Google News Anime",
       url: "https://news.google.com/rss/search?q=anime&hl=en-US&gl=US&ceid=US:en",

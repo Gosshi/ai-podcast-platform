@@ -1,3 +1,9 @@
+import {
+  isEntertainmentTrendCategory,
+  isHardTrendCategory,
+  normalizeTrendCategory
+} from "./trendUtils.ts";
+
 export type TrendDigestSourceItem = {
   id: string;
   title: string;
@@ -73,39 +79,6 @@ export const DEFAULT_TREND_DENY_KEYWORDS = [
   "戦争犯罪"
 ];
 
-const HARD_NEWS_CATEGORIES = new Set([
-  "news",
-  "politics",
-  "policy",
-  "government",
-  "world",
-  "economy",
-  "business",
-  "crime",
-  "accident",
-  "war",
-  "disaster"
-]);
-
-const ENTERTAINMENT_CATEGORIES = new Set([
-  "entertainment",
-  "anime",
-  "game",
-  "gaming",
-  "movie",
-  "music",
-  "video",
-  "youtube",
-  "streaming",
-  "celebrity",
-  "culture",
-  "gadgets",
-  "lifestyle",
-  "food",
-  "travel",
-  "books"
-]);
-
 const DEFAULT_WHY_IT_MATTERS_BY_CATEGORY: Record<string, string> = {
   entertainment: "話題の温度感が高く、リスナーの日常に直結するためです。",
   anime: "作品・配信・イベントの動きが早く、追い方の判断材料になるためです。",
@@ -118,6 +91,7 @@ const DEFAULT_WHY_IT_MATTERS_BY_CATEGORY: Record<string, string> = {
   books: "作品文脈を追う入口になり、文化トレンドの把握に役立つためです。",
   news: "社会的影響が大きく、背景整理が必要な話題だからです。",
   politics: "制度変更や議論の前提を確認しないと誤読しやすいためです。",
+  policy: "制度変更や議論の前提を確認しないと誤読しやすいためです。",
   business: "市場や企業行動の変化が、実務判断に波及するためです。",
   tech: "プロダクト実装と利用体験の両方に影響するためです。"
 };
@@ -184,14 +158,13 @@ const ensureSentence = (value: string, fallback: string): string => {
 };
 
 const resolveToneTag = (category: string): TrendDigestToneTag => {
-  const normalized = normalizeToken(category);
-  if (ENTERTAINMENT_CATEGORIES.has(normalized)) return "fun";
-  if (HARD_NEWS_CATEGORIES.has(normalized)) return "serious";
+  if (isEntertainmentTrendCategory(category)) return "fun";
+  if (isHardTrendCategory(category)) return "serious";
   return "neutral";
 };
 
 const resolveWhyItMatters = (category: string, cleanedTitle: string): string => {
-  const normalized = normalizeToken(category);
+  const normalized = normalizeTrendCategory(category);
   const mapped = DEFAULT_WHY_IT_MATTERS_BY_CATEGORY[normalized];
   if (mapped) {
     return ensureSentence(mapped, "番組の視点整理に役立つためです。");
@@ -258,7 +231,7 @@ const buildDigestItem = (item: TrendDigestSourceItem): TrendDigestItem | null =>
     whatHappened,
     whyItMatters,
     toneTag: resolveToneTag(item.category),
-    category: compactText(item.category) || "general",
+    category: normalizeTrendCategory(item.category),
     source: cleanDigestText(item.source) || "unknown",
     url: compactText(item.url),
     score: item.score,
@@ -273,7 +246,7 @@ export const buildTrendDigest = (
 ): TrendDigestResult => {
   const filteredBase: TrendDigestItem[] = [];
   let filteredCount = 0;
-  const allowCategoriesSet = new Set(config.allowCategories.map(normalizeToken));
+  const allowCategoriesSet = new Set(config.allowCategories.map((category) => normalizeTrendCategory(category)));
   const seenKeys = new Set<string>();
 
   for (const rawItem of sourceItems) {
@@ -283,7 +256,7 @@ export const buildTrendDigest = (
       continue;
     }
 
-    const normalizedCategory = normalizeToken(digestItem.category);
+    const normalizedCategory = normalizeTrendCategory(digestItem.category);
     if (allowCategoriesSet.size > 0 && !allowCategoriesSet.has(normalizedCategory)) {
       filteredCount += 1;
       continue;
@@ -318,9 +291,7 @@ export const buildTrendDigest = (
   const selectedIds = new Set<string>();
   let hardNewsCount = 0;
 
-  const firstEntertainment = sorted.find((item) =>
-    ENTERTAINMENT_CATEGORIES.has(normalizeToken(item.category))
-  );
+  const firstEntertainment = sorted.find((item) => isEntertainmentTrendCategory(item.category));
   if (firstEntertainment) {
     selected.push(firstEntertainment);
     selectedIds.add(firstEntertainment.id);
@@ -330,7 +301,7 @@ export const buildTrendDigest = (
     if (selected.length >= config.maxItems) break;
     if (selectedIds.has(item.id)) continue;
 
-    const isHardNews = HARD_NEWS_CATEGORIES.has(normalizeToken(item.category));
+    const isHardNews = isHardTrendCategory(item.category);
     if (isHardNews && hardNewsCount >= config.maxHardNews) {
       filteredCount += 1;
       continue;
@@ -345,7 +316,7 @@ export const buildTrendDigest = (
 
   const categoryDistribution: Record<string, number> = {};
   for (const item of selected) {
-    const category = normalizeToken(item.category) || "general";
+    const category = normalizeTrendCategory(item.category) || "general";
     categoryDistribution[category] = (categoryDistribution[category] ?? 0) + 1;
   }
 

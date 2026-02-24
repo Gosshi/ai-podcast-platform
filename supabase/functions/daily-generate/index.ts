@@ -6,6 +6,11 @@ import { estimateScriptDurationSec, resolveScriptGateConfig } from "../_shared/s
 import { normalizeScriptText } from "../_shared/scriptNormalize.ts";
 import { checkScriptQuality } from "../_shared/scriptQualityCheck.ts";
 import { buildSectionsCharsBreakdown, parseScriptSections } from "../_shared/scriptSections.ts";
+import {
+  isEntertainmentTrendCategory,
+  isHardTrendCategory,
+  normalizeTrendCategory
+} from "../_shared/trendUtils.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -165,41 +170,6 @@ const DEFAULT_TARGET_TOTAL = 10;
 const DEFAULT_MIN_ENTERTAINMENT = 4;
 const DEFAULT_MAX_HARD_TOPICS = 1;
 
-const HARD_CATEGORIES = new Set([
-  "news",
-  "politics",
-  "policy",
-  "government",
-  "economy",
-  "business",
-  "science",
-  "world",
-  "crime",
-  "accident",
-  "disaster",
-  "war"
-]);
-
-const ENTERTAINMENT_CATEGORIES = new Set([
-  "entertainment",
-  "culture",
-  "gadgets",
-  "lifestyle",
-  "food",
-  "travel",
-  "books",
-  "sports",
-  "music",
-  "movie",
-  "anime",
-  "game",
-  "gaming",
-  "video",
-  "youtube",
-  "streaming",
-  "celebrity"
-]);
-
 const DEFAULT_ENTERTAINMENT_BONUS = 0.45;
 
 const DEFAULT_EXCLUDED_SOURCE_CATEGORIES = [
@@ -252,11 +222,11 @@ const fallbackTrendItems: TrendItem[] = [
     category: "entertainment"
   },
   {
-    title: "Fallback: Gadget and app trends",
-    url: "https://example.com/fallback/gadgets",
-    summary: "Consumer gadget and app trends were highlighted.",
+    title: "Fallback: Streaming and movie release radar",
+    url: "https://example.com/fallback/movie",
+    summary: "Major release windows and platform strategy changes were highlighted.",
     source: "example.com",
-    category: "gadgets"
+    category: "movie"
   },
   {
     title: "Fallback: Product workflow highlight",
@@ -382,9 +352,9 @@ const resolveEntertainmentBonus = (): number => {
 
 const resolveCategory = (row: TrendCandidateRow): string => {
   if (Array.isArray(row.trend_sources)) {
-    return row.trend_sources[0]?.category ?? "general";
+    return normalizeTrendCategory(row.trend_sources[0]?.category ?? "general");
   }
-  return row.trend_sources?.category ?? "general";
+  return normalizeTrendCategory(row.trend_sources?.category ?? "general");
 };
 
 const resolveSourceName = (row: TrendCandidateRow): string => {
@@ -395,13 +365,11 @@ const resolveSourceName = (row: TrendCandidateRow): string => {
 };
 
 const isHardCategory = (category: string): boolean => {
-  const normalized = normalizeToken(category);
-  return normalized === "hard" || HARD_CATEGORIES.has(normalized);
+  return isHardTrendCategory(category);
 };
 
 const isEntertainmentCategory = (category: string): boolean => {
-  const normalized = normalizeToken(category);
-  return normalized === "entertainment" || ENTERTAINMENT_CATEGORIES.has(normalized);
+  return isEntertainmentTrendCategory(category);
 };
 
 const resolveTargetTotal = (): number => {
@@ -492,7 +460,7 @@ const loadTopTrends = async (): Promise<TrendItem[]> => {
     parseCsvList(
       Deno.env.get("TREND_EXCLUDED_CATEGORIES") ?? undefined,
       DEFAULT_EXCLUDED_SOURCE_CATEGORIES
-    ).map(normalizeToken)
+    ).map((category) => normalizeTrendCategory(category))
   );
   const excludedKeywords = parseCsvList(
     Deno.env.get("TREND_EXCLUDED_KEYWORDS") ?? undefined,
@@ -528,9 +496,9 @@ const loadTopTrends = async (): Promise<TrendItem[]> => {
     })
     .map((item) => {
       const category = resolveCategory(item);
-      const normalizedCategory = normalizeToken(category);
+      const normalizedCategory = normalizeTrendCategory(category);
       const rawScore = item.score as number;
-      const bonus = ENTERTAINMENT_CATEGORIES.has(normalizedCategory) ? entertainmentBonus : 0;
+      const bonus = isEntertainmentTrendCategory(normalizedCategory) ? entertainmentBonus : 0;
       return {
         title: item.title as string,
         url: item.url as string,
@@ -538,7 +506,7 @@ const loadTopTrends = async (): Promise<TrendItem[]> => {
           (item.summary ?? "").trim() ||
           `${item.title as string} was highlighted in recent public reports and discussions.`,
         source: resolveSourceName(item),
-        category,
+        category: normalizedCategory,
         score: Number((rawScore + bonus).toFixed(6)),
         publishedAt: item.published_at
       } satisfies TrendItem;

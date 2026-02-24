@@ -41,7 +41,12 @@ test("category weighting favors entertainment and applies hard-news penalty", ()
     sourceCategory: "entertainment",
     clusterSize: 2,
     diversityBonus: 0.5,
+    entertainmentFloorBonus: 0.2,
+    sourceReliabilityBonus: 0.1,
+    duplicatePenalty: 0,
     hasClickbaitKeyword: false,
+    hasSensitiveHardKeyword: false,
+    hasOverheatedKeyword: false,
     entertainmentBonusValue: 0.35,
     categoryWeights
   });
@@ -51,7 +56,12 @@ test("category weighting favors entertainment and applies hard-news penalty", ()
     sourceCategory: "politics",
     clusterSize: 2,
     diversityBonus: 0.5,
+    entertainmentFloorBonus: 0,
+    sourceReliabilityBonus: 0,
+    duplicatePenalty: 0.2,
     hasClickbaitKeyword: false,
+    hasSensitiveHardKeyword: false,
+    hasOverheatedKeyword: false,
     entertainmentBonusValue: 0,
     categoryWeights
   });
