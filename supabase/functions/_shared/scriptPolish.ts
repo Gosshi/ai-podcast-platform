@@ -29,9 +29,13 @@ type OpenAiChatResponse = {
 };
 
 const OPENAI_CHAT_API_URL = "https://api.openai.com/v1/chat/completions";
-const DEFAULT_SCRIPT_MODEL = "gpt-4o-mini";
-const DEFAULT_SCRIPT_POLISH_TIMEOUT_MS = 45_000;
+const DEFAULT_SCRIPT_MODEL = "gpt-4.1-mini";
+const DEFAULT_SCRIPT_POLISH_TIMEOUT_MS = 120_000;
 const DEFAULT_SCRIPT_POLISH_TEMPERATURE = 0.2;
+const DEFAULT_SCRIPT_POLISH_MAX_ATTEMPTS = 2;
+const DEFAULT_SCRIPT_POLISH_TARGET = "15-20min";
+const TRUE_ENV_VALUES = new Set(["1", "true", "yes", "on"]);
+const FALSE_ENV_VALUES = new Set(["0", "false", "no", "off"]);
 
 const URL_PATTERN = /https?:\/\/[^\s)\]}>]+/gi;
 const WWW_URL_PATTERN = /\bwww\.[^\s)\]}>]+/gi;
@@ -99,9 +103,9 @@ const extractJsonText = (value: string): string => {
   return stripped.slice(firstBrace, lastBrace + 1);
 };
 
-export const resolveScriptPolishModel = (): string => {
+export const resolveScriptPolishModel = (fallbackModel = DEFAULT_SCRIPT_MODEL): string => {
   const model = Deno.env.get("OPENAI_SCRIPT_MODEL")?.trim() || Deno.env.get("SCRIPT_POLISH_MODEL")?.trim();
-  return model && model.length > 0 ? model : DEFAULT_SCRIPT_MODEL;
+  return model && model.length > 0 ? model : fallbackModel;
 };
 
 export const resolveScriptPolishTemperature = (): number => {
@@ -114,12 +118,61 @@ export const resolveScriptPolishTemperature = (): number => {
 };
 
 export const resolveScriptPolishTimeoutMs = (): number => {
-  const raw = Number.parseInt(Deno.env.get("OPENAI_SCRIPT_POLISH_TIMEOUT_MS") ?? "", 10);
+  const raw = Number.parseInt(
+    Deno.env.get("SCRIPT_POLISH_TIMEOUT_MS") ?? Deno.env.get("OPENAI_SCRIPT_POLISH_TIMEOUT_MS") ?? "",
+    10
+  );
   if (!Number.isFinite(raw)) {
     return DEFAULT_SCRIPT_POLISH_TIMEOUT_MS;
   }
 
   return Math.min(120_000, Math.max(5_000, raw));
+};
+
+export const resolveScriptPolishEnabled = (): boolean => {
+  const raw = Deno.env.get("SCRIPT_POLISH_ENABLED");
+  if (raw === undefined) {
+    return true;
+  }
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+  if (TRUE_ENV_VALUES.has(normalized)) {
+    return true;
+  }
+  if (FALSE_ENV_VALUES.has(normalized)) {
+    return false;
+  }
+  return true;
+};
+
+export const resolveScriptPolishMaxAttempts = (): number => {
+  const raw = Number.parseInt(Deno.env.get("SCRIPT_POLISH_MAX_ATTEMPTS") ?? "", 10);
+  if (!Number.isFinite(raw)) {
+    return DEFAULT_SCRIPT_POLISH_MAX_ATTEMPTS;
+  }
+  return Math.min(2, Math.max(1, raw));
+};
+
+export const resolveScriptPolishTarget = (): string => {
+  const target = Deno.env.get("SCRIPT_POLISH_TARGET")?.trim();
+  return target && target.length > 0 ? target : DEFAULT_SCRIPT_POLISH_TARGET;
+};
+
+export const hasOpenAiApiKey = (): boolean => {
+  return Boolean(Deno.env.get("OPENAI_API_KEY")?.trim());
+};
+
+export const countWords = (value: string): number => {
+  const normalized = value.replace(/\r\n/g, " ").trim();
+  if (!normalized) {
+    return 0;
+  }
+  return normalized
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => /[A-Za-z0-9]/.test(token)).length;
 };
 
 export const requestPolishJsonFromOpenAi = async (params: {
@@ -129,11 +182,31 @@ export const requestPolishJsonFromOpenAi = async (params: {
   systemPrompt: string;
   userPrompt: string;
   schemaName: string;
+  maxCompletionTokens?: number;
+  minLengths?: {
+    title?: number;
+    preview?: number;
+    op?: number;
+    headline?: number;
+    deepdiveItem?: number;
+    quicknewsItem?: number;
+    letters?: number;
+    outro?: number;
+  };
 }): Promise<string> => {
   const apiKey = Deno.env.get("OPENAI_API_KEY")?.trim();
   if (!apiKey) {
     throw new Error("openai_api_key_missing");
   }
+
+  const minTitleLength = Math.max(1, Math.floor(params.minLengths?.title ?? 1));
+  const minPreviewLength = Math.max(1, Math.floor(params.minLengths?.preview ?? 1));
+  const minOpLength = Math.max(1, Math.floor(params.minLengths?.op ?? 1));
+  const minHeadlineLength = Math.max(1, Math.floor(params.minLengths?.headline ?? 1));
+  const minDeepdiveItemLength = Math.max(1, Math.floor(params.minLengths?.deepdiveItem ?? 1));
+  const minQuicknewsItemLength = Math.max(1, Math.floor(params.minLengths?.quicknewsItem ?? 1));
+  const minLettersLength = Math.max(1, Math.floor(params.minLengths?.letters ?? 1));
+  const minOutroLength = Math.max(1, Math.floor(params.minLengths?.outro ?? 1));
 
   const response = await fetch(OPENAI_CHAT_API_URL, {
     method: "POST",
@@ -144,6 +217,9 @@ export const requestPolishJsonFromOpenAi = async (params: {
     body: JSON.stringify({
       model: params.model,
       temperature: params.temperature,
+      max_completion_tokens: params.maxCompletionTokens && params.maxCompletionTokens > 0
+        ? params.maxCompletionTokens
+        : 8_192,
       messages: [
         {
           role: "system",
@@ -164,31 +240,31 @@ export const requestPolishJsonFromOpenAi = async (params: {
             additionalProperties: false,
             required: ["title", "sections", "preview"],
             properties: {
-              title: { type: "string", minLength: 1 },
+              title: { type: "string", minLength: minTitleLength },
               sections: {
                 type: "object",
                 additionalProperties: false,
                 required: ["op", "headline", "deepdive", "quicknews", "letters", "outro"],
                 properties: {
-                  op: { type: "string", minLength: 1 },
-                  headline: { type: "string", minLength: 1 },
+                  op: { type: "string", minLength: minOpLength },
+                  headline: { type: "string", minLength: minHeadlineLength },
                   deepdive: {
                     type: "array",
                     minItems: 3,
                     maxItems: 3,
-                    items: { type: "string", minLength: 1 }
+                    items: { type: "string", minLength: minDeepdiveItemLength }
                   },
                   quicknews: {
                     type: "array",
                     minItems: 6,
                     maxItems: 6,
-                    items: { type: "string", minLength: 1 }
+                    items: { type: "string", minLength: minQuicknewsItemLength }
                   },
-                  letters: { type: "string", minLength: 1 },
-                  outro: { type: "string", minLength: 1 }
+                  letters: { type: "string", minLength: minLettersLength },
+                  outro: { type: "string", minLength: minOutroLength }
                 }
               },
-              preview: { type: "string", minLength: 1 }
+              preview: { type: "string", minLength: minPreviewLength }
             }
           }
         }

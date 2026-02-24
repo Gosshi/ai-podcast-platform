@@ -5,11 +5,15 @@ import { normalizeScriptText } from "../_shared/scriptNormalize.ts";
 import {
   buildPolishPreview,
   finalizePolishedScriptText,
+  hasOpenAiApiKey,
   normalizeScriptForPolishInput,
   parsePolishedScriptJson,
   renderPolishedScriptText,
   requestPolishJsonFromOpenAi,
+  resolveScriptPolishEnabled,
+  resolveScriptPolishMaxAttempts,
   resolveScriptPolishModel,
+  resolveScriptPolishTarget,
   resolveScriptPolishTemperature,
   resolveScriptPolishTimeoutMs,
   summarizeError
@@ -29,29 +33,61 @@ type EpisodeRow = {
 
 const STEP = "polish-ja";
 const JOB_TYPE = "polish-script-ja";
-const MIN_CHARS = 3000;
-const TARGET_MAX_CHARS = 6000;
+const LANG = "ja";
+const MIN_CHARS = 4500;
+const TARGET_MIN_CHARS = 5000;
+const TARGET_MAX_CHARS = 6500;
+const MAX_COMPLETION_TOKENS = 12_000;
+
 const SYSTEM_PROMPT = [
   "あなたはニュース番組の放送作家です。",
-  "日本語の原稿を、耳で聞いて理解しやすい放送用台本に全面リライトしてください。",
-  "同一文の反復、抽象語の連発、テンプレ定型句の繰り返しを避けます。",
-  "URLや記号列は読み上げない前提で自然な語に置換し、事実関係は変えません。",
-  "出力は必ずJSONのみ。余計な説明文は禁止。"
+  "入力台本を、15〜20分の放送に耐える密度へ必ず拡張しながら全面リライトしてください。",
+  "要約は禁止。分量を削らず、背景・影響・次アクションを具体化して説明します。",
+  "短い箇条書きではなく、ナレーションとして流れる長さで書きます。",
+  "URL/プレースホルダ/壊れた断片/反復表現は除去し、読み上げやすい自然な日本語に統一します。",
+  "事実関係は変えない。捏造、憶測、断定的な誇張は禁止。",
+  "出力はJSONのみ。説明文や前置きは禁止。"
 ].join(" ");
 
-const toUserPrompt = (normalizedScript: string): string => {
+const toUserPrompt = (params: {
+  normalizedScript: string;
+  target: string;
+  attempt: number;
+  previousChars: number;
+  shortageChars: number;
+  previousDraft: string;
+}): string => {
+  const sourceScript = params.attempt > 1 && params.previousDraft
+    ? params.previousDraft
+    : params.normalizedScript;
+  const sourceLabel = params.attempt > 1 && params.previousDraft
+    ? "前回下書き（拡張対象）"
+    : "入力台本";
+  const retryNote = params.attempt > 1
+    ? `再生成要件: 前回の出力は ${params.previousChars} 文字で、最低条件まであと ${params.shortageChars} 文字不足です。具体例と実務上の含意を追加し、必ず ${MIN_CHARS} 文字以上にしてください。`
+    : "初回生成: 分量不足を避けるため、各セクションを十分に掘り下げてください。";
+
   return [
-    "次の日本語台本を放送品質へ編集してください。",
+    "次の日本語台本を、放送品質の長尺スクリプトに書き直してください。",
     "制約:",
+    "- 要約禁止。必ず拡張し、15〜20分相当の密度を確保する",
+    `- 目標分量は${TARGET_MIN_CHARS}〜${TARGET_MAX_CHARS}文字、最低でも${MIN_CHARS}文字`,
+    "- OP/HEADLINE/LETTERS/OUTROはそれぞれ2段落以上で展開",
+    "- DEEPDIVE(3本)は各4段落以上、背景→現状→影響→次アクションの順で構成",
+    "- QUICK NEWS(6本)は箇条書きで終えず、各項目を2〜3文のナレーションにする",
+    "- 各セクションに具体例と実務上の判断ポイントを必ず含める",
     "- 事実関係は維持する（捏造禁止）",
+    "- 既存方針の「事実/解釈/次アクション」を守る",
     "- 同一表現の繰り返しを避ける",
-    "- 1文は短く、目安20〜40字",
+    "- 1文は短め、目安20〜45字",
     "- セクション間の接続を自然に",
     "- [URL] は本文で読まない",
-    `- 全体は概ね${MIN_CHARS}〜${TARGET_MAX_CHARS}文字を目安（短すぎ禁止）`,
+    "- 出力はJSONのみ。余計な文章を含めない",
+    `- ターゲット設定: ${params.target}`,
+    retryNote,
     "",
-    "入力台本:",
-    normalizedScript
+    `${sourceLabel}:`,
+    sourceScript
   ].join("\n");
 };
 
@@ -72,9 +108,13 @@ Deno.serve(async (req) => {
   const episodeDate = body.episodeDate ?? new Date().toISOString().slice(0, 10);
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
   const episodeId = (body.episodeId ?? "").trim();
-  const model = resolveScriptPolishModel();
+  const model = resolveScriptPolishModel("gpt-4.1-mini");
   const temperature = resolveScriptPolishTemperature();
   const timeoutMs = resolveScriptPolishTimeoutMs();
+  const maxAttempts = resolveScriptPolishMaxAttempts();
+  const target = resolveScriptPolishTarget();
+  const enabled = resolveScriptPolishEnabled();
+  const hasApiKey = hasOpenAiApiKey();
 
   if (!episodeId) {
     return jsonResponse({ ok: false, error: "episodeId is required" }, 400);
@@ -87,7 +127,10 @@ Deno.serve(async (req) => {
     episodeId,
     model,
     temperature,
-    timeout_ms: timeoutMs
+    timeout_ms: timeoutMs,
+    max_attempts: maxAttempts,
+    target,
+    enabled
   });
 
   let rawScript = "";
@@ -101,6 +144,8 @@ Deno.serve(async (req) => {
   let finalScript = "";
   let preview = "";
   let dedupedLinesCount = 0;
+  let attemptsUsed = 0;
+  let skippedReason = "";
 
   try {
     const { data, error } = await supabaseAdmin
@@ -125,49 +170,86 @@ Deno.serve(async (req) => {
 
     if (!rawScript) {
       fallbackUsed = true;
+      skippedReason = "empty_script";
       errorSummary = "empty_script";
     } else {
       const normalizedInput = normalizeScriptForPolishInput(rawScript);
       inputChars = normalizedInput.length;
 
-      try {
-        const rawJson = await requestPolishJsonFromOpenAi({
-          model,
-          temperature,
-          timeoutMs,
-          systemPrompt: SYSTEM_PROMPT,
-          userPrompt: toUserPrompt(normalizedInput),
-          schemaName: "polished_script_ja"
-        });
+      if (!normalizedInput) {
+        fallbackUsed = true;
+        skippedReason = "empty_after_normalize";
+        errorSummary = "empty_after_normalize";
+      } else if (!enabled) {
+        fallbackUsed = true;
+        skippedReason = "disabled_by_env";
+      } else if (!hasApiKey) {
+        fallbackUsed = true;
+        skippedReason = "openai_api_key_missing";
+        errorSummary = "openai_api_key_missing";
+      } else {
+        let previousChars = 0;
+        let previousDraft = "";
 
-        const parsed = parsePolishedScriptJson(rawJson);
-        parseOk = parsed.ok;
+        for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+          attemptsUsed = attempt;
+          try {
+            const rawJson = await requestPolishJsonFromOpenAi({
+              model,
+              temperature,
+              timeoutMs,
+              systemPrompt: SYSTEM_PROMPT,
+              userPrompt: toUserPrompt({
+                normalizedScript: normalizedInput,
+                target,
+                attempt,
+                previousChars,
+                shortageChars: Math.max(0, MIN_CHARS - previousChars),
+                previousDraft
+              }),
+              schemaName: "polished_script_ja",
+              maxCompletionTokens: MAX_COMPLETION_TOKENS
+            });
 
-        if (!parsed.ok) {
-          fallbackUsed = true;
-          errorSummary = `json_parse_failed:${parsed.error}`;
-        } else {
-          const rendered = renderPolishedScriptText({
-            lang: "ja",
-            polished: parsed.data,
-            originalScript: rawScript
-          });
-          const finalized = finalizePolishedScriptText(rendered);
-          dedupedLinesCount = finalized.dedupedLinesCount;
+            const parsed = parsePolishedScriptJson(rawJson);
+            if (!parsed.ok) {
+              parseOk = false;
+              fallbackUsed = true;
+              errorSummary = `json_parse_failed:${parsed.error}`;
+              break;
+            }
 
-          if (!isJaLengthAcceptable(finalized.text)) {
+            parseOk = true;
+            const rendered = renderPolishedScriptText({
+              lang: "ja",
+              polished: parsed.data,
+              originalScript: rawScript
+            });
+            const finalized = finalizePolishedScriptText(rendered);
+            dedupedLinesCount = finalized.dedupedLinesCount;
+            previousChars = finalized.text.length;
+            previousDraft = finalized.text;
+
+            if (isJaLengthAcceptable(finalized.text)) {
+              finalScript = finalized.text;
+              preview = buildPolishPreview(parsed.data.preview || finalized.text);
+              fallbackUsed = false;
+              errorSummary = "";
+              break;
+            }
+
             fallbackUsed = true;
             errorSummary = `polished_script_too_short:${finalized.text.length}`;
-          } else {
-            finalScript = finalized.text;
-            preview = buildPolishPreview(parsed.data.preview || finalized.text);
-            fallbackUsed = false;
+            if (attempt >= maxAttempts) {
+              break;
+            }
+          } catch (error) {
+            parseOk = false;
+            fallbackUsed = true;
+            errorSummary = summarizeError(error);
+            break;
           }
         }
-      } catch (error) {
-        fallbackUsed = true;
-        parseOk = false;
-        errorSummary = summarizeError(error);
       }
     }
 
@@ -218,12 +300,19 @@ Deno.serve(async (req) => {
 
   const payload = {
     step: STEP,
+    lang: LANG,
     episodeDate,
     idempotencyKey,
     episodeId,
     model,
     temperature,
     timeout_ms: timeoutMs,
+    target,
+    attempt: attemptsUsed,
+    max_attempts: maxAttempts,
+    before_chars: inputChars,
+    after_chars: outputChars,
+    skipped_reason: skippedReason || null,
     input_chars: inputChars,
     output_chars: outputChars,
     parse_ok: parseOk,
@@ -234,9 +323,10 @@ Deno.serve(async (req) => {
     scriptChars: outputChars,
     chars_after: outputChars,
     chars_min: MIN_CHARS,
+    chars_target_min: TARGET_MIN_CHARS,
     chars_target_max: TARGET_MAX_CHARS,
     script_polished_preview_chars: preview.length,
-    instructions_version: "ja-radio-v1"
+    instructions_version: "ja-radio-v2-expand"
   };
 
   await finishRun(runId, payload);

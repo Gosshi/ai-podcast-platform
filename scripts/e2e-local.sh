@@ -345,6 +345,11 @@ POLISH_EN_PAYLOAD_COUNT="$(psql_query "select count(*) from public.job_runs wher
 assert_count_ge "polish-script-ja payload observability fields" "$POLISH_JA_PAYLOAD_COUNT" 2
 assert_count_ge "polish-script-en payload observability fields" "$POLISH_EN_PAYLOAD_COUNT" 2
 
+POLISH_JA_PAYLOAD_V2_COUNT="$(psql_query "select count(*) from public.job_runs where job_type='polish-script-ja' and (payload ? 'lang') and (payload ? 'attempt') and (payload ? 'before_chars') and (payload ? 'after_chars') and (payload ? 'skipped_reason');")"
+POLISH_EN_PAYLOAD_V2_COUNT="$(psql_query "select count(*) from public.job_runs where job_type='polish-script-en' and (payload ? 'lang') and (payload ? 'attempt') and (payload ? 'before_chars') and (payload ? 'after_chars') and (payload ? 'skipped_reason');")"
+assert_count_ge "polish-script-ja payload v2 fields" "$POLISH_JA_PAYLOAD_V2_COUNT" 2
+assert_count_ge "polish-script-en payload v2 fields" "$POLISH_EN_PAYLOAD_V2_COUNT" 2
+
 POLISHED_SCRIPT_COUNT="$(psql_query "select count(*) from public.episodes where lang in ('ja','en') and coalesce(script_polished,'') <> '';")"
 assert_count_ge "episodes script_polished saved for ja/en" "$POLISHED_SCRIPT_COUNT" 4
 
