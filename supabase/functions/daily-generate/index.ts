@@ -5,7 +5,7 @@ import { parseCsvList } from "../_shared/trendsConfig.ts";
 import { estimateScriptDurationSec, resolveScriptGateConfig } from "../_shared/scriptGate.ts";
 import { normalizeScriptText } from "../_shared/scriptNormalize.ts";
 import { checkScriptQuality } from "../_shared/scriptQualityCheck.ts";
-import { buildSectionsCharsBreakdown } from "../_shared/scriptSections.ts";
+import { buildSectionsCharsBreakdown, parseScriptSections } from "../_shared/scriptSections.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -795,6 +795,17 @@ const extractEpisodeId = (stepResult: InvokeResult, stepName: string): string =>
   return id;
 };
 
+const stripSourcesSections = (script: string): string => {
+  const sections = parseScriptSections(script);
+  if (sections.length === 0) {
+    return script;
+  }
+  return sections
+    .filter((section) => !/^SOURCES(?:_FOR_UI)?$/i.test(section.heading))
+    .map((section) => section.body)
+    .join("\n");
+};
+
 const assertNoUrlsInEpisodeScript = async (episodeId: string): Promise<void> => {
   const { data, error } = await supabaseAdmin
     .from("episodes")
@@ -809,7 +820,7 @@ const assertNoUrlsInEpisodeScript = async (episodeId: string): Promise<void> => 
   const script = typeof (data as { script?: string | null }).script === "string"
     ? ((data as { script?: string | null }).script as string)
     : "";
-  if (/https?:\/\/|www\./i.test(script)) {
+  if (/https?:\/\/|www\./i.test(stripSourcesSections(script))) {
     throw new Error(`script_contains_url:${episodeId}`);
   }
 };
@@ -845,7 +856,7 @@ const applyNormalizationToEpisodeScript = async (
   metrics: ScriptNormalizationAudit;
 }> => {
   const currentScript = await loadEpisodeScript(episodeId);
-  const normalized = normalizeScriptText(currentScript);
+  const normalized = normalizeScriptText(currentScript, { preserveSourceUrls: true });
 
   if (normalized.text !== currentScript) {
     const { error } = await supabaseAdmin
@@ -985,8 +996,8 @@ Deno.serve(async (req) => {
   const episodeDate = body.episodeDate ?? new Date().toISOString().slice(0, 10);
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
   const scriptGateConfig = resolveScriptGateConfig();
-  const scriptPolishEnabled = resolveBooleanEnv("ENABLE_SCRIPT_POLISH", true);
   const skipTts = resolveBooleanEnv("SKIP_TTS", true);
+  const scriptPolishEnabled = !skipTts && resolveBooleanEnv("ENABLE_SCRIPT_POLISH", false);
   const orderedSteps = [
     ...BASE_ORDERED_STEPS,
     ...(scriptPolishEnabled ? [POLISH_STEP] : []),
@@ -1168,6 +1179,7 @@ Deno.serve(async (req) => {
     };
     const scriptMetrics = {
       chars_ja: actualChars,
+      scriptLength: actualChars,
       chars_actual: actualChars,
       chars_min: scriptGateConfig.minChars,
       chars_target: scriptGateConfig.targetChars,
@@ -1175,6 +1187,14 @@ Deno.serve(async (req) => {
       sections_chars_breakdown: sectionsCharsBreakdown,
       expand_attempted: expandAttempted,
       items_used_count: itemsUsedCount,
+      deepDiveCount:
+        typeof itemsUsedCount.deepdive === "number" && Number.isFinite(itemsUsedCount.deepdive)
+          ? Math.max(0, Math.round(itemsUsedCount.deepdive))
+          : 0,
+      quickNewsCount:
+        typeof itemsUsedCount.quicknews === "number" && Number.isFinite(itemsUsedCount.quicknews)
+          ? Math.max(0, Math.round(itemsUsedCount.quicknews))
+          : 0,
       removed_html_count: normalizationAudit.removedHtmlCount,
       removed_url_count: normalizationAudit.removedUrlCount,
       deduped_lines_count: normalizationAudit.dedupedLinesCount,

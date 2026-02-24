@@ -46,8 +46,8 @@ const padSection = (body: string, minChars: number, expansions: string[]): strin
   let index = 0;
 
   while (padded.length < minChars) {
-    const expansion = expansions[index % expansions.length] ?? expansions[0] ?? "補足です。";
-    padded = `${padded}\n補足${index + 1}: ${expansion}`;
+    const expansion = expansions[index % expansions.length] ?? expansions[0] ?? "追加視点です。";
+    padded = `${padded}\n追加視点: ${expansion}`;
     index += 1;
   }
 

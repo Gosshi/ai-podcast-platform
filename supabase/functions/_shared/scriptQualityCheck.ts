@@ -20,6 +20,7 @@ export type ScriptQualityResult = {
 
 const DEFAULT_MIN_CHARS = 2000;
 const DEFAULT_MAX_DUPLICATE_RATIO = 0.05;
+const SOURCES_SECTION_PATTERN = /\[SOURCES(?:_FOR_UI)?\][\s\S]*?(?=\n\[[^\]]+\]\s*\n?|$)/gi;
 
 const normalizeLine = (line: string): string => {
   return line
@@ -76,21 +77,22 @@ export const checkScriptQuality = (
   const minChars = options?.minChars ?? DEFAULT_MIN_CHARS;
   const maxDuplicateRatio = options?.maxDuplicateRatio ?? DEFAULT_MAX_DUPLICATE_RATIO;
   const trimmed = script.trim();
+  const trimmedWithoutSources = trimmed.replace(SOURCES_SECTION_PATTERN, " ");
   const charLength = trimmed.length;
   const duplicate = calculateDuplicateRatio(trimmed);
 
   const violations: ScriptQualityViolation[] = [];
 
-  if (trimmed.includes("<")) {
+  if (trimmedWithoutSources.includes("<")) {
     violations.push("contains_lt");
   }
-  if (/http/i.test(trimmed)) {
+  if (/http/i.test(trimmedWithoutSources)) {
     violations.push("contains_http");
   }
-  if (/&#\d+;|&#x[0-9a-f]+;/i.test(trimmed)) {
+  if (/&#\d+;|&#x[0-9a-f]+;/i.test(trimmedWithoutSources)) {
     violations.push("contains_html_entity");
   }
-  if (trimmed.includes("数式")) {
+  if (trimmedWithoutSources.includes("数式")) {
     violations.push("contains_math_token");
   }
   if (duplicate.duplicateRatio > maxDuplicateRatio) {

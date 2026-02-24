@@ -11,6 +11,10 @@ export type ScriptNormalizationResult = {
   metrics: ScriptNormalizationMetrics;
 };
 
+export type ScriptNormalizationOptions = {
+  preserveSourceUrls?: boolean;
+};
+
 const HTML_TAG_PATTERN = /<[^>]+>/g;
 const URL_PATTERN = /https?:\/\/[^\s)\]}>]+/gi;
 const WWW_URL_PATTERN = /\bwww\.[^\s)\]}>]+/gi;
@@ -36,6 +40,40 @@ const HTML_ENTITIES: Record<string, string> = {
   hellip: "...",
   laquo: "\"",
   raquo: "\""
+};
+
+const SOURCES_SECTION_PATTERN = /\[(SOURCES(?:_FOR_UI)?)\]([\s\S]*?)(?=\n\[[^\]]+\]\s*\n?|$)/gi;
+
+const protectSourceUrls = (value: string): { text: string; tokenMap: Map<string, string> } => {
+  let cursor = 0;
+  const tokenMap = new Map<string, string>();
+
+  const protectedText = value.replace(SOURCES_SECTION_PATTERN, (block) => {
+    return block.replace(URL_PATTERN, (match) => {
+      const token = `__SOURCE_URL_TOKEN_${cursor}__`;
+      cursor += 1;
+      tokenMap.set(token, match);
+      return token;
+    }).replace(WWW_URL_PATTERN, (match) => {
+      const token = `__SOURCE_URL_TOKEN_${cursor}__`;
+      cursor += 1;
+      tokenMap.set(token, match);
+      return token;
+    });
+  });
+
+  return {
+    text: protectedText,
+    tokenMap
+  };
+};
+
+const restoreProtectedUrls = (value: string, tokenMap: Map<string, string>): string => {
+  let restored = value;
+  for (const [token, url] of tokenMap.entries()) {
+    restored = restored.replaceAll(token, url);
+  }
+  return restored;
 };
 
 const normalizeLineForSimilarity = (line: string): string => {
@@ -160,22 +198,28 @@ export const dedupeSimilarLines = (
   return { text, dedupedLinesCount };
 };
 
-export const normalizeScriptText = (value: string): ScriptNormalizationResult => {
+export const normalizeScriptText = (
+  value: string,
+  options?: ScriptNormalizationOptions
+): ScriptNormalizationResult => {
   const htmlMatches = (value.match(HTML_TAG_PATTERN)?.length ?? 0) + (value.match(/[<>]/g)?.length ?? 0);
   const entityMatches = value.match(HTML_ENTITY_PATTERN)?.length ?? 0;
 
   const noHtml = stripHtmlTags(value);
   const decoded = decodeHtmlEntities(noHtml);
+  const protectedSource = options?.preserveSourceUrls ? protectSourceUrls(decoded) : null;
+  const urlTarget = protectedSource?.text ?? decoded;
 
-  const urlMatches = (decoded.match(URL_PATTERN)?.length ?? 0) + (decoded.match(WWW_URL_PATTERN)?.length ?? 0);
-  const noUrls = removeUrls(decoded);
+  const urlMatches = (urlTarget.match(URL_PATTERN)?.length ?? 0) + (urlTarget.match(WWW_URL_PATTERN)?.length ?? 0);
+  const noUrls = removeUrls(urlTarget);
 
   const placeholderMatches = PLACEHOLDER_PATTERNS.reduce((count, pattern) => {
     return count + (noUrls.match(pattern)?.length ?? 0);
   }, 0) + (noUrls.match(/数式/g)?.length ?? 0);
   const noPlaceholders = removePlaceholders(noUrls);
+  const restoredUrls = protectedSource ? restoreProtectedUrls(noPlaceholders, protectedSource.tokenMap) : noPlaceholders;
 
-  const deduped = dedupeSimilarLines(normalizeWhitespace(noPlaceholders));
+  const deduped = dedupeSimilarLines(normalizeWhitespace(restoredUrls));
   const text = normalizeWhitespace(deduped.text);
 
   return {

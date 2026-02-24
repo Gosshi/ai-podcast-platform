@@ -41,16 +41,17 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - Functions: `daily-generate`, `plan-topics`, `write-script-ja`, `expand-script-ja`, `script-polish-ja`, `tts-ja`, `adapt-script-en`, `tts-en`, `publish`
 - `daily-generate` は上記を spec 順で実行する orchestrator
 - `publish` は `episodes.status='published'` と `published_at=now()` を必ず設定
-- `plan-topics` は `editor-in-chief` ロールで `trend digest` を作成し、`main_topics(3) / quick_news(4) / small_talk(2) / letters / ending` を返す
+- `plan-topics` は `editor-in-chief` ロールで `trend digest` を作成し、`main_topics(3) / quick_news(6) / letters / ending` を返す
 - `trend digest` は HTML/URL を除去し、`cleanedTitle / whatHappened / whyItMatters / toneTag` を生成して planning に利用する
-- `write-script-ja` は script 生成後に `scriptNormalize`（HTML除去/URL除去/placeholder除去/重複行削減）を適用し、`ENABLE_SCRIPT_EDITOR=1` のとき OpenAI 後編集を実施する
-- `write-script-ja` は `EPISODE_DEEPDIVE_COUNT` / `EPISODE_QUICKNEWS_COUNT` / `EPISODE_TOTAL_TARGET_CHARS` に基づいて構成を決定し、最終台本を `ttsPreprocess` + `scriptNormalize` 後に quality gate で検証する
+- `write-script-ja` は入力 trend/letters を sanitize（HTML/entity/URL/placeholder除去）し、`OP / HEADLINE / DEEPDIVE x3 / QUICK NEWS x6 / LETTERS / OUTRO / SOURCES` の固定構造で生成する
+- `write-script-ja` は本文から URL を除去し、URL は `SOURCES` セクションにのみ保持する（`SOURCES_FOR_UI` には `trend_item_id` を保持）
+- `write-script-ja` は `SCRIPT_MIN_CHARS_JA` 以上（推奨 3500〜6000 chars）を満たすように DeepDive/QuickNews の情報密度を調整し、重複行と `補足N` 形式を禁止する
 - `script-polish-ja` は `write-script-ja` のJA台本を LLM で放送品質に再構成し、重複/placeholder/URL混入を抑制して `episodes.script` を更新する
-- `daily-generate` は `write-script-ja` 後に `ENABLE_SCRIPT_POLISH !== 'false'` の場合 `script-polish-ja` を実行し、その後に `scriptNormalize` と `scriptQualityCheck` で `"<" / "http" / "&#" / "数式" / 重複率 / 文字数` を gate する
-- `SKIP_TTS=true`（default）では `tts-ja` / `tts-en`（および downstream publish）をスキップし、台本生成までを検証できる
+- `daily-generate` は `write-script-ja` 後に `ENABLE_SCRIPT_POLISH=true` の場合のみ `script-polish-ja` を実行し、その後に `scriptNormalize` と `scriptQualityCheck` で `"<" / "http" / "&#" / "数式" / 重複率 / 文字数` を gate する（`SOURCES` 内 URL は許容）
+- `SKIP_TTS=true`（default）では `tts-ja` / `adapt-script-en` / `tts-en` / `publish` をスキップし、台本品質のみを検証できる
 - `adapt-script-en` は script 生成後に `normalizeForSpeech` を適用し、URL を script から除去する（元URLは `trend_items.url` に保持）
 - `daily-generate` は trend category を hard:soft:entertainment = 4:4:3 目標で選定し、`entertainment_bonus` で娯楽カテゴリを加点する
-- `daily-generate` の script gate は `SCRIPT_MIN_CHARS_JA` / `SCRIPT_TARGET_CHARS_JA` / `SCRIPT_MAX_CHARS_JA`（＋`TARGET_SCRIPT_ESTIMATED_CHARS_PER_MIN`）で調整可能。`SCRIPT_MIN_CHARS_JA` 未設定時は `TARGET_SCRIPT_MIN_CHARS` を後方互換で参照
+- `daily-generate` の script gate は `SCRIPT_MIN_CHARS_JA` / `SCRIPT_TARGET_CHARS_JA` / `SCRIPT_MAX_CHARS_JA`（＋`TARGET_SCRIPT_ESTIMATED_CHARS_PER_MIN`）で調整可能。推奨は `3500 / 4600 / 6000`
 
 ### Manual Run (curl)
 1. `supabase start`
@@ -159,18 +160,18 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
   - `LOCAL_TTS_VOICE_EN`（後方互換。`LOCAL_TTS_EN_VOICE` 未設定時のみ使用）
   - `ENABLE_LOCAL_TTS=true`（`NODE_ENV=development` でも有効）
   - `ENABLE_TTS_PREPROCESS=1`（`tts-ja` / `tts-en` で TTS 前処理を有効化）
-  - `SCRIPT_MIN_CHARS_JA`（default: `2500`）
-  - `SCRIPT_TARGET_CHARS_JA`（default: `3200`）
-  - `SCRIPT_MAX_CHARS_JA`（default: `5200`）
-  - `EPISODE_DEEPDIVE_COUNT`（default: `2`）
-  - `EPISODE_QUICKNEWS_COUNT`（default: `8`）
-  - `EPISODE_TOTAL_TARGET_CHARS`（default: `2800`）
+  - `SCRIPT_MIN_CHARS_JA`（default: `3500`）
+  - `SCRIPT_TARGET_CHARS_JA`（default: `4600`）
+  - `SCRIPT_MAX_CHARS_JA`（default: `6000`）
+  - `EPISODE_DEEPDIVE_COUNT`（default: `3`）
+  - `EPISODE_QUICKNEWS_COUNT`（default: `6`）
+  - `EPISODE_TOTAL_TARGET_CHARS`（default: `4600`）
   - `ENABLE_SCRIPT_EDITOR=1`（`write-script-ja` で OpenAI 後編集を有効化）
   - `SCRIPT_EDITOR_MODEL`（default: `gpt-4o-mini`）
-  - `ENABLE_SCRIPT_POLISH=true`（`daily-generate` で `script-polish-ja` を有効化。`false` で無効）
+  - `ENABLE_SCRIPT_POLISH=false`（default。`true` のときだけ `script-polish-ja` を有効化）
   - `SCRIPT_POLISH_MODEL`（default: `gpt-4o-mini`）
   - `SKIP_TTS=true`（default。`true` で `tts-ja` / `tts-en` と publish をスキップ）
-  - `TARGET_SCRIPT_MIN_CHARS`（後方互換。`SCRIPT_MIN_CHARS_JA` 未設定時に参照）
+  - `TARGET_SCRIPT_MIN_CHARS`（後方互換。`SCRIPT_MIN_CHARS_JA` 未設定時に参照。default: `3500`）
   - `TARGET_SCRIPT_ESTIMATED_CHARS_PER_MIN`（default: `300`）
   - `TARGET_SCRIPT_DURATION_SEC`（任意。未指定時は `SCRIPT_TARGET_CHARS_JA` と係数から算出）
 

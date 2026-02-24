@@ -7,9 +7,9 @@ import {
 
 test("episode structure config resolves defaults and env overrides", () => {
   const defaults = resolveEpisodeStructureConfigFromRaw({});
-  assert.equal(defaults.deepDiveCount, 2);
-  assert.equal(defaults.quickNewsCount, 8);
-  assert.equal(defaults.totalTargetChars, 2800);
+  assert.equal(defaults.deepDiveCount, 3);
+  assert.equal(defaults.quickNewsCount, 6);
+  assert.equal(defaults.totalTargetChars, 4600);
 
   const overridden = resolveEpisodeStructureConfigFromRaw({
     deepDiveCount: "3",
@@ -23,8 +23,8 @@ test("episode structure config resolves defaults and env overrides", () => {
 
 test("quality gate detects quicknews mismatch and banned tokens", () => {
   const config = resolveEpisodeStructureConfigFromRaw({
-    quickNewsCount: "8",
-    totalTargetChars: "2800"
+    quickNewsCount: "6",
+    totalTargetChars: "4600"
   });
   const script = "本編です。http://example.com は本文で読み上げません。";
 
@@ -32,7 +32,7 @@ test("quality gate detects quicknews mismatch and banned tokens", () => {
     script,
     itemsUsedCount: {
       deepdive: 2,
-      quicknews: 6,
+      quicknews: 5,
       letters: 1
     },
     config
@@ -45,16 +45,16 @@ test("quality gate detects quicknews mismatch and banned tokens", () => {
 
 test("quality gate passes script within target tolerance and expected quicknews count", () => {
   const config = resolveEpisodeStructureConfigFromRaw({
-    quickNewsCount: "8",
-    totalTargetChars: "2800"
+    quickNewsCount: "6",
+    totalTargetChars: "4600"
   });
-  const script = "これは検証用の本文です。".repeat(220);
+  const script = "これは検証用の本文です。".repeat(380);
 
   const result = validateEpisodeScriptQuality({
     script,
     itemsUsedCount: {
       deepdive: 2,
-      quicknews: 8,
+      quicknews: 6,
       letters: 1
     },
     config
@@ -62,4 +62,30 @@ test("quality gate passes script within target tolerance and expected quicknews 
 
   assert.equal(result.ok, true);
   assert.equal(result.violations.length, 0);
+});
+
+test("quality gate allows url tokens inside SOURCES section only", () => {
+  const config = resolveEpisodeStructureConfigFromRaw({
+    quickNewsCount: "6",
+    totalTargetChars: "4600"
+  });
+  const script = [
+    "[OP]",
+    "本文はURLを読み上げません。",
+    "",
+    "[SOURCES]",
+    "1. URL: https://example.com/source"
+  ].join("\n");
+
+  const result = validateEpisodeScriptQuality({
+    script,
+    itemsUsedCount: {
+      deepdive: 3,
+      quicknews: 6,
+      letters: 0
+    },
+    config
+  });
+
+  assert.equal(result.violations.includes("contains_banned_token"), false);
 });

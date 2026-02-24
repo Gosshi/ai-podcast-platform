@@ -320,7 +320,7 @@ Deno.serve(async (req) => {
       throw new Error("empty_script");
     }
 
-    const normalizedBefore = normalizeScriptText(rawScript);
+    const normalizedBefore = normalizeScriptText(rawScript, { preserveSourceUrls: true });
     const evaluateCandidate = (value: string) => {
       const reconciled = reconcileSectionStructure(normalizedBefore.text, value);
       const inflated = inflateWithOriginalSections({
@@ -333,7 +333,7 @@ Deno.serve(async (req) => {
         original: normalizedBefore.text,
         targetChars: TARGET_MIN_CHARS + ENRICH_TARGET_BUFFER
       });
-      const normalized = normalizeScriptText(enriched);
+      const normalized = normalizeScriptText(enriched, { preserveSourceUrls: true });
       const qualityResult = checkScriptQuality(normalized.text, {
         minChars: 2500,
         maxDuplicateRatio: 0.04
