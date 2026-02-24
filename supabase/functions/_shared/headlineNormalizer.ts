@@ -134,8 +134,10 @@ const findEvent = (title: string, numbers: string[]): string => {
   return "最新動向";
 };
 
-export const normalizeHeadline = (title: string, category = "general"): string => {
+export const normalizeHeadline = (title: string, category = "general", contextText = ""): string => {
   const cleanedTitle = sanitizePlainText(title);
+  const context = sanitizePlainText(contextText);
+  const signalSource = sanitizePlainText(`${cleanedTitle} ${context}`);
   if (!cleanedTitle) {
     return truncateHeadline(`${resolveCategorySubject(category)}最新動向`);
   }
@@ -143,8 +145,8 @@ export const normalizeHeadline = (title: string, category = "general"): string =
     return truncateHeadline(cleanedTitle);
   }
 
-  const signals = extractConcreteSignals(cleanedTitle);
-  const normalized = `${findSubject(cleanedTitle, category)}${findEvent(cleanedTitle, signals.numbers)}`;
+  const signals = extractConcreteSignals(signalSource);
+  const normalized = `${findSubject(signalSource, category)}${findEvent(signalSource, signals.numbers)}`;
   return truncateHeadline(normalized);
 };
 

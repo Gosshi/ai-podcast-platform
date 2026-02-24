@@ -26,7 +26,7 @@ const PLACEHOLDER_PATTERNS = [
   /\[(?:URL|LINK|SOURCE|PLACEHOLDER)\]/gi
 ] as const;
 
-const HTML_ENTITY_PATTERN = /&(?:#x[0-9a-fA-F]+|#\d+|[a-zA-Z]{2,8});/g;
+const HTML_ENTITY_PATTERN = /&(?:#x[0-9a-fA-F]+|#\d+|[a-zA-Z]{2,8});?|#(?:x[0-9a-fA-F]+|\d+);?/g;
 
 const HTML_ENTITIES: Record<string, string> = {
   amp: "&",
@@ -104,7 +104,9 @@ export const stripHtmlTags = (value: string): string => {
 
 export const decodeHtmlEntities = (value: string): string => {
   return value.replace(HTML_ENTITY_PATTERN, (entity) => {
-    const token = entity.slice(1, -1);
+    const token = entity
+      .replace(/^&/, "")
+      .replace(/;$/, "");
     if (token.startsWith("#x") || token.startsWith("#X")) {
       const codePoint = Number.parseInt(token.slice(2), 16);
       if (!Number.isNaN(codePoint)) {
