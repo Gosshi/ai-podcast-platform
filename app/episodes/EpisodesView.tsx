@@ -469,10 +469,25 @@ export default function EpisodesView({
 
   const selectedEpisode = selectedEpisodeId ? episodesById.get(selectedEpisodeId) ?? null : null;
   const activeEpisode = activeEpisodeId ? episodesById.get(activeEpisodeId) ?? null : null;
+  const selectedScript = useMemo(() => {
+    const polished = selectedEpisode?.script_polished?.trim() ?? "";
+    if (polished) {
+      return {
+        text: polished,
+        isPolished: true
+      };
+    }
+
+    const original = selectedEpisode?.script?.trim() ?? "";
+    return {
+      text: original || null,
+      isPolished: false
+    };
+  }, [selectedEpisode?.script, selectedEpisode?.script_polished]);
 
   const selectedSources = useMemo(
-    () => extractSources(selectedEpisode?.script ?? null),
-    [selectedEpisode?.script]
+    () => extractSources(selectedScript.text),
+    [selectedScript.text]
   );
 
   const activePlayableIndex = useMemo(
@@ -667,9 +682,9 @@ export default function EpisodesView({
                 </p>
 
                 <section>
-                  <h4>{t.script}</h4>
-                  {selectedEpisode.script ? (
-                    <pre className={styles.scriptPre}>{selectedEpisode.script}</pre>
+                  <h4>{selectedScript.isPolished ? t.scriptPolished : t.script}</h4>
+                  {selectedScript.text ? (
+                    <pre className={styles.scriptPre}>{selectedScript.text}</pre>
                   ) : (
                     <p>{t.noScript}</p>
                   )}

@@ -9,6 +9,8 @@ export type EpisodeRow = {
   status: EpisodeStatus;
   title: string | null;
   script: string | null;
+  script_polished: string | null;
+  script_polished_preview: string | null;
   audio_url: string | null;
   published_at: string | null;
   created_at: string;
