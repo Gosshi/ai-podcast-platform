@@ -111,7 +111,6 @@ const readField = (text: string, label: string): string | null => {
 type MainTopicBlock = {
   title: string;
   category: string;
-  source: string;
   intro: string;
   background: string;
   impact: string;
@@ -121,7 +120,6 @@ type MainTopicBlock = {
 const extractMainTopicBlock = (text: string, index: number): MainTopicBlock => {
   const title = readField(text, "導入") ?? readField(text, "見出し") ?? `Main topic ${index}`;
   const category = readField(text, "カテゴリ") ?? "general";
-  const source = readField(text, "参照媒体") ?? "Public source";
   const intro = readField(text, "導入") ?? "We frame what changed and why it matters now.";
   const background =
     readField(text, "要点1(何が起きた)") ??
@@ -139,7 +137,6 @@ const extractMainTopicBlock = (text: string, index: number): MainTopicBlock => {
   return {
     title,
     category,
-    source,
     intro,
     background,
     impact,
@@ -215,14 +212,6 @@ const extractLetters = (lettersSection: string): { name: string; text: string }[
     }));
 };
 
-const extractSourceRows = (sourcesSection: string): string[] => {
-  return sourcesSection
-    .split(/\r?\n/)
-    .map((line) => sanitizeEnglishText(line))
-    .filter((line) => line.length > 0)
-    .map((line) => line.replace(/\bURL:\s*\S+/gi, "URL stored in DB"));
-};
-
 const buildEnglishScript = (title: string, sections: Record<Marker, string>): string => {
   const mainTopics = [1, 2, 3]
     .map((index) => sections[`DEEPDIVE ${index}` as Marker])
@@ -231,7 +220,6 @@ const buildEnglishScript = (title: string, sections: Record<Marker, string>): st
 
   const quickNews = parseQuickNewsLines(sections["QUICK NEWS"]);
   const letters = extractLetters(sections.LETTERS || sections["LETTERS CORNER"]);
-  const sourceRows = extractSourceRows(sections.SOURCES);
 
   const opening = `[OPENING]
 Welcome back. This English edition keeps the same structure as the Japanese master script:
@@ -242,7 +230,6 @@ Today's title is "${toEnglishSentence(title, "Daily update")}".`;
     return `[MAIN TOPIC ${index + 1}]
 Headline: ${toEnglishSentence(topic.title, `Main topic ${index + 1}`)}
 Category: ${toEnglishSentence(topic.category, "general")}
-Source: ${toEnglishSentence(topic.source, "Public source")}
 Intro: ${toEnglishSentence(topic.intro, "We frame the key update and context.")}
 What happened: ${toEnglishSentence(topic.background, "We summarize what changed based on public information.")}
 Daily impact: ${toEnglishSentence(topic.impact, "We explain likely impact on audience routines and workflow.")}
@@ -275,27 +262,13 @@ ${letters
   const closing = `[CLOSING]
 That wraps today's episode. We focused on what changed, why it matters, and what to watch next.`;
 
-  const sourcesSection = `[SOURCES]
-${
-  sourceRows.length === 0
-    ? "- Source metadata is being prepared."
-    : sourceRows.map((row) => toEnglishSentence(row, "Source metadata is available in the database.", 180)).join("\n")
-}`;
-
-  const referencesSection = `[SOURCES_FOR_UI]
-- Japanese script may keep URL references only in SOURCES.
-- English adaptation removes URLs to keep speech clean.
-- Original URLs remain in trend-related database records.`;
-
   const raw = [
     `TITLE: ${toEnglishSentence(title, "Daily update")}`,
     opening,
     ...mainTopicBlocks,
     quickNewsSection,
     lettersSection,
-    closing,
-    sourcesSection,
-    referencesSection
+    closing
   ].join("\n\n");
 
   const sanitized = sanitizeEnglishText(raw);
