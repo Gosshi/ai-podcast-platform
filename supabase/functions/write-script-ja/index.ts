@@ -33,6 +33,12 @@ import {
   decodeEntities,
   sanitizeScriptText
 } from "../_shared/scriptSanitizer.ts";
+import {
+  compressSummary,
+  extractConcreteSignals,
+  normalizeHeadline,
+  type ConcreteSignals
+} from "../_shared/headlineNormalizer.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -61,8 +67,13 @@ type RequestBody = {
 
 type ScriptTrendItem = {
   id: string;
-  title: string;
+  originalTitle: string;
+  broadcastTitle: string;
   summary: string;
+  compressedSummary: string;
+  summaryLengthBefore: number;
+  summaryLengthAfter: number;
+  concreteSignals: ConcreteSignals;
   url: string | null;
   source: string;
   category: string;
@@ -89,6 +100,11 @@ type ScriptBuildResult = {
   sectionsCharsBreakdown: SectionsCharsBreakdown;
   itemsUsedCount: ItemsUsedCount;
   normalizationMetrics: ScriptNormalizationMetrics;
+};
+
+type SummaryCompressionStats = {
+  before: number;
+  after: number;
 };
 
 const REQUIRED_DEEPDIVE_COUNT = 3;
@@ -254,39 +270,56 @@ const clipScriptAtLineBoundary = (value: string, maxChars: number): string => {
   return clipped.trimEnd();
 };
 
-const fallbackTrend = (index: number): ScriptTrendItem => ({
-  id: `fallback-${index}`,
-  title: `追加トレンド${index}`,
-  summary: "公開情報ベースで論点を整理し、断定を避けながら背景と影響を短く確認します。",
-  url: `https://example.com/fallback/${index}`,
-  source: "fallback-editorial",
-  category: "general",
-  isHard: false
-});
+const fallbackTrend = (index: number): ScriptTrendItem => {
+  const summary = "公開情報ベースで論点を整理し、断定を避けながら背景と影響を短く確認します。";
+  const compressedSummary = compressSummary(summary);
+  return {
+    id: `fallback-${index}`,
+    originalTitle: `追加トレンド${index}`,
+    broadcastTitle: `追加トレンド${index}`,
+    summary,
+    compressedSummary,
+    summaryLengthBefore: summary.length,
+    summaryLengthAfter: compressedSummary.length,
+    concreteSignals: extractConcreteSignals(summary),
+    url: `https://example.com/fallback/${index}`,
+    source: "fallback-editorial",
+    category: "general",
+    isHard: false
+  };
+};
 
 const normalizeTrendItems = (trendItems: RequestBody["trendItems"]): ScriptTrendItem[] => {
   const seenTitles = new Set<string>();
   const normalized = (trendItems ?? [])
     .slice(0, MAX_TREND_ITEMS)
     .map((item, index) => {
-      const title = sanitizeNarrationText(item?.title ?? "");
-      if (!title) return null;
+      const originalTitle = sanitizeNarrationText(item?.title ?? "");
+      if (!originalTitle) return null;
 
-      const normalizedTitle = title.toLowerCase();
+      const normalizedTitle = originalTitle.toLowerCase();
       if (seenTitles.has(normalizedTitle)) return null;
       seenTitles.add(normalizedTitle);
 
       const summary = sanitizeNarrationText(
         item?.summary ?? "",
-        `${title}に関する更新があり、何が起きたのかと生活への影響を確認します。`
+        `${originalTitle}に関する更新があり、何が起きたのかと生活への影響を確認します。`
       );
       const url = sanitizeUrl(item?.url);
       const source = resolveSourceName(item?.source, item?.url);
       const category = sanitizeNarrationText(item?.category ?? "general", "general").toLowerCase();
+      const compressedSummary = compressSummary(summary);
+      const concreteSignals = extractConcreteSignals(`${originalTitle} ${compressedSummary}`);
+      const broadcastTitle = normalizeHeadline(originalTitle, category);
       return {
         id: sanitizeNarrationText(item?.id ?? "") || `trend-${index + 1}`,
-        title,
+        originalTitle,
+        broadcastTitle,
         summary,
+        compressedSummary,
+        summaryLengthBefore: summary.length,
+        summaryLengthAfter: compressedSummary.length,
+        concreteSignals,
         url,
         source,
         category,
@@ -300,6 +333,19 @@ const normalizeTrendItems = (trendItems: RequestBody["trendItems"]): ScriptTrend
   }
 
   return normalized;
+};
+
+const summarizeSummaryCompression = (trendItems: ScriptTrendItem[]): SummaryCompressionStats => {
+  return trendItems.reduce(
+    (acc, item) => ({
+      before: acc.before + item.summaryLengthBefore,
+      after: acc.after + item.summaryLengthAfter
+    }),
+    {
+      before: 0,
+      after: 0
+    }
+  );
 };
 
 const normalizeLetters = (letters: RequestBody["letters"]): ScriptLetter[] => {
@@ -388,7 +434,7 @@ const pickQuickNewsItems = (trendItems: ScriptTrendItem[], deepDiveItems: Script
 const resolveTopicTitle = (rawTitle: string | undefined, episodeDate: string): string => {
   const normalized = sanitizeNarrationText(rawTitle ?? "");
   if (!normalized || /^staging topic\b/i.test(normalized)) {
-    return `Daily Topic ${episodeDate}`;
+    return `デイリートピック ${episodeDate}`;
   }
   return normalized;
 };
@@ -397,8 +443,16 @@ const pickPlanTopicByTitle = (
   programPlan: ProgramPlan,
   title: string
 ): ProgramPlan["main_topics"][number] | null => {
-  const normalizedTitle = title.toLowerCase();
-  return programPlan.main_topics.find((topic) => topic.title.toLowerCase() === normalizedTitle) ?? null;
+  const normalizeForCompare = (value: string): string =>
+    sanitizeNarrationText(value)
+      .toLowerCase()
+      .replace(/[^a-z0-9ぁ-んァ-ヶ一-龠]/g, "");
+  const normalizedTitle = normalizeForCompare(title);
+
+  return (
+    programPlan.main_topics.find((topic) => normalizeForCompare(topic.title) === normalizedTitle) ??
+    null
+  );
 };
 
 const toNarrationSummary = (summary: string, maxSentences: number): string => {
@@ -409,10 +463,34 @@ const toNarrationSummary = (summary: string, maxSentences: number): string => {
   return ensureSentence(sentences.slice(0, maxSentences).join(" "), "公開情報を整理します。", 260);
 };
 
+const buildConcreteSignalLine = (trend: ScriptTrendItem): string => {
+  const parts: string[] = [];
+  if (trend.concreteSignals.actors.length > 0) {
+    parts.push(`主体は${trend.concreteSignals.actors.slice(0, 2).join("、")}`);
+  }
+  if (trend.concreteSignals.numbers.length > 0) {
+    parts.push(`数字は${trend.concreteSignals.numbers.slice(0, 2).join("、")}`);
+  }
+  if (trend.concreteSignals.dates.length > 0) {
+    parts.push(`時点は${trend.concreteSignals.dates.slice(0, 1).join("、")}`);
+  }
+
+  if (parts.length === 0) {
+    return ensureSentence(
+      `${trend.source}の一次情報で更新差分を確認し、断定表現を避けて整理します。`,
+      "一次情報の更新差分を確認します。",
+      200
+    );
+  }
+
+  return ensureSentence(parts.join("。"), "具体情報を整理します。", 200);
+};
+
 const buildOp = (topicTitle: string): string => {
+  const broadcastTopicTitle = normalizeHeadline(topicTitle, "general");
   return limitSectionBody(
     [
-      `おはようございます。今日の番組テーマは「${ensureSentence(topicTitle, "今日のトレンド")}"です。`,
+      `おはようございます。今日の番組テーマは「${ensureSentence(broadcastTopicTitle, "今日のトレンド")}"です。`,
       "まず30秒で全体地図を確認し、そのあとDeepDiveを3本、QuickNewsを6本、最後にレターズとエンディングで締めます。",
       "速報の熱量に引きずられないように、事実、解釈、次のアクションを分けて話します。",
       "URLは本文では読まず、最後のSOURCESにだけまとめます。"
@@ -427,7 +505,10 @@ const buildOp = (topicTitle: string): string => {
 
 const buildHeadline = (deepDiveItems: ScriptTrendItem[], quickNewsItems: ScriptTrendItem[]): string => {
   const mainLine = deepDiveItems
-    .map((item, index) => `注目${index + 1}は${ensureSentence(item.title, `トピック${index + 1}`, 72)}`)
+    .map(
+      (item, index) =>
+        `注目${index + 1}は${ensureSentence(item.broadcastTitle, `トピック${index + 1}`, 72)}`
+    )
     .join(" ");
 
   return limitSectionBody(
@@ -445,43 +526,61 @@ const buildHeadline = (deepDiveItems: ScriptTrendItem[], quickNewsItems: ScriptT
   );
 };
 
+const replaceOriginalHeadline = (value: string | undefined, trend: ScriptTrendItem): string | undefined => {
+  if (!value) return value;
+  if (!trend.originalTitle) return value;
+  return value.split(trend.originalTitle).join(trend.broadcastTitle);
+};
+
 const buildDeepDive = (
   trend: ScriptTrendItem,
   index: number,
   programPlan: ProgramPlan
 ): string => {
-  const planTopic = pickPlanTopicByTitle(programPlan, trend.title);
-  const whatHappened = toNarrationSummary(planTopic?.background ?? trend.summary, 2);
+  const planTopic = pickPlanTopicByTitle(programPlan, trend.originalTitle);
+  const planBackground = replaceOriginalHeadline(planTopic?.background, trend);
+  const planIntro = replaceOriginalHeadline(planTopic?.intro, trend);
+  const planImpact = replaceOriginalHeadline(planTopic?.impact, trend);
+  const planSupplement = replaceOriginalHeadline(planTopic?.supplement, trend);
+  const whatHappenedSource = planBackground
+    ? compressSummary(planBackground)
+    : trend.compressedSummary;
+  const whatHappened = toNarrationSummary(whatHappenedSource, 2);
+  const concreteSignals = buildConcreteSignalLine(trend);
   const whyTopic = ensureSentence(
-    planTopic?.intro ?? `${trend.title}は、更新が早く、判断の前提が短時間で変わるため話題化しています。`,
+    planIntro ??
+      `${trend.broadcastTitle}は、更新が早く、判断の前提が短時間で変わるため話題化しています。`,
     "更新頻度が高く、同じ見出しでも前提が変わるため話題になっています。",
     200
   );
   const lifeImpact = ensureSentence(
-    planTopic?.impact ?? `${trend.category}領域の動きとして、視聴体験や作業の優先順位に小さく効く変化が出ています。`,
+    planImpact ??
+      `${trend.category}領域の動きとして、視聴体験や作業の優先順位に小さく効く変化が出ています。`,
     "日常では、情報収集の順番と意思決定の速さに影響します。",
     200
   );
   const watchPoint = ensureSentence(
-    planTopic?.supplement ?? `${trend.source}の続報と一次情報の更新頻度を追い、見出しだけで断定しないことが次の注目点です。`,
+    planSupplement ??
+      `${trend.source}の続報と一次情報の更新頻度を追い、見出しだけで断定しないことが次の注目点です。`,
     "次は一次情報の更新点と、見出しとの差分に注目します。",
     200
   );
   const tsukkomi = ensureSentence(
-    `${trend.title}は勢いのある見出しですが、比較対象を省くと誤読しやすいので、前提をひとつ固定して読むのが安全です。`,
+    `${trend.broadcastTitle}は勢いのある見出しですが、比較対象を省くと誤読しやすいので、前提をひとつ固定して読むのが安全です。`,
     "勢いが強い話題ほど、前提を固定して読むと誤読を防げます。",
     180
   );
   const closing = ensureSentence(
-    `まとめると、${trend.title}は短期反応だけでなく、生活や運用の変化まで見て初めて意味が見えてきます。`,
+    `まとめると、${trend.broadcastTitle}は短期反応だけでなく、生活や運用の変化まで見て初めて意味が見えてきます。`,
     "まとめると、更新差分を追う視点が今日の持ち帰りです。",
     180
   );
 
   return limitSectionBody(
     [
-      `導入: DeepDive${index + 1}は「${ensureSentence(trend.title, `トピック${index + 1}`, 78)}」。`,
+      `導入: DeepDive${index + 1}は「${ensureSentence(trend.broadcastTitle, `トピック${index + 1}`, 78)}」。`,
       `要点1(何が起きた): ${whatHappened}`,
+      `要点1.5(具体情報): ${concreteSignals}`,
       `要点2(なぜ話題): ${whyTopic}`,
       `要点3(生活への影響): ${lifeImpact}`,
       `一言ツッコミ: ${tsukkomi}`,
@@ -500,13 +599,15 @@ const buildQuickNewsSection = (quickNewsItems: ScriptTrendItem[]): string => {
   const lines: string[] = ["QuickNewsです。ここはテンポ重視で6本続けます。"];
 
   for (const [index, item] of quickNewsItems.entries()) {
-    const summary = toNarrationSummary(item.summary, 1);
+    const summary = toNarrationSummary(item.compressedSummary, 1);
     const why = ensureSentence(
       `${item.category}カテゴリの更新として、${item.source}で短時間に拡散したためです。`,
       "更新速度が速く、判断の材料になるためです。",
       140
     );
-    lines.push(`クイックニュース${index + 1}（約25秒）: ${ensureSentence(item.title, `ニュース${index + 1}`, 78)}`);
+    lines.push(
+      `クイックニュース${index + 1}（約25秒）: ${ensureSentence(item.broadcastTitle, `ニュース${index + 1}`, 78)}`
+    );
     lines.push(`要約: ${summary}`);
     lines.push(`なぜ話題: ${why}`);
   }
@@ -708,7 +809,7 @@ const buildJapaneseScript = (params: {
   const quickNewsItems = pickQuickNewsItems(params.trendItems, deepDiveItems);
 
   const deepDiveSections = deepDiveItems.map((item, index) => {
-    const body = padDeepDiveForLength(buildDeepDive(item, index, params.programPlan), item.title);
+    const body = padDeepDiveForLength(buildDeepDive(item, index, params.programPlan), item.broadcastTitle);
     return {
       heading: `DEEPDIVE ${index + 1}`,
       body
@@ -847,6 +948,7 @@ Deno.serve(async (req) => {
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
   const topicTitle = resolveTopicTitle(body.topic?.title, episodeDate);
   const trendItems = normalizeTrendItems(body.trendItems);
+  const summaryCompressionStats = summarizeSummaryCompression(trendItems);
   const letters = normalizeLetters(body.letters);
   const programPlan = ensureProgramPlan(body.programPlan, topicTitle);
   const scriptGate = resolveScriptGateConfig();
@@ -927,6 +1029,9 @@ Deno.serve(async (req) => {
     items_used_count: drafted.itemsUsedCount,
     deepDiveCount: drafted.itemsUsedCount.deepdive,
     quickNewsCount: drafted.itemsUsedCount.quicknews,
+    normalizedHeadlineUsed: true,
+    summaryLengthBefore: summaryCompressionStats.before,
+    summaryLengthAfter: summaryCompressionStats.after,
     episodeStructure,
     scriptGate
   };
@@ -994,6 +1099,9 @@ Deno.serve(async (req) => {
       items_used_count: drafted.itemsUsedCount,
       deepDiveCount: drafted.itemsUsedCount.deepdive,
       quickNewsCount: drafted.itemsUsedCount.quicknews,
+      normalizedHeadlineUsed: true,
+      summaryLengthBefore: summaryCompressionStats.before,
+      summaryLengthAfter: summaryCompressionStats.after,
       episodeStructure,
       scriptGate
     });

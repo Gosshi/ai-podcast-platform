@@ -10,6 +10,7 @@ import { buildSectionsCharsBreakdown, parseScriptSections } from "../_shared/scr
 type RequestBody = {
   episodeDate?: string;
   idempotencyKey?: string;
+  skipTts?: boolean;
 };
 
 type InvokeResult = {
@@ -305,11 +306,24 @@ const resolveBooleanEnv = (name: string, defaultValue: boolean): boolean => {
 const invokeStep = async (
   functionsBaseUrl: string,
   step: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  auth?: {
+    authorization?: string | null;
+    apikey?: string | null;
+  }
 ): Promise<InvokeResult> => {
   const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!serviceRole) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required");
+  const authorization = auth?.authorization?.trim()
+    ? auth.authorization.trim()
+    : serviceRole
+    ? `Bearer ${serviceRole}`
+    : null;
+  const apikey = auth?.apikey?.trim() ||
+    Deno.env.get("SUPABASE_ANON_KEY") ||
+    Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ||
+    serviceRole;
+  if (!authorization) {
+    throw new Error("authorization header is required");
   }
 
   const maxAttempts = 3;
@@ -319,7 +333,8 @@ const invokeStep = async (
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${serviceRole}`
+          Authorization: authorization,
+          ...(apikey ? { apikey } : {})
         },
         body: JSON.stringify(payload)
       });
@@ -329,9 +344,14 @@ const invokeStep = async (
         return body;
       }
 
+      const responseError = typeof body.error === "string"
+        ? body.error
+        : typeof body.msg === "string"
+        ? body.msg
+        : "unknown";
       const retryable = response.status >= 500 || response.status === 429;
       if (!retryable || attempt === maxAttempts) {
-        throw new Error(`step_failed:${step}`);
+        throw new Error(`step_failed:${step}:${response.status}:${responseError}`);
       }
     } catch (error) {
       if (attempt === maxAttempts) {
@@ -713,13 +733,17 @@ const markLettersAsUsed = async (letters: LetterItem[]): Promise<void> => {
 const resolveTrendItems = async (
   functionsBaseUrl: string,
   episodeDate: string,
-  idempotencyKey: string
+  idempotencyKey: string,
+  auth?: {
+    authorization?: string | null;
+    apikey?: string | null;
+  }
 ): Promise<{ trendItems: TrendItem[]; usedFallback: boolean }> => {
   try {
     await invokeStep(functionsBaseUrl, "ingest_trends_rss", {
       episodeDate,
       idempotencyKey
-    });
+    }, auth);
 
     const trendItems = await loadTopTrends();
     if (trendItems.length === 0) {
@@ -996,7 +1020,13 @@ Deno.serve(async (req) => {
   const episodeDate = body.episodeDate ?? new Date().toISOString().slice(0, 10);
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
   const scriptGateConfig = resolveScriptGateConfig();
-  const skipTts = resolveBooleanEnv("SKIP_TTS", true);
+  const skipTts = typeof body.skipTts === "boolean"
+    ? body.skipTts
+    : resolveBooleanEnv("SKIP_TTS", true);
+  const stepAuth = {
+    authorization: req.headers.get("Authorization"),
+    apikey: req.headers.get("apikey")
+  };
   const scriptPolishEnabled = !skipTts && resolveBooleanEnv("ENABLE_SCRIPT_POLISH", false);
   const orderedSteps = [
     ...BASE_ORDERED_STEPS,
@@ -1022,7 +1052,8 @@ Deno.serve(async (req) => {
     const { trendItems: trendCandidatesForPlan, usedFallback: fallbackFromDaily } = await resolveTrendItems(
       functionsBaseUrl,
       episodeDate,
-      idempotencyKey
+      idempotencyKey,
+      stepAuth
     );
     const letterCandidates = await loadPrioritizedLetters().catch(() => []);
     const { letters, blockedIds } = await prepareLettersForScript(letterCandidates);
@@ -1031,7 +1062,7 @@ Deno.serve(async (req) => {
       episodeDate,
       idempotencyKey,
       trendCandidates: trendCandidatesForPlan
-    });
+    }, stepAuth);
     const plannedTrendItems = readPlanTrendItems(plan);
     const selectedTrendItems = readPlanSelectedTrendItems(plan);
     const trendSelectionSummary = readTrendSelectionSummary(plan);
@@ -1082,7 +1113,7 @@ Deno.serve(async (req) => {
       programPlan: planProgramPlan,
       trendItems,
       letters
-    });
+    }, stepAuth);
     const writeJaEpisodeId = extractEpisodeId(writeJa, "write-script-ja");
     let normalizationAudit: ScriptNormalizationAudit = {
       removedHtmlCount: readNormalizationMetric(writeJa, "removed_html_count"),
@@ -1109,7 +1140,7 @@ Deno.serve(async (req) => {
         episodeId: writeJaEpisodeId,
         attempt: expandAttempted,
         charsShortage: scriptGateConfig.minChars - actualChars
-      });
+      }, stepAuth);
       expandJaAttempts.push(expanded);
       actualChars =
         readNumberField(expanded, ["chars_actual", "scriptChars"]) ??
@@ -1129,7 +1160,7 @@ Deno.serve(async (req) => {
           episodeDate,
           idempotencyKey,
           episodeId: writeJaEpisodeId
-        })
+        }, stepAuth)
       : ({
           ok: true,
           skipped: true,
@@ -1199,6 +1230,9 @@ Deno.serve(async (req) => {
       removed_url_count: normalizationAudit.removedUrlCount,
       deduped_lines_count: normalizationAudit.dedupedLinesCount,
       normalization_changed: normalizationAudit.changed,
+      normalized_headline_used: readBooleanField(writeJa, "normalizedHeadlineUsed"),
+      summary_length_before: readNumberField(writeJa, ["summaryLengthBefore"]),
+      summary_length_after: readNumberField(writeJa, ["summaryLengthAfter"]),
       quality: {
         duplicate_ratio: Number(jaQuality.metrics.duplicateRatio.toFixed(4)),
         duplicate_line_count: jaQuality.metrics.duplicateLineCount,
@@ -1255,13 +1289,13 @@ Deno.serve(async (req) => {
         episodeDate,
         idempotencyKey,
         episodeId: writeJaEpisodeId
-      });
+      }, stepAuth);
 
       adaptEn = await invokeStep(functionsBaseUrl, "adapt-script-en", {
         episodeDate,
         idempotencyKey,
         masterEpisodeId: writeJaEpisodeId
-      });
+      }, stepAuth);
       const adaptEnEpisodeId = extractEpisodeId(adaptEn, "adapt-script-en");
       await assertNoUrlsInEpisodeScript(adaptEnEpisodeId);
 
@@ -1269,14 +1303,14 @@ Deno.serve(async (req) => {
         episodeDate,
         idempotencyKey,
         episodeId: adaptEnEpisodeId
-      });
+      }, stepAuth);
 
       publish = await invokeStep(functionsBaseUrl, "publish", {
         episodeDate,
         idempotencyKey,
         episodeIdJa: ttsJa.episodeId,
         episodeIdEn: ttsEn.episodeId
-      });
+      }, stepAuth);
 
       await markLettersAsUsed(letters);
       lettersMarkedUsed = true;
