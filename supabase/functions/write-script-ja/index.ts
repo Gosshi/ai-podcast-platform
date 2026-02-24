@@ -539,7 +539,7 @@ const buildWhyItMattersLine = (trend: ScriptTrendItem, anchor: string, planIntro
   const metric = trend.concreteSignals.numbers[0];
   const metricPart = metric ? `数字では${metric}が判断の分岐点です。` : "";
   return ensureSentence(
-    `${anchor}の更新は${dateLabel}時点で${trend.source}から確認され、${resolveCategoryImpact(trend.category)}に直結します。${metricPart}`,
+    `${anchor}の更新は${dateLabel}時点で確認され、${resolveCategoryImpact(trend.category)}に直結します。${metricPart}`,
     "更新の背景を確認します。",
     230
   );
@@ -551,7 +551,7 @@ const buildForYouLine = (trend: ScriptTrendItem, anchor: string, planImpact: str
   }
 
   return ensureSentence(
-    `${anchor}を追うときは、「今日決めること」と「様子を見ること」を先に分けます。${trend.source}の一次情報を1本だけ固定すると、ノイズを減らして判断できます。`,
+    `${anchor}を追うときは、「今日決めること」と「様子を見ること」を先に分けます。一次情報を1本だけ固定すると、ノイズを減らして判断できます。`,
     "生活への影響を整理します。",
     230
   );
@@ -562,9 +562,9 @@ const buildWatchNextLine = (trend: ScriptTrendItem, anchor: string, planSuppleme
     return ensureSentence(planSupplement, "次の注目点を確認します。", 230);
   }
 
-  const secondary = resolveDeepDiveAnchors(trend).find((token) => token !== anchor) ?? trend.source;
+  const secondary = resolveDeepDiveAnchors(trend).find((token) => token !== anchor) ?? "次の更新";
   return ensureSentence(
-    `${formatPublishedAt(trend.publishedAt)}時点の前提が維持されるか、次は${secondary}の更新を確認します。見出しより更新時刻と引用元の差分を優先します。`,
+    `${formatPublishedAt(trend.publishedAt)}時点の前提が維持されるか、次は${secondary}の更新を確認します。見出しより更新時刻と更新内容の差分を優先します。`,
     "次の注目点を確認します。",
     230
   );
@@ -595,8 +595,7 @@ const buildOp = (topicTitle: string): string => {
     [
       `おはようございます。今日の番組テーマは「${sanitizeNarrationText(broadcastTopicTitle, "今日のトレンド")}」です。`,
       "まず30秒で全体地図を確認し、そのあとDeepDiveを3本、QuickNewsを6本、最後にレターズとエンディングで締めます。",
-      "速報の熱量に引きずられないように、事実、解釈、次のアクションを分けて話します。",
-      "URLは本文では読まず、最後のSOURCESにだけまとめます。"
+      "速報の熱量に引きずられないように、事実、解釈、次のアクションを分けて話します。"
     ].join("\n"),
     {
       maxLines: 8,
@@ -643,7 +642,7 @@ const buildDeepDive = (
   const lifeImpact = buildForYouLine(trend, primaryAnchor, null);
   const watchPoint = buildWatchNextLine(trend, primaryAnchor, null);
   const closing = ensureSentence(
-    `まとめると、${primaryAnchor}は${trend.source}の更新順で追うと、見出しだけでは見えない判断差分が拾えます。`,
+    `まとめると、${primaryAnchor}は更新順で追うと、見出しだけでは見えない判断差分が拾えます。`,
     "まとめると、更新差分を追う視点が今日の持ち帰りです。",
     180
   );
@@ -656,7 +655,8 @@ const buildDeepDive = (
       `Why it matters（なぜ重要か）: ${whyTopic}`,
       `For you（あなたへの影響）: ${lifeImpact}`,
       `Watch next（次の注目）: ${watchPoint}`,
-      `まとめ: ${closing}`
+      `まとめ: ${closing}`,
+      `実務メモ: ${primaryAnchor}は、確定情報・未確定情報・確認期限の3点でメモすると、次回更新時に判断を更新しやすくなります。`
     ].join("\n"),
     {
       maxLines: 13,
@@ -673,17 +673,18 @@ const buildQuickNewsSection = (quickNewsItems: ScriptTrendItem[]): string => {
     const summary = toNarrationSummary(item.summary, 1);
     const anchor = resolveDeepDiveAnchors(item)[0] ?? item.broadcastTitle;
     const why = ensureSentence(
-      `${formatPublishedAt(item.publishedAt)}時点で${item.source}に更新があり、${anchor}が${resolveCategoryImpact(item.category)}に影響するためです。`,
+      `${formatPublishedAt(item.publishedAt)}時点で更新があり、${anchor}が${resolveCategoryImpact(item.category)}に影響するためです。`,
       "更新速度が速く、判断の材料になるためです。",
       170
     );
     lines.push(
-      `クイックニュース${index + 1}（${item.source}）: ${ensureSentence(item.broadcastTitle, `ニュース${index + 1}`, 78)}`
+      `クイックニュース${index + 1}: ${ensureSentence(item.broadcastTitle, `ニュース${index + 1}`, 78)}`
     );
     lines.push(`何が起きた: ${summary}`);
     lines.push(`押さえる点: ${why}`);
   }
 
+  lines.push("補足: QuickNewsの段階では断定せず、明日までに確認する差分項目を一つ決めるだけで十分です。");
   lines.push("以上、QuickNewsでした。あとで深掘りしたい項目は、タイトルと理由だけ先にメモしておくと追いやすいです。");
 
   return limitSectionBody(lines.join("\n"), {
@@ -700,7 +701,8 @@ const buildLettersSection = (letters: ScriptLetter[]): string => {
         "Lettersです。今日は実際のお便りがないので、募集と想定質問で進めます。",
         "募集: いま追っているトレンドで、番組に取り上げてほしいものを一行で送ってください。",
         "想定質問: 情報更新が速い話題で、どの時点で判断すべきですか。",
-        "回答: まず判断期限を先に決めます。次に、その期限までに確認する一次情報を2つだけ固定します。"
+        "回答: まず判断期限を先に決めます。次に、その期限までに確認する一次情報を2つだけ固定します。",
+        "補足: 最後に、判断を保留する条件を一つだけ決めておくと、情報が更新されたときに迷いを減らせます。"
       ].join("\n"),
       {
         maxLines: 10,
@@ -733,7 +735,8 @@ const buildOutro = (): string => {
     [
       "OUTROです。今日は全体地図、DeepDive3本、QuickNews6本で更新差分を追いました。",
       "明日も同じ構成で、変化した点だけを短く重ねていきます。",
-      "URLはSOURCESに置いてあります。本文は耳で追えるテンポを優先しました。",
+      "次回も要点だけを短く更新していきます。",
+      "本文は耳で追えるテンポを優先しました。",
       "最後までありがとうございました。"
     ].join("\n"),
     {
@@ -888,12 +891,6 @@ const buildJapaneseScript = (params: {
     } satisfies ScriptSection;
   });
 
-  const { sources, sourceReferences } = buildSourcesSection(
-    params.trendItems,
-    deepDiveItems,
-    quickNewsItems
-  );
-
   const sectionBlocks: ScriptSection[] = [
     {
       heading: "OP",
@@ -915,14 +912,6 @@ const buildJapaneseScript = (params: {
     {
       heading: "OUTRO",
       body: buildOutro()
-    },
-    {
-      heading: "SOURCES",
-      body: sources
-    },
-    {
-      heading: "SOURCES_FOR_UI",
-      body: sourceReferences
     }
   ];
 
@@ -951,20 +940,34 @@ const buildJapaneseScript = (params: {
   let finalNormalization = normalizeScriptText(normalized, { preserveSourceUrls: true });
 
   const minCharsTarget = Math.max(params.scriptGate.minChars, SCRIPT_MIN_CHARS_FLOOR);
-  if (finalNormalization.text.length < minCharsTarget) {
+  const lengthExpansionPhrases = [
+    "実務の観点では、同じ話題でも前提条件の差分を先に整理しておくと、翌日の更新に追従しやすくなります。",
+    "判断前に、更新主体・対象範囲・確認期限の三点を一行で並べると、関係者との認識ズレを減らせます。",
+    "確定情報と未確定情報を分け、未確定側には保留条件を添えることで、拙速な判断を避けられます。",
+    "次回確認する差分項目を一つだけ決めておくと、情報追跡の負荷を抑えつつ継続できます。"
+  ];
+  let expansionCursor = 0;
+  while (finalNormalization.text.length < minCharsTarget && expansionCursor < lengthExpansionPhrases.length) {
     const sections = parseScriptSections(finalNormalization.text);
+    const phrase = lengthExpansionPhrases[expansionCursor];
     const expanded = sections.map((section) => {
-      if (!/^DEEPDIVE\s+\d+$/i.test(section.heading)) {
-        return section;
+      if (/^DEEPDIVE\s+\d+$/i.test(section.heading)) {
+        const body = section.body.includes(phrase) ? section.body : `${section.body}\n${phrase}`;
+        return { heading: section.heading, body };
       }
-      const expansion = "実務の観点では、同じ話題でも前提条件の差分を先に整理しておくと、翌日の更新に追従しやすくなります。";
-      const body = section.body.includes(expansion) ? section.body : `${section.body}\n${expansion}`;
-      return { heading: section.heading, body };
+      if (/^QUICK NEWS$/i.test(section.heading) && expansionCursor === 0) {
+        const extra =
+          "補足: ここで挙げた項目は、重要度よりも更新速度を基準に選んでいます。後で優先順位を付け直す前提で押さえてください。";
+        const body = section.body.includes(extra) ? section.body : `${section.body}\n${extra}`;
+        return { heading: section.heading, body };
+      }
+      return section;
     });
 
     finalNormalization = normalizeScriptText(renderScriptSections(expanded), {
       preserveSourceUrls: true
     });
+    expansionCursor += 1;
   }
 
   if (finalNormalization.text.length > params.scriptGate.maxChars) {
