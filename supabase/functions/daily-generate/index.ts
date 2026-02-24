@@ -7,6 +7,7 @@ import { normalizeScriptText } from "../_shared/scriptNormalize.ts";
 import { checkScriptQuality } from "../_shared/scriptQualityCheck.ts";
 import { buildSectionsCharsBreakdown, parseScriptSections } from "../_shared/scriptSections.ts";
 import {
+  REQUIRED_ENTERTAINMENT_CATEGORIES,
   isEntertainmentTrendCategory,
   isHardTrendCategory,
   normalizeTrendCategory
@@ -161,6 +162,9 @@ const POLISH_STEP = "script-polish-ja";
 const POST_SCRIPT_ORDERED_STEPS = ["tts-ja", "adapt-script-en", "tts-en", "publish"] as const;
 
 const MAX_TREND_ITEMS = 30;
+const MIN_TREND_LOOKBACK_HOURS = 24;
+const MAX_TREND_LOOKBACK_HOURS = 72;
+const DEFAULT_TREND_LOOKBACK_HOURS = 36;
 const MAX_LETTERS = 2;
 const MAX_LETTER_CANDIDATES = 20;
 const MAX_LETTER_SUMMARY_CHARS = 80;
@@ -399,6 +403,47 @@ const resolveMaxHardTopics = (): number => {
   return Math.max(0, Math.min(raw, 4));
 };
 
+const resolveTrendLookbackHours = (): number => {
+  const raw = Number.parseInt(
+    Deno.env.get("PLAN_TREND_LOOKBACK_HOURS") ??
+      Deno.env.get("TREND_LOOKBACK_HOURS") ??
+      `${DEFAULT_TREND_LOOKBACK_HOURS}`,
+    10
+  );
+  if (!Number.isFinite(raw)) return DEFAULT_TREND_LOOKBACK_HOURS;
+  return Math.max(MIN_TREND_LOOKBACK_HOURS, Math.min(raw, MAX_TREND_LOOKBACK_HOURS));
+};
+
+const resolveTrendDedupeKey = (item: TrendItem): string => {
+  return `${normalizeToken(item.title)}::${normalizeToken(item.url)}`;
+};
+
+const selectBalancedTrendCandidates = (items: TrendItem[], limit: number): TrendItem[] => {
+  const selected: TrendItem[] = [];
+  const selectedKeys = new Set<string>();
+
+  const add = (item: TrendItem): boolean => {
+    const key = resolveTrendDedupeKey(item);
+    if (selectedKeys.has(key)) return false;
+    selected.push(item);
+    selectedKeys.add(key);
+    return true;
+  };
+
+  for (const category of REQUIRED_ENTERTAINMENT_CATEGORIES) {
+    if (selected.length >= limit) break;
+    const candidate = items.find((item) => normalizeTrendCategory(item.category) === category);
+    if (candidate) add(candidate);
+  }
+
+  for (const item of items) {
+    if (selected.length >= limit) break;
+    add(item);
+  }
+
+  return selected;
+};
+
 const sanitizeNarrationText = (value: string): string => {
   return value
     .replace(/<[^>]+>/g, " ")
@@ -454,7 +499,9 @@ const moderateLetterForScript = (rawText: string): ScriptModerationResult => {
 };
 
 const loadTopTrends = async (): Promise<TrendItem[]> => {
-  const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const lookbackHours = resolveTrendLookbackHours();
+  const sinceIso = new Date(Date.now() - lookbackHours * 60 * 60 * 1000).toISOString();
+  const queryLimit = Math.max(MAX_TREND_ITEMS * 4, 80);
   const entertainmentBonus = resolveEntertainmentBonus();
   const excludedCategories = new Set(
     parseCsvList(
@@ -474,9 +521,9 @@ const loadTopTrends = async (): Promise<TrendItem[]> => {
     )
     .eq("is_cluster_representative", true)
     .gte("published_at", sinceIso)
-    .order("score", { ascending: false })
     .order("published_at", { ascending: false })
-    .limit(50);
+    .order("score", { ascending: false })
+    .limit(queryLimit);
 
   if (error) {
     throw error;
@@ -486,12 +533,12 @@ const loadTopTrends = async (): Promise<TrendItem[]> => {
     .filter((item) => Boolean(item.title && item.url && item.score !== null))
     .filter((item) => item.is_cluster_representative !== false)
     .filter((item) => {
-      const category = normalizeToken(resolveCategory(item));
+      const category = normalizeTrendCategory(resolveCategory(item));
       if (excludedCategories.has(category)) {
         return false;
       }
 
-      const haystack = `${item.title ?? ""} ${item.url ?? ""}`.toLowerCase();
+      const haystack = `${item.title ?? ""} ${item.summary ?? ""} ${item.url ?? ""}`.toLowerCase();
       return !excludedKeywords.some((keyword) => haystack.includes(keyword));
     })
     .map((item) => {
@@ -512,15 +559,19 @@ const loadTopTrends = async (): Promise<TrendItem[]> => {
       } satisfies TrendItem;
     })
     .sort((left, right) => {
+      const byPublishedAt = (right.publishedAt ?? "").localeCompare(left.publishedAt ?? "");
+      if (byPublishedAt !== 0) {
+        return byPublishedAt;
+      }
       const leftScore = left.score ?? 0;
       const rightScore = right.score ?? 0;
       if (rightScore !== leftScore) {
         return rightScore - leftScore;
       }
-      return (right.publishedAt ?? "").localeCompare(left.publishedAt ?? "");
+      return right.title.localeCompare(left.title);
     });
 
-  return trendItems.slice(0, MAX_TREND_ITEMS);
+  return selectBalancedTrendCandidates(trendItems, MAX_TREND_ITEMS);
 };
 
 const resolveJoinedLetterRow = (

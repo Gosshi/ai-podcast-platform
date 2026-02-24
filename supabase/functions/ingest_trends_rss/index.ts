@@ -847,9 +847,10 @@ Deno.serve(async (req) => {
         representative.sourceKey,
         representative.sourceName
       );
-      const duplicatePenalty = Number(
-        (Math.max(0, sourceCount - 2) * 0.12 + Math.max(0, categoryCount - 3) * 0.08).toFixed(6)
-      );
+      // Keep repetition in check without eliminating an entire popular category.
+      const duplicatePenaltyRaw =
+        Math.log2(Math.max(1, sourceCount)) * 0.1 + Math.log2(Math.max(1, categoryCount)) * 0.14;
+      const duplicatePenalty = Number(Math.min(0.95, duplicatePenaltyRaw).toFixed(6));
       const score = calculateTrendScore({
         publishedAt: representative.publishedAt,
         sourceWeight: representative.sourceWeight,
