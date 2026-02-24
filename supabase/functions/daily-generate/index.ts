@@ -158,8 +158,14 @@ type ScriptNormalizationAudit = {
 };
 
 const BASE_ORDERED_STEPS = ["plan-topics", "write-script-ja", "expand-script-ja"] as const;
-const POLISH_STEP = "script-polish-ja";
-const POST_SCRIPT_ORDERED_STEPS = ["tts-ja", "adapt-script-en", "tts-en", "publish"] as const;
+const POST_SCRIPT_ORDERED_STEPS = [
+  "polish-script-ja",
+  "tts-ja",
+  "adapt-script-en",
+  "polish-script-en",
+  "tts-en",
+  "publish"
+] as const;
 
 const MAX_TREND_ITEMS = 30;
 const MIN_TREND_LOOKBACK_HOURS = 24;
@@ -838,6 +844,26 @@ const extractEpisodeId = (stepResult: InvokeResult, stepName: string): string =>
   return id;
 };
 
+type EpisodeScriptRow = {
+  script?: string | null;
+  script_polished?: string | null;
+};
+
+const resolvePreferredScript = (
+  row: EpisodeScriptRow
+): {
+  script: string;
+  field: "script" | "script_polished";
+} => {
+  const polished = typeof row.script_polished === "string" ? row.script_polished.trim() : "";
+  if (polished) {
+    return { script: polished, field: "script_polished" };
+  }
+
+  const script = typeof row.script === "string" ? row.script.trim() : "";
+  return { script, field: "script" };
+};
+
 const stripSourcesSections = (script: string): string => {
   const sections = parseScriptSections(script);
   if (sections.length === 0) {
@@ -852,7 +878,7 @@ const stripSourcesSections = (script: string): string => {
 const assertNoUrlsInEpisodeScript = async (episodeId: string): Promise<void> => {
   const { data, error } = await supabaseAdmin
     .from("episodes")
-    .select("script")
+    .select("script, script_polished")
     .eq("id", episodeId)
     .single();
 
@@ -860,9 +886,7 @@ const assertNoUrlsInEpisodeScript = async (episodeId: string): Promise<void> => 
     throw error ?? new Error(`episode_not_found:${episodeId}`);
   }
 
-  const script = typeof (data as { script?: string | null }).script === "string"
-    ? ((data as { script?: string | null }).script as string)
-    : "";
+  const { script } = resolvePreferredScript(data as EpisodeScriptRow);
   if (/https?:\/\/|www\./i.test(stripSourcesSections(script))) {
     throw new Error(`script_contains_url:${episodeId}`);
   }
@@ -871,7 +895,7 @@ const assertNoUrlsInEpisodeScript = async (episodeId: string): Promise<void> => 
 const loadEpisodeScript = async (episodeId: string): Promise<string> => {
   const { data, error } = await supabaseAdmin
     .from("episodes")
-    .select("script")
+    .select("script, script_polished")
     .eq("id", episodeId)
     .single();
 
@@ -879,11 +903,7 @@ const loadEpisodeScript = async (episodeId: string): Promise<string> => {
     throw error ?? new Error(`episode_not_found:${episodeId}`);
   }
 
-  const script = typeof (data as { script?: string | null }).script === "string"
-    ? ((data as { script?: string | null }).script as string)
-    : "";
-
-  return script;
+  return resolvePreferredScript(data as EpisodeScriptRow).script;
 };
 
 const loadEpisodeScriptChars = async (episodeId: string): Promise<number> => {
@@ -896,15 +916,26 @@ const applyNormalizationToEpisodeScript = async (
 ): Promise<{
   script: string;
   scriptChars: number;
+  field: "script" | "script_polished";
   metrics: ScriptNormalizationAudit;
 }> => {
-  const currentScript = await loadEpisodeScript(episodeId);
+  const { data, error } = await supabaseAdmin
+    .from("episodes")
+    .select("script, script_polished")
+    .eq("id", episodeId)
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error(`episode_not_found:${episodeId}`);
+  }
+
+  const { script: currentScript, field } = resolvePreferredScript(data as EpisodeScriptRow);
   const normalized = normalizeScriptText(currentScript, { preserveSourceUrls: true });
 
   if (normalized.text !== currentScript) {
     const { error } = await supabaseAdmin
       .from("episodes")
-      .update({ script: normalized.text })
+      .update({ [field]: normalized.text })
       .eq("id", episodeId);
 
     if (error) {
@@ -915,6 +946,7 @@ const applyNormalizationToEpisodeScript = async (
   return {
     script: normalized.text,
     scriptChars: normalized.text.length,
+    field,
     metrics: {
       removedHtmlCount: normalized.metrics.removedHtmlCount,
       removedUrlCount: normalized.metrics.removedUrlCount,
@@ -1046,11 +1078,10 @@ Deno.serve(async (req) => {
     authorization: req.headers.get("Authorization"),
     apikey: req.headers.get("apikey")
   };
-  const scriptPolishEnabled = !skipTts && resolveBooleanEnv("ENABLE_SCRIPT_POLISH", false);
+  const scriptPolishEnabled = !skipTts;
   const orderedSteps = [
     ...BASE_ORDERED_STEPS,
-    ...(scriptPolishEnabled ? [POLISH_STEP] : []),
-    ...(!skipTts ? POST_SCRIPT_ORDERED_STEPS : [])
+    ...(scriptPolishEnabled ? POST_SCRIPT_ORDERED_STEPS : [])
   ];
 
   const runId = await startRun("daily-generate", {
@@ -1174,8 +1205,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    const scriptPolish = scriptPolishEnabled
-      ? await invokeStep(functionsBaseUrl, "script-polish-ja", {
+    const polishJa = scriptPolishEnabled
+      ? await invokeStep(functionsBaseUrl, "polish-script-ja", {
           episodeDate,
           idempotencyKey,
           episodeId: writeJaEpisodeId
@@ -1188,21 +1219,21 @@ Deno.serve(async (req) => {
         } satisfies InvokeResult);
     if (scriptPolishEnabled) {
       actualChars =
-        readNumberField(scriptPolish, ["chars_after", "chars_actual", "scriptChars"]) ??
+        readNumberField(polishJa, ["output_chars", "chars_after", "chars_actual", "scriptChars"]) ??
         await loadEpisodeScriptChars(writeJaEpisodeId);
       estimatedDurationSec =
-        readNumberField(scriptPolish, ["estimatedDurationSec"]) ??
+        readNumberField(polishJa, ["estimatedDurationSec"]) ??
         estimateScriptDurationSec(actualChars, scriptGateConfig.charsPerMin);
       sectionsCharsBreakdown =
-        readRecordField(scriptPolish, "sections_chars_breakdown") ?? sectionsCharsBreakdown;
+        readRecordField(polishJa, "sections_chars_breakdown") ?? sectionsCharsBreakdown;
       normalizationAudit = {
         removedHtmlCount:
-          normalizationAudit.removedHtmlCount + readNormalizationMetric(scriptPolish, "removed_html_count"),
+          normalizationAudit.removedHtmlCount + readNormalizationMetric(polishJa, "removed_html_count"),
         removedUrlCount:
-          normalizationAudit.removedUrlCount + readNormalizationMetric(scriptPolish, "removed_url_count"),
+          normalizationAudit.removedUrlCount + readNormalizationMetric(polishJa, "removed_url_count"),
         dedupedLinesCount:
-          normalizationAudit.dedupedLinesCount + readNormalizationMetric(scriptPolish, "deduped_lines_count"),
-        changed: normalizationAudit.changed || readBooleanField(scriptPolish, "polish_applied")
+          normalizationAudit.dedupedLinesCount + readNormalizationMetric(polishJa, "deduped_lines_count"),
+        changed: normalizationAudit.changed || !readBooleanField(polishJa, "no_op")
       };
     }
 
@@ -1259,7 +1290,7 @@ Deno.serve(async (req) => {
         violations: jaQuality.violations
       }
     };
-    const scriptValidationStep = scriptPolishEnabled ? "script-polish-ja" : "write-script-ja";
+    const scriptValidationStep = scriptPolishEnabled ? "polish-script-ja" : "write-script-ja";
     if (actualChars < scriptGateConfig.minChars) {
       failureDetails = {
         failedStep: scriptValidationStep,
@@ -1294,6 +1325,7 @@ Deno.serve(async (req) => {
 
     let ttsJa: InvokeResult;
     let adaptEn: InvokeResult;
+    let polishEn: InvokeResult;
     let ttsEn: InvokeResult;
     let publish: InvokeResult;
     let lettersMarkedUsed = false;
@@ -1301,6 +1333,7 @@ Deno.serve(async (req) => {
     if (skipTts) {
       ttsJa = { ...skipResult, episodeId: writeJaEpisodeId };
       adaptEn = skipResult;
+      polishEn = skipResult;
       ttsEn = skipResult;
       publish = skipResult;
     } else {
@@ -1316,6 +1349,12 @@ Deno.serve(async (req) => {
         masterEpisodeId: writeJaEpisodeId
       }, stepAuth);
       const adaptEnEpisodeId = extractEpisodeId(adaptEn, "adapt-script-en");
+
+      polishEn = await invokeStep(functionsBaseUrl, "polish-script-en", {
+        episodeDate,
+        idempotencyKey,
+        episodeId: adaptEnEpisodeId
+      }, stepAuth);
       await assertNoUrlsInEpisodeScript(adaptEnEpisodeId);
 
       ttsEn = await invokeStep(functionsBaseUrl, "tts-en", {
@@ -1366,9 +1405,10 @@ Deno.serve(async (req) => {
         plan,
         writeJa,
         expandJa: expandJaAttempts,
-        scriptPolish,
+        polishJa,
         ttsJa,
         adaptEn,
+        polishEn,
         ttsEn,
         publish
       }
@@ -1405,9 +1445,10 @@ Deno.serve(async (req) => {
         plan,
         writeJa,
         expandJa: expandJaAttempts,
-        scriptPolish,
+        polishJa,
         ttsJa,
         adaptEn,
+        polishEn,
         ttsEn,
         publish
       }

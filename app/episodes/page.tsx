@@ -30,7 +30,9 @@ const loadEpisodesWithFailedRuns = async (): Promise<{
 
     const { data: episodeRows, error: episodeError } = await supabase
       .from("episodes")
-      .select("id, master_id, lang, status, title, script, audio_url, published_at, created_at")
+      .select(
+        "id, master_id, lang, status, title, script, script_polished, script_polished_preview, audio_url, published_at, created_at"
+      )
       .in("lang", ["ja", "en"])
       .order("created_at", { ascending: false })
       .limit(150);

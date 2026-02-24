@@ -8,9 +8,29 @@ export type Episode = {
   title: string | null;
   description: string | null;
   script: string | null;
+  script_polished: string | null;
+  script_polished_preview: string | null;
   audio_url: string | null;
   duration_sec: number | null;
   published_at: string | null;
+};
+
+const EPISODE_SELECT_COLUMNS =
+  "id, master_id, lang, status, title, description, script, script_polished, script_polished_preview, audio_url, duration_sec, published_at";
+
+const normalizeScript = (value: string | null | undefined): string => {
+  return typeof value === "string" ? value.trim() : "";
+};
+
+export const resolveEpisodeScriptForAudio = (
+  episode: Pick<Episode, "script" | "script_polished">
+): string => {
+  const polished = normalizeScript(episode.script_polished);
+  if (polished) {
+    return polished;
+  }
+
+  return normalizeScript(episode.script);
 };
 
 const getJstDateRangeUtc = (episodeDate: string): { startIso: string; endIso: string } => {
@@ -27,9 +47,7 @@ const getJstDateRangeUtc = (episodeDate: string): { startIso: string; endIso: st
 export const fetchEpisodeById = async (episodeId: string): Promise<Episode> => {
   const { data, error } = await supabaseAdmin
     .from("episodes")
-    .select(
-      "id, master_id, lang, status, title, description, script, audio_url, duration_sec, published_at"
-    )
+    .select(EPISODE_SELECT_COLUMNS)
     .eq("id", episodeId)
     .single();
 
@@ -48,9 +66,7 @@ export const updateEpisode = async (
     .from("episodes")
     .update(values)
     .eq("id", episodeId)
-    .select(
-      "id, master_id, lang, status, title, description, script, audio_url, duration_sec, published_at"
-    )
+    .select(EPISODE_SELECT_COLUMNS)
     .single();
 
   if (error || !data) {
@@ -63,9 +79,7 @@ export const updateEpisode = async (
 export const findJapaneseEpisodeByTitle = async (title: string): Promise<Episode | null> => {
   const { data, error } = await supabaseAdmin
     .from("episodes")
-    .select(
-      "id, master_id, lang, status, title, description, script, audio_url, duration_sec, published_at"
-    )
+    .select(EPISODE_SELECT_COLUMNS)
     .eq("lang", "ja")
     .eq("title", title)
     .order("created_at", { ascending: true })
@@ -84,9 +98,7 @@ export const findEnglishEpisodeByMasterId = async (
 ): Promise<Episode | null> => {
   const { data, error } = await supabaseAdmin
     .from("episodes")
-    .select(
-      "id, master_id, lang, status, title, description, script, audio_url, duration_sec, published_at"
-    )
+    .select(EPISODE_SELECT_COLUMNS)
     .eq("lang", "en")
     .eq("master_id", masterId)
     .order("created_at", { ascending: true })
@@ -109,9 +121,7 @@ export const findPublishedEpisodeByJstDate = async (params: {
 
   let query = supabaseAdmin
     .from("episodes")
-    .select(
-      "id, master_id, lang, status, title, description, script, audio_url, duration_sec, published_at"
-    )
+    .select(EPISODE_SELECT_COLUMNS)
     .eq("lang", params.lang)
     .eq("status", "published")
     .not("published_at", "is", null)
@@ -146,9 +156,7 @@ export const insertJapaneseEpisode = async (values: {
       description: values.description,
       script: values.script
     })
-    .select(
-      "id, master_id, lang, status, title, description, script, audio_url, duration_sec, published_at"
-    )
+    .select(EPISODE_SELECT_COLUMNS)
     .single();
 
   if (error || !data) {
@@ -174,9 +182,7 @@ export const insertEnglishEpisode = async (values: {
       description: values.description,
       script: values.script
     })
-    .select(
-      "id, master_id, lang, status, title, description, script, audio_url, duration_sec, published_at"
-    )
+    .select(EPISODE_SELECT_COLUMNS)
     .single();
 
   if (error || !data) {

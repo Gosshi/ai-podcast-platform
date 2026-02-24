@@ -334,11 +334,19 @@ else
   fail "ja audio file exists under public/"
 fi
 
-EXPECTED_JOB_TYPES=("daily-generate" "plan-topics" "write-script-ja" "tts-ja" "adapt-script-en" "tts-en" "publish")
+EXPECTED_JOB_TYPES=("daily-generate" "plan-topics" "write-script-ja" "polish-script-ja" "tts-ja" "adapt-script-en" "polish-script-en" "tts-en" "publish")
 for job_type in "${EXPECTED_JOB_TYPES[@]}"; do
   JOB_TYPE_COUNT="$(psql_query "select count(*) from public.job_runs where job_type='${job_type}';")"
   assert_count_ge "job_runs history for ${job_type}" "$JOB_TYPE_COUNT" 2
 done
+
+POLISH_JA_PAYLOAD_COUNT="$(psql_query "select count(*) from public.job_runs where job_type='polish-script-ja' and (payload ? 'input_chars') and (payload ? 'output_chars') and (payload ? 'parse_ok') and (payload ? 'fallback_used') and (payload ? 'error_summary');")"
+POLISH_EN_PAYLOAD_COUNT="$(psql_query "select count(*) from public.job_runs where job_type='polish-script-en' and (payload ? 'input_chars') and (payload ? 'output_chars') and (payload ? 'parse_ok') and (payload ? 'fallback_used') and (payload ? 'error_summary');")"
+assert_count_ge "polish-script-ja payload observability fields" "$POLISH_JA_PAYLOAD_COUNT" 2
+assert_count_ge "polish-script-en payload observability fields" "$POLISH_EN_PAYLOAD_COUNT" 2
+
+POLISHED_SCRIPT_COUNT="$(psql_query "select count(*) from public.episodes where lang in ('ja','en') and coalesce(script_polished,'') <> '';")"
+assert_count_ge "episodes script_polished saved for ja/en" "$POLISHED_SCRIPT_COUNT" 4
 
 if [ "${E2E_OPENAI_PROVIDER:-0}" = "1" ]; then
   if [ "$SELECTED_TTS_PROVIDER" != "openai" ]; then

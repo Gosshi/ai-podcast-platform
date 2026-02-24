@@ -1,6 +1,6 @@
 import { countFailedRunsForAudioVersion, failRun, finishRun, startRun } from "../_shared/jobRuns.ts";
 import { jsonResponse } from "../_shared/http.ts";
-import { fetchEpisodeById, updateEpisode } from "../_shared/episodes.ts";
+import { fetchEpisodeById, resolveEpisodeScriptForAudio, updateEpisode } from "../_shared/episodes.ts";
 import {
   buildAudioVersion,
   hasVersionedAudioUrl,
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
 
   try {
     const episode = await fetchEpisodeById(body.episodeId);
-    const script = typeof episode.script === "string" ? episode.script.trim() : "";
+    const script = resolveEpisodeScriptForAudio(episode);
     const ttsPreprocessEnabled = isTtsPreprocessEnabled();
     const ttsPreprocessResult = ttsPreprocessEnabled
       ? preprocessForTTS(script, "ja")
