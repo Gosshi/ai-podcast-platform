@@ -1,7 +1,7 @@
 const HTML_TAG_PATTERN = /<[^>]+>/g;
 const URL_PATTERN = /https?:\/\/[^\s)\]}>]+/gi;
 const WWW_URL_PATTERN = /\bwww\.[^\s)\]}>]+/gi;
-const HTML_ENTITY_PATTERN = /&(?:#x[0-9a-fA-F]+|#\d+|[a-zA-Z]{2,10});|#(?:x[0-9a-fA-F]+|\d+);/g;
+const HTML_ENTITY_PATTERN = /&(?:#x[0-9a-fA-F]+|#\d+|[a-zA-Z]{2,10});?|#(?:x[0-9a-fA-F]+|\d+);?/g;
 
 const PLACEHOLDER_PATTERNS = [
   /\{\{[^{}]+\}\}/g,
