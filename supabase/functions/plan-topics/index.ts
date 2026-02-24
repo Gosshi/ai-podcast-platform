@@ -463,6 +463,21 @@ const toPlannedFromDigestItem = (item: TrendDigestItem): PlannedTrendItem => {
   });
 };
 
+const mergeSelectionCandidates = (
+  primary: PlannedTrendItem[],
+  secondary: PlannedTrendItem[]
+): PlannedTrendItem[] => {
+  const merged: PlannedTrendItem[] = [];
+  const seen = new Set<string>();
+  for (const candidate of [...primary, ...secondary]) {
+    const key = candidate.normalizedHash || normalizeHash(candidate.title, candidate.url, candidate.id);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(candidate);
+  }
+  return merged;
+};
+
 const loadSelectedTrends = async (
   lookbackHours: number,
   candidatePoolSize: number
@@ -531,7 +546,9 @@ const loadSelectedTrends = async (
       return right.title.localeCompare(left.title);
     });
 
-  return selected.slice(0, candidatePoolSize);
+  // Keep a wider pool so required categories (ex: movie) can still be guaranteed
+  // even when the highest-scoring slice is dominated by one or two categories.
+  return selected;
 };
 
 const canUseCategory = (
@@ -593,11 +610,12 @@ const selectTrendItemsForPlan = (
     options: {
       enforceDiversity: boolean;
       enforceHardLimit: boolean;
+      enforceCategoryCap: boolean;
     }
   ): boolean => {
     const normalizedHash = item.normalizedHash || normalizeHash(item.title, item.url, item.id);
     if (selectedHash.has(normalizedHash)) return false;
-    if (!canUseCategory(item, categoryCounts, config.categoryCaps)) return false;
+    if (options.enforceCategoryCap && !canUseCategory(item, categoryCounts, config.categoryCaps)) return false;
     if (options.enforceHardLimit && item.isHardTopic && hardCount >= config.maxHardTopics) return false;
     if (options.enforceDiversity && recentDomainConflict(item.domain)) return false;
     return true;
@@ -618,10 +636,10 @@ const selectTrendItemsForPlan = (
     const candidatesForRequiredCategory = byCategory.get(requiredCategory) ?? [];
     const candidate =
       candidatesForRequiredCategory.find((item) =>
-        shouldSelect(item, { enforceDiversity: true, enforceHardLimit: true })
+        shouldSelect(item, { enforceDiversity: true, enforceHardLimit: true, enforceCategoryCap: true })
       ) ??
       candidatesForRequiredCategory.find((item) =>
-        shouldSelect(item, { enforceDiversity: false, enforceHardLimit: true })
+        shouldSelect(item, { enforceDiversity: false, enforceHardLimit: true, enforceCategoryCap: true })
       );
     if (candidate) {
       addSelection(candidate);
@@ -631,26 +649,38 @@ const selectTrendItemsForPlan = (
   for (const item of entertainmentCandidates) {
     if (selected.length >= config.targetTotal) break;
     if (entertainmentCount >= config.minEntertainment) break;
-    if (!shouldSelect(item, { enforceDiversity: true, enforceHardLimit: true })) continue;
+    if (!shouldSelect(item, { enforceDiversity: true, enforceHardLimit: true, enforceCategoryCap: true })) continue;
     addSelection(item);
   }
 
   for (const item of generalCandidates) {
     if (selected.length >= config.targetTotal) break;
-    if (!shouldSelect(item, { enforceDiversity: true, enforceHardLimit: true })) continue;
+    if (!shouldSelect(item, { enforceDiversity: true, enforceHardLimit: true, enforceCategoryCap: true })) continue;
     addSelection(item);
   }
 
   for (const item of entertainmentCandidates) {
     if (selected.length >= config.targetTotal) break;
     if (entertainmentCount >= config.minEntertainment) break;
-    if (!shouldSelect(item, { enforceDiversity: false, enforceHardLimit: true })) continue;
+    if (!shouldSelect(item, { enforceDiversity: false, enforceHardLimit: true, enforceCategoryCap: true })) continue;
     addSelection(item);
   }
 
   for (const item of generalCandidates) {
     if (selected.length >= config.targetTotal) break;
-    if (!shouldSelect(item, { enforceDiversity: false, enforceHardLimit: true })) continue;
+    if (!shouldSelect(item, { enforceDiversity: false, enforceHardLimit: true, enforceCategoryCap: true })) continue;
+    addSelection(item);
+  }
+
+  for (const item of entertainmentCandidates) {
+    if (selected.length >= config.targetTotal) break;
+    if (!shouldSelect(item, { enforceDiversity: false, enforceHardLimit: true, enforceCategoryCap: false })) continue;
+    addSelection(item);
+  }
+
+  for (const item of generalCandidates) {
+    if (selected.length >= config.targetTotal) break;
+    if (!shouldSelect(item, { enforceDiversity: false, enforceHardLimit: true, enforceCategoryCap: false })) continue;
     addSelection(item);
   }
 
@@ -862,8 +892,9 @@ Deno.serve(async (req) => {
     }
 
     const digestedTrendItems = digestResult.items.map(toPlannedFromDigestItem);
+    const selectionPool = mergeSelectionCandidates(digestedTrendItems, digestBaseItems);
     const selectedPlanTrends = selectTrendItemsForPlan(
-      digestedTrendItems.length > 0 ? digestedTrendItems : digestBaseItems,
+      selectionPool.length > 0 ? selectionPool : fallbackTrendItems,
       selectionConfig
     );
     const trendItemsForScript = withFallbackTrends(
