@@ -14,6 +14,12 @@ import {
   PROGRAM_SMALL_TALK_COUNT,
   type ProgramPlan
 } from "../_shared/programPlan.ts";
+import {
+  REQUIRED_ENTERTAINMENT_CATEGORIES,
+  isEntertainmentTrendCategory,
+  isHardTrendCategory,
+  normalizeTrendCategory
+} from "../_shared/trendUtils.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -116,13 +122,14 @@ const DEFAULT_MIN_ENTERTAINMENT = 4;
 const DEFAULT_SOURCE_DIVERSITY_WINDOW = 3;
 const DEFAULT_CATEGORY_CAPS: Record<string, number> = {
   game: 2,
-  gaming: 2,
-  politics: 1,
+  movie: 3,
+  entertainment: 3,
+  anime: 3,
+  culture: 3,
+  tech: 3,
+  business: 2,
   policy: 1,
-  crime: 1,
-  accident: 1,
-  war: 1,
-  disaster: 1
+  general: 2
 };
 
 const MIN_TARGET_TOTAL = 8;
@@ -164,39 +171,6 @@ const DEFAULT_EXCLUDED_KEYWORDS = [
   "麻薬"
 ];
 
-const HARD_TOPIC_CATEGORIES = new Set([
-  "news",
-  "politics",
-  "policy",
-  "government",
-  "world",
-  "economy",
-  "business",
-  "crime",
-  "accident",
-  "disaster",
-  "war"
-]);
-
-const ENTERTAINMENT_TOPIC_CATEGORIES = new Set([
-  "entertainment",
-  "culture",
-  "game",
-  "gaming",
-  "movie",
-  "music",
-  "anime",
-  "video",
-  "youtube",
-  "streaming",
-  "celebrity",
-  "gadgets",
-  "lifestyle",
-  "food",
-  "travel",
-  "books"
-]);
-
 const fallbackTrendItems: PlannedTrendItem[] = [
   {
     id: "fallback-ent-1",
@@ -229,16 +203,16 @@ const fallbackTrendItems: PlannedTrendItem[] = [
     isEntertainmentTopic: true
   },
   {
-    id: "fallback-gadget-1",
-    title: "Fallback: Gadget and app experience",
-    url: "https://example.com/fallback/gadgets",
-    summary: "Consumer gadgets and app UX topics are used to keep tone light.",
+    id: "fallback-movie-1",
+    title: "Fallback: Streaming and movie release radar",
+    url: "https://example.com/fallback/movie",
+    summary: "Major release windows and platform strategy changes are tracked.",
     source: "fallback-editorial",
-    category: "gadgets",
+    category: "movie",
     score: 1,
     publishedAt: null,
     clusterSize: 1,
-    normalizedHash: "fallback-gadget-1",
+    normalizedHash: "fallback-movie-1",
     domain: "example.com",
     isHardTopic: false,
     isEntertainmentTopic: true
@@ -317,17 +291,17 @@ const resolveDomain = (url: string, source: string): string => {
 };
 
 const isHardTopicCategory = (category: string): boolean => {
-  return HARD_TOPIC_CATEGORIES.has(normalizeToken(category));
+  return isHardTrendCategory(category);
 };
 
 const isEntertainmentCategory = (category: string): boolean => {
-  return ENTERTAINMENT_TOPIC_CATEGORIES.has(normalizeToken(category));
+  return isEntertainmentTrendCategory(category);
 };
 
 const hydratePlannedTrendItem = (
   raw: Omit<PlannedTrendItem, "domain" | "isHardTopic" | "isEntertainmentTopic">
 ): PlannedTrendItem => {
-  const normalizedCategory = normalizeToken(raw.category || "general") || "general";
+  const normalizedCategory = normalizeTrendCategory(raw.category || "general");
   const domain = resolveDomain(raw.url, raw.source);
   const normalizedHash = raw.normalizedHash || normalizeHash(raw.title, raw.url, raw.id);
   return {
@@ -352,8 +326,8 @@ const resolveCategoryCaps = (): Record<string, number> => {
     const caps: Record<string, number> = { ...DEFAULT_CATEGORY_CAPS };
     for (const [category, rawCap] of Object.entries(parsed)) {
       if (typeof rawCap !== "number" || !Number.isFinite(rawCap)) continue;
-      const normalizedCategory = normalizeToken(category);
-      if (!normalizedCategory) continue;
+      const normalizedCategory = normalizeTrendCategory(category);
+      if (normalizedCategory === "general" && normalizeToken(category) !== "general") continue;
       caps[normalizedCategory] = clamp(Math.floor(rawCap), 0, 10);
     }
     return caps;
@@ -498,7 +472,7 @@ const loadSelectedTrends = async (
     parseCsvList(
       Deno.env.get("TREND_EXCLUDED_CATEGORIES") ?? undefined,
       DEFAULT_EXCLUDED_SOURCE_CATEGORIES
-    ).map(normalizeToken)
+    ).map((category) => normalizeTrendCategory(category))
   );
   const excludedKeywords = parseCsvList(
     Deno.env.get("TREND_EXCLUDED_KEYWORDS") ?? undefined,
@@ -512,8 +486,8 @@ const loadSelectedTrends = async (
       "id, title, url, summary, score, published_at, cluster_size, is_cluster_representative, created_at, normalized_hash, trend_sources!inner(name,category)"
     )
     .eq("is_cluster_representative", true)
-    .order("score", { ascending: false })
     .order("published_at", { ascending: false })
+    .order("score", { ascending: false })
     .limit(queryLimit);
 
   if (error) throw error;
@@ -527,7 +501,7 @@ const loadSelectedTrends = async (
       const rowMs = Date.parse(dateValue);
       if (Number.isNaN(rowMs) || rowMs < sinceMs) return false;
 
-      const category = normalizeToken(resolveCategory(row));
+      const category = normalizeTrendCategory(resolveCategory(row));
       if (excludedCategories.has(category)) return false;
 
       const haystack = `${row.title ?? ""} ${row.summary ?? ""} ${row.url ?? ""}`.toLowerCase();
@@ -550,9 +524,11 @@ const loadSelectedTrends = async (
       })
     )
     .sort((left, right) => {
+      const byPublishedAt = (right.publishedAt ?? "").localeCompare(left.publishedAt ?? "");
+      if (byPublishedAt !== 0) return byPublishedAt;
       if (right.score !== left.score) return right.score - left.score;
       if (right.clusterSize !== left.clusterSize) return right.clusterSize - left.clusterSize;
-      return (right.publishedAt ?? "").localeCompare(left.publishedAt ?? "");
+      return right.title.localeCompare(left.title);
     });
 
   return selected.slice(0, candidatePoolSize);
@@ -563,7 +539,7 @@ const canUseCategory = (
   categoryCounts: Map<string, number>,
   categoryCaps: Record<string, number>
 ): boolean => {
-  const category = normalizeToken(item.category || "general");
+  const category = normalizeTrendCategory(item.category || "general");
   const cap = categoryCaps[category];
   if (cap === undefined) return true;
   const count = categoryCounts.get(category) ?? 0;
@@ -605,7 +581,7 @@ const selectTrendItemsForPlan = (
     const normalizedHash = item.normalizedHash || normalizeHash(item.title, item.url, item.id);
     selected.push(item);
     selectedHash.add(normalizedHash);
-    const category = normalizeToken(item.category || "general");
+    const category = normalizeTrendCategory(item.category || "general");
     categoryCounts.set(category, (categoryCounts.get(category) ?? 0) + 1);
     domainCounts.set(item.domain, (domainCounts.get(item.domain) ?? 0) + 1);
     if (item.isHardTopic) hardCount += 1;
@@ -629,6 +605,28 @@ const selectTrendItemsForPlan = (
 
   const entertainmentCandidates = deduped.filter((item) => item.isEntertainmentTopic);
   const generalCandidates = deduped;
+  const byCategory = new Map<string, PlannedTrendItem[]>();
+  for (const item of entertainmentCandidates) {
+    const category = normalizeTrendCategory(item.category);
+    const current = byCategory.get(category) ?? [];
+    current.push(item);
+    byCategory.set(category, current);
+  }
+
+  for (const requiredCategory of REQUIRED_ENTERTAINMENT_CATEGORIES) {
+    if (selected.length >= config.targetTotal) break;
+    const candidatesForRequiredCategory = byCategory.get(requiredCategory) ?? [];
+    const candidate =
+      candidatesForRequiredCategory.find((item) =>
+        shouldSelect(item, { enforceDiversity: true, enforceHardLimit: true })
+      ) ??
+      candidatesForRequiredCategory.find((item) =>
+        shouldSelect(item, { enforceDiversity: false, enforceHardLimit: true })
+      );
+    if (candidate) {
+      addSelection(candidate);
+    }
+  }
 
   for (const item of entertainmentCandidates) {
     if (selected.length >= config.targetTotal) break;

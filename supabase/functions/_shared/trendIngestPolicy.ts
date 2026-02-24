@@ -11,6 +11,9 @@ export type TrendScoreInput = {
   sourceCategory: string;
   clusterSize: number;
   diversityBonus: number;
+  entertainmentFloorBonus: number;
+  sourceReliabilityBonus: number;
+  duplicatePenalty: number;
   hasClickbaitKeyword: boolean;
   hasSensitiveHardKeyword: boolean;
   hasOverheatedKeyword: boolean;
@@ -28,6 +31,7 @@ export type TrendScoreBreakdown = {
   hardNewsPenalty: number;
   hardKeywordPenalty: number;
   overheatedPenalty: number;
+  duplicatePenalty: number;
 };
 
 export type TrendCapsResult<T> = {
@@ -204,10 +208,24 @@ export const calculateTrendScore = (params: TrendScoreInput): TrendScoreBreakdow
   const hardKeywordPenalty = params.hasSensitiveHardKeyword ? HARD_KEYWORD_PENALTY : 0;
   const overheatedPenalty = params.hasOverheatedKeyword ? OVERHEATED_PENALTY : 0;
 
+  // Score model:
+  // - freshness + source quality is the base
+  // - diversity/entertainment floor/reliable source bonuses keep mix enjoyable
+  // - penalties suppress clickbait, hard-news overload, and repeated same-type items
   const bonusScore =
-    clusterSizeBonus + params.diversityBonus + params.entertainmentBonusValue + categoryWeightBonus;
+    clusterSizeBonus +
+    params.diversityBonus +
+    params.entertainmentFloorBonus +
+    params.sourceReliabilityBonus +
+    params.entertainmentBonusValue +
+    categoryWeightBonus;
   const penaltyScore =
-    clickbaitPenalty + categoryWeightPenalty + hardNewsPenalty + hardKeywordPenalty + overheatedPenalty;
+    clickbaitPenalty +
+    categoryWeightPenalty +
+    hardNewsPenalty +
+    hardKeywordPenalty +
+    overheatedPenalty +
+    Math.max(params.duplicatePenalty, 0);
   const raw = freshness + weightedSource + bonusScore - penaltyScore;
 
   return {
@@ -219,7 +237,8 @@ export const calculateTrendScore = (params: TrendScoreInput): TrendScoreBreakdow
     categoryWeight: Number(categoryWeight.toFixed(6)),
     hardNewsPenalty: Number(hardNewsPenalty.toFixed(6)),
     hardKeywordPenalty: Number(hardKeywordPenalty.toFixed(6)),
-    overheatedPenalty: Number(overheatedPenalty.toFixed(6))
+    overheatedPenalty: Number(overheatedPenalty.toFixed(6)),
+    duplicatePenalty: Number(Math.max(params.duplicatePenalty, 0).toFixed(6))
   };
 };
 

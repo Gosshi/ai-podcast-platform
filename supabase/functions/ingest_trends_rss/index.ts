@@ -11,6 +11,11 @@ import {
   resolveRequestedPerSourceLimit,
   resolveTrendIngestConfigFromRaw
 } from "../_shared/trendIngestPolicy.ts";
+import {
+  isEntertainmentTrendCategory,
+  normalizeTrendCategory,
+  resolveSourceReliabilityBonus
+} from "../_shared/trendUtils.ts";
 
 type RequestBody = {
   limitPerSource?: number;
@@ -51,6 +56,7 @@ type PublishedAtResolution = {
 
 type CandidateItem = {
   sourceId: string;
+  sourceKey: string;
   sourceName: string;
   sourceWeight: number;
   sourceCategory: string;
@@ -98,6 +104,7 @@ const DEFAULT_RSS_FETCH_TIMEOUT_MS = 4500;
 const MIN_RSS_FETCH_TIMEOUT_MS = 1200;
 const MAX_RSS_FETCH_TIMEOUT_MS = 12000;
 const DEFAULT_ENTERTAINMENT_BONUS = 0.35;
+const DEFAULT_ENTERTAINMENT_FLOOR_SHARE = 0.42;
 const DEFAULT_HARD_TOPIC_KEYWORDS = [
   "diet pill",
   "diet pills",
@@ -140,23 +147,6 @@ const DEFAULT_OVERHEATED_KEYWORDS = [
   "流出",
   "激怒"
 ] as const;
-const ENTERTAINMENT_BONUS_CATEGORIES = new Set([
-  "entertainment",
-  "culture",
-  "gadgets",
-  "lifestyle",
-  "sports",
-  "music",
-  "movie",
-  "anime",
-  "game",
-  "gaming",
-  "video",
-  "youtube",
-  "streaming",
-  "celebrity"
-]);
-
 const normalizeToken = (value: string): string => value.trim().toLowerCase();
 
 const resolveEntertainmentBonus = (): number => {
@@ -168,6 +158,16 @@ const resolveEntertainmentBonus = (): number => {
 };
 
 const ENTERTAINMENT_BONUS_VALUE = resolveEntertainmentBonus();
+
+const resolveEntertainmentFloorShare = (): number => {
+  const raw = Number.parseFloat(
+    Deno.env.get("TREND_ENTERTAINMENT_FLOOR_SHARE") ?? `${DEFAULT_ENTERTAINMENT_FLOOR_SHARE}`
+  );
+  if (!Number.isFinite(raw)) return DEFAULT_ENTERTAINMENT_FLOOR_SHARE;
+  return Math.max(0, Math.min(raw, 1));
+};
+
+const ENTERTAINMENT_FLOOR_SHARE = resolveEntertainmentFloorShare();
 
 const clamp = (value: number, min: number, max: number): number => {
   return Math.max(min, Math.min(max, value));
@@ -425,10 +425,13 @@ const upsertSources = async (body: RequestBody): Promise<TrendSource[]> => {
           url: feed.url ?? `mock://${feed.sourceKey}`,
           enabled: true,
           weight: feed.weight ?? 1,
-          category: feed.category ?? "general",
+          category: normalizeTrendCategory(feed.category ?? "general"),
           theme: feed.theme ?? "mock"
         }))
-      : DEFAULT_TREND_RSS_SOURCES;
+      : DEFAULT_TREND_RSS_SOURCES.map((source) => ({
+          ...source,
+          category: normalizeTrendCategory(source.category)
+        }));
 
   const { error: upsertError } = await supabaseAdmin.from("trend_sources").upsert(sourceSeeds, {
     onConflict: "source_key"
@@ -754,9 +757,10 @@ Deno.serve(async (req) => {
 
           candidates.push({
             sourceId: source.id,
+            sourceKey: source.source_key,
             sourceName: source.name,
             sourceWeight: source.weight,
-            sourceCategory: source.category,
+            sourceCategory: normalizeTrendCategory(source.category),
             sourceTheme: source.theme,
             title: parsed.title,
             summary: parsed.summary,
@@ -797,28 +801,64 @@ Deno.serve(async (req) => {
     dedupedCount += Math.max(0, candidates.length - clusters.length);
 
     const categoryCounts = new Map<string, number>();
+    const sourceCounts = new Map<string, number>();
+    let entertainmentClusterCount = 0;
     for (const cluster of clusters) {
-      const category = cluster.representative.sourceCategory || "general";
+      const category = normalizeTrendCategory(cluster.representative.sourceCategory);
       categoryCounts.set(category, (categoryCounts.get(category) ?? 0) + 1);
+      sourceCounts.set(cluster.representative.sourceKey, (sourceCounts.get(cluster.representative.sourceKey) ?? 0) + 1);
+      if (isEntertainmentTrendCategory(category)) {
+        entertainmentClusterCount += 1;
+      }
+    }
+    const entertainmentShare = clusters.length > 0 ? entertainmentClusterCount / clusters.length : 0;
+    const recentCategoryCounts = new Map<string, number>();
+    const { data: recentCategoryRows, error: recentCategoryError } = await supabaseAdmin
+      .from("trend_items")
+      .select("source_category")
+      .order("created_at", { ascending: false })
+      .limit(90);
+    if (!recentCategoryError) {
+      for (const row of recentCategoryRows ?? []) {
+        const normalized = normalizeTrendCategory(
+          ((row as { source_category?: string | null }).source_category ?? "general")
+        );
+        recentCategoryCounts.set(normalized, (recentCategoryCounts.get(normalized) ?? 0) + 1);
+      }
     }
 
     const scoredRepresentatives: ScoredRepresentative[] = clusters.map((cluster) => {
       const representative = cluster.representative;
       const clusterSize = cluster.items.length;
-      const categoryCount = categoryCounts.get(representative.sourceCategory || "general") ?? 1;
-      const diversityBonus = Number((1 / categoryCount).toFixed(6));
+      const normalizedCategory = normalizeTrendCategory(representative.sourceCategory);
+      const categoryCount = categoryCounts.get(normalizedCategory) ?? 1;
+      const sourceCount = sourceCounts.get(representative.sourceKey) ?? 1;
+      const recentCategoryCount = recentCategoryCounts.get(normalizedCategory) ?? 0;
+      const diversityBonus = Number((1 / (recentCategoryCount + 1) + 1 / categoryCount).toFixed(6));
       const clusterKey = `${representative.normalizedTitleHash.slice(0, 16)}-${representative.urlHash.slice(0, 16)}`;
-      const entertainmentBonus = ENTERTAINMENT_BONUS_CATEGORIES.has(
-        normalizeToken(representative.sourceCategory)
-      )
+      const entertainmentBonus = isEntertainmentTrendCategory(normalizedCategory)
         ? ENTERTAINMENT_BONUS_VALUE
         : 0;
+      const entertainmentFloorBonus =
+        isEntertainmentTrendCategory(normalizedCategory) && entertainmentShare < ENTERTAINMENT_FLOOR_SHARE
+          ? Number(((ENTERTAINMENT_FLOOR_SHARE - entertainmentShare) * 0.9).toFixed(6))
+          : 0;
+      const sourceReliabilityBonus = resolveSourceReliabilityBonus(
+        representative.sourceKey,
+        representative.sourceName
+      );
+      const duplicatePenalty = Number(
+        (Math.max(0, sourceCount - 2) * 0.12 + Math.max(0, categoryCount - 3) * 0.08).toFixed(6)
+      );
       const score = calculateTrendScore({
         publishedAt: representative.publishedAt,
         sourceWeight: representative.sourceWeight,
-        sourceCategory: representative.sourceCategory,
+        sourceCategory: normalizedCategory,
         clusterSize,
         diversityBonus,
+        entertainmentFloorBonus,
+        sourceReliabilityBonus,
+        duplicatePenalty,
         hasClickbaitKeyword: representative.hasClickbaitKeyword,
         hasSensitiveHardKeyword: representative.hasSensitiveHardKeyword,
         hasOverheatedKeyword: representative.hasOverheatedKeyword,
@@ -834,7 +874,10 @@ Deno.serve(async (req) => {
       }
 
       return {
-        item: representative,
+        item: {
+          ...representative,
+          sourceCategory: normalizedCategory
+        },
         clusterSize,
         clusterKey,
         score: score.score,
