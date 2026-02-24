@@ -46,9 +46,10 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - `write-script-ja` は入力 trend/letters を sanitize（HTML/entity/URL/placeholder除去）し、`OP / HEADLINE / DEEPDIVE x3 / QUICK NEWS x6 / LETTERS / OUTRO / SOURCES` の固定構造で生成する
 - `write-script-ja` は本文から URL を除去し、URL は `SOURCES` セクションにのみ保持する（`SOURCES_FOR_UI` には `trend_item_id` を保持）
 - `write-script-ja` は `SCRIPT_MIN_CHARS_JA` 以上（推奨 3500〜6000 chars）を満たすように DeepDive/QuickNews の情報密度を調整し、重複行と `補足N` 形式を禁止する
-- `polish-script-ja` / `polish-script-en` は OpenAI を使って放送向けにリライトし、JSON schema 固定で受け取った結果を `script_polished` / `script_polished_preview` に保存する
-- polish 失敗時（APIエラー/JSON parse失敗/分量不足）は即フォールバックし、`job_runs.payload` に `input_chars / output_chars / parse_ok / fallback_used / error_summary` を残してパイプラインは継続する
-- `daily-generate` は `expand-script-ja` 後に `polish-script-ja`、`adapt-script-en` 後に `polish-script-en` を実行し、`tts-ja` / `tts-en` は `script_polished` を優先して読み上げる（なければ `script`）
+- `polish-script-ja` / `polish-script-en` は OpenAI で「rewrite + expand」を実行し、JSON schema 固定で受け取った結果を `script_polished` / `script_polished_preview` に保存する
+- polish 分量ゲートは JA 最低 `4500` chars、EN 最低 `1800` words（未達時はフォールバック）
+- polish は最大2回試行し（`SCRIPT_POLISH_MAX_ATTEMPTS`）、短すぎる場合のみ1回再生成する。JSON parse失敗/API失敗/分量不足時は即フォールバックし、`job_runs.payload` に `lang / attempt / before_chars / after_chars / input_chars / output_chars / parse_ok / fallback_used / skipped_reason / error_summary` を残して継続する
+- `daily-generate` は `expand-script-ja` 後に `polish-script-ja`、`adapt-script-en` 後に `polish-script-en` を実行し、`tts-ja` / `tts-en` は `script_polished` を優先して読み上げる（なければ `script`）。`SCRIPT_POLISH_ENABLED=false` で polish のみ無効化できる
 - `SKIP_TTS=true`（default）では `tts-ja` / `adapt-script-en` / `tts-en` / `publish` をスキップし、台本品質のみを検証できる
 - `adapt-script-en` は script 生成後に `normalizeForSpeech` を適用し、URL を script から除去する（元URLは `trend_items.url` に保持）
 - `daily-generate` は trend category を hard:soft:entertainment = 4:4:3 目標で選定し、`entertainment_bonus` で娯楽カテゴリを加点する
@@ -170,8 +171,13 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
   - `EPISODE_TOTAL_TARGET_CHARS`（default: `4600`）
   - `ENABLE_SCRIPT_EDITOR=1`（`write-script-ja` で OpenAI 後編集を有効化）
   - `SCRIPT_EDITOR_MODEL`（default: `gpt-4o-mini`）
-  - `OPENAI_SCRIPT_MODEL`（default: `gpt-4o-mini`）
-  - `OPENAI_SCRIPT_POLISH_TIMEOUT_MS`（default: `45000`）
+  - `OPENAI_SCRIPT_MODEL`（default: `gpt-4.1-mini`）
+    - 未設定時の内部fallbackは `polish-script-ja / polish-script-en` ともに `gpt-4.1-mini`
+  - `SCRIPT_POLISH_ENABLED`（default: `true`）
+  - `SCRIPT_POLISH_TARGET`（default: `15-20min`）
+  - `SCRIPT_POLISH_MAX_ATTEMPTS`（default: `2`、上限 `2`）
+  - `SCRIPT_POLISH_TIMEOUT_MS`（default: `120000`）
+  - `OPENAI_SCRIPT_POLISH_TIMEOUT_MS`（後方互換。`SCRIPT_POLISH_TIMEOUT_MS` 未設定時のみ参照）
   - `OPENAI_SCRIPT_POLISH_TEMPERATURE`（default: `0.2`）
   - `SCRIPT_POLISH_MODEL`（後方互換。`OPENAI_SCRIPT_MODEL` 未設定時のみ参照）
   - `SKIP_TTS=true`（default。`true` で `tts-ja` / `tts-en` と publish をスキップ）

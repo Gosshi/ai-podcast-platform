@@ -158,14 +158,6 @@ type ScriptNormalizationAudit = {
 };
 
 const BASE_ORDERED_STEPS = ["plan-topics", "write-script-ja", "expand-script-ja"] as const;
-const POST_SCRIPT_ORDERED_STEPS = [
-  "polish-script-ja",
-  "tts-ja",
-  "adapt-script-en",
-  "polish-script-en",
-  "tts-en",
-  "publish"
-] as const;
 
 const MAX_TREND_ITEMS = 30;
 const MIN_TREND_LOOKBACK_HOURS = 24;
@@ -1078,10 +1070,19 @@ Deno.serve(async (req) => {
     authorization: req.headers.get("Authorization"),
     apikey: req.headers.get("apikey")
   };
-  const scriptPolishEnabled = !skipTts;
+  const scriptPolishEnabled = resolveBooleanEnv("SCRIPT_POLISH_ENABLED", true);
   const orderedSteps = [
     ...BASE_ORDERED_STEPS,
-    ...(scriptPolishEnabled ? POST_SCRIPT_ORDERED_STEPS : [])
+    ...(scriptPolishEnabled ? ["polish-script-ja"] : []),
+    ...(!skipTts
+      ? [
+          "tts-ja",
+          "adapt-script-en",
+          ...(scriptPolishEnabled ? ["polish-script-en"] : []),
+          "tts-en",
+          "publish"
+        ]
+      : [])
   ];
 
   const runId = await startRun("daily-generate", {
@@ -1350,11 +1351,18 @@ Deno.serve(async (req) => {
       }, stepAuth);
       const adaptEnEpisodeId = extractEpisodeId(adaptEn, "adapt-script-en");
 
-      polishEn = await invokeStep(functionsBaseUrl, "polish-script-en", {
-        episodeDate,
-        idempotencyKey,
-        episodeId: adaptEnEpisodeId
-      }, stepAuth);
+      polishEn = scriptPolishEnabled
+        ? await invokeStep(functionsBaseUrl, "polish-script-en", {
+            episodeDate,
+            idempotencyKey,
+            episodeId: adaptEnEpisodeId
+          }, stepAuth)
+        : ({
+            ok: true,
+            skipped: true,
+            reason: "disabled_by_env",
+            episodeId: adaptEnEpisodeId
+          } satisfies InvokeResult);
       await assertNoUrlsInEpisodeScript(adaptEnEpisodeId);
 
       ttsEn = await invokeStep(functionsBaseUrl, "tts-en", {
