@@ -4,6 +4,7 @@ import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { normalizeScriptText } from "../_shared/scriptNormalize.ts";
 import {
   buildPolishPreview,
+  checkDeepDiveConcreteReferences,
   finalizePolishedScriptText,
   hasOpenAiApiKey,
   normalizeScriptForPolishInput,
@@ -18,6 +19,7 @@ import {
   resolveScriptPolishTimeoutMs,
   summarizeError
 } from "../_shared/scriptPolish.ts";
+import { evaluateScriptQuality } from "../_shared/evaluateScriptQuality.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -46,6 +48,8 @@ const SYSTEM_PROMPT = [
   "短い箇条書きではなく、ナレーションとして流れる長さで書きます。",
   "URL/プレースホルダ/壊れた断片/反復表現は除去し、読み上げやすい自然な日本語に統一します。",
   "事実関係は変えない。捏造、憶測、断定的な誇張は禁止。",
+  "同一文型の3回以上連続と、同一フレーズの3回以上反復を禁止します。",
+  "意味が曖昧な固有名詞は削除するか一般化して、文脈が通るように言い換えます。",
   "出力はJSONのみ。説明文や前置きは禁止。"
 ].join(" ");
 
@@ -56,6 +60,7 @@ const toUserPrompt = (params: {
   previousChars: number;
   shortageChars: number;
   previousDraft: string;
+  retryReason: string;
 }): string => {
   const sourceScript = params.attempt > 1 && params.previousDraft
     ? params.previousDraft
@@ -64,7 +69,7 @@ const toUserPrompt = (params: {
     ? "前回下書き（拡張対象）"
     : "入力台本";
   const retryNote = params.attempt > 1
-    ? `再生成要件: 前回の出力は ${params.previousChars} 文字で、最低条件まであと ${params.shortageChars} 文字不足です。具体例と実務上の含意を追加し、必ず ${MIN_CHARS} 文字以上にしてください。`
+    ? `再生成要件: 前回の出力は ${params.previousChars} 文字で、最低条件まであと ${params.shortageChars} 文字不足です。再生成理由は「${params.retryReason || "品質不足"}」。背景説明と具体例を増やし、必ず ${MIN_CHARS} 文字以上にしてください。`
     : "初回生成: 分量不足を避けるため、各セクションを十分に掘り下げてください。";
 
   return [
@@ -75,7 +80,20 @@ const toUserPrompt = (params: {
     "- OP/HEADLINE/LETTERS/OUTROはそれぞれ2段落以上で展開",
     "- DEEPDIVE(3本)は各4段落以上、背景→現状→影響→次アクションの順で構成",
     "- QUICK NEWS(6本)は箇条書きで終えず、各項目を2〜3文のナレーションにする",
-    "- 各セクションに具体例と実務上の判断ポイントを必ず含める",
+    "- 各DEEPDIVEに具体例または数値を最低2つ入れる",
+    "- 各DEEPDIVEでメリットと懸念点を最低1つずつ明示する",
+    "- 各DEEPDIVEの冒頭に背景説明を最低1段落入れる",
+    "- 抽象語（重要です、影響します等）の連続使用は禁止",
+    "- 意味不明な固有名詞は削除または一般化する",
+    "- OPは conversational / warm",
+    "- HEADLINEは fast-paced / concise",
+    "- DEEPDIVEは analytical / structured",
+    "- QUICK NEWSは energetic / lighter",
+    "- LETTERSは friendly / empathetic",
+    "- OUTROは forward-looking summary",
+    "- 同一文構造の3回以上の繰り返しを禁止",
+    "- 同一フレーズの3回以上の繰り返しを禁止",
+    "- 各セクションに実務上の判断ポイントを必ず含める",
     "- 事実関係は維持する（捏造禁止）",
     "- 既存方針の「事実/解釈/次アクション」を守る",
     "- 同一表現の繰り返しを避ける",
@@ -146,6 +164,20 @@ Deno.serve(async (req) => {
   let dedupedLinesCount = 0;
   let attemptsUsed = 0;
   let skippedReason = "";
+  let retryReason = "";
+  let deepDiveConcreteOk = false;
+  let deepDiveConcreteCounts: [number, number, number] = [0, 0, 0];
+  let scriptScore: number | null = null;
+  let scoreDepth: number | null = null;
+  let scoreClarity: number | null = null;
+  let scoreRepetition: number | null = null;
+  let scoreConcreteness: number | null = null;
+  let scoreBroadcastReadiness: number | null = null;
+  let scoreWarning = false;
+  let scoreAttemptsUsed = 0;
+  let scoreSkippedReason = "";
+  let scoreErrorSummary = "";
+  let scriptScoreDetail: Record<string, unknown> | null = null;
 
   try {
     const { data, error } = await supabaseAdmin
@@ -205,7 +237,8 @@ Deno.serve(async (req) => {
                 attempt,
                 previousChars,
                 shortageChars: Math.max(0, MIN_CHARS - previousChars),
-                previousDraft
+                previousDraft,
+                retryReason
               }),
               schemaName: "polished_script_ja",
               maxCompletionTokens: MAX_COMPLETION_TOKENS
@@ -229,6 +262,20 @@ Deno.serve(async (req) => {
             dedupedLinesCount = finalized.dedupedLinesCount;
             previousChars = finalized.text.length;
             previousDraft = finalized.text;
+            const concreteCheck = checkDeepDiveConcreteReferences("ja", parsed.data.sections.deepdive);
+            deepDiveConcreteCounts = concreteCheck.counts;
+            deepDiveConcreteOk = concreteCheck.ok;
+            if (!concreteCheck.ok) {
+              fallbackUsed = true;
+              retryReason = `deepdive_concrete_refs_missing:${concreteCheck.failingIndices
+                .map((index) => index + 1)
+                .join(",")}`;
+              errorSummary = retryReason;
+              if (attempt >= maxAttempts) {
+                break;
+              }
+              continue;
+            }
 
             if (isJaLengthAcceptable(finalized.text)) {
               finalScript = finalized.text;
@@ -239,7 +286,8 @@ Deno.serve(async (req) => {
             }
 
             fallbackUsed = true;
-            errorSummary = `polished_script_too_short:${finalized.text.length}`;
+            retryReason = `polished_script_too_short:${finalized.text.length}`;
+            errorSummary = retryReason;
             if (attempt >= maxAttempts) {
               break;
             }
@@ -263,12 +311,40 @@ Deno.serve(async (req) => {
 
     outputChars = finalScript.length;
     noOp = finalScript === fallbackScript;
+    const qualityEvaluation = await evaluateScriptQuality({
+      script: finalScript,
+      lang: "ja"
+    });
+    if (qualityEvaluation.ok) {
+      scriptScore = qualityEvaluation.detail.score;
+      scoreDepth = qualityEvaluation.detail.depth;
+      scoreClarity = qualityEvaluation.detail.clarity;
+      scoreRepetition = qualityEvaluation.detail.repetition;
+      scoreConcreteness = qualityEvaluation.detail.concreteness;
+      scoreBroadcastReadiness = qualityEvaluation.detail.broadcast_readiness;
+      scoreWarning = qualityEvaluation.detail.warning;
+      scoreAttemptsUsed = qualityEvaluation.detail.attempts_used;
+      scriptScoreDetail = qualityEvaluation.detail;
+    } else {
+      scoreAttemptsUsed = qualityEvaluation.attempts_used;
+      scoreSkippedReason = qualityEvaluation.skipped_reason ?? "";
+      scoreErrorSummary = qualityEvaluation.error_summary ?? "";
+      scriptScoreDetail = {
+        skipped_reason: scoreSkippedReason || null,
+        error_summary: scoreErrorSummary || null,
+        attempts_used: scoreAttemptsUsed,
+        model: qualityEvaluation.model,
+        timeout_ms: qualityEvaluation.timeout_ms
+      };
+    }
 
     const { error: updateError } = await supabaseAdmin
       .from("episodes")
       .update({
         script_polished: finalScript || null,
-        script_polished_preview: preview || null
+        script_polished_preview: preview || null,
+        script_score: scriptScore,
+        script_score_detail: scriptScoreDetail
       })
       .eq("id", episodeId);
 
@@ -292,7 +368,9 @@ Deno.serve(async (req) => {
         .from("episodes")
         .update({
           script_polished: finalScript || null,
-          script_polished_preview: preview || null
+          script_polished_preview: preview || null,
+          script_score: scriptScore,
+          script_score_detail: scriptScoreDetail
         })
         .eq("id", episodeId);
     }
@@ -313,6 +391,7 @@ Deno.serve(async (req) => {
     before_chars: inputChars,
     after_chars: outputChars,
     skipped_reason: skippedReason || null,
+    retry_reason: retryReason || null,
     input_chars: inputChars,
     output_chars: outputChars,
     parse_ok: parseOk,
@@ -320,13 +399,26 @@ Deno.serve(async (req) => {
     error_summary: (errorSummary || "").slice(0, 500),
     no_op: noOp,
     deduped_lines_count: dedupedLinesCount,
+    deepdive_concrete_ok: deepDiveConcreteOk,
+    deepdive_concrete_counts: deepDiveConcreteCounts,
+    score: scriptScore,
+    depth: scoreDepth,
+    clarity: scoreClarity,
+    repetition: scoreRepetition,
+    concreteness: scoreConcreteness,
+    broadcast_readiness: scoreBroadcastReadiness,
+    warning: scoreWarning,
+    score_attempts_used: scoreAttemptsUsed,
+    score_skipped_reason: scoreSkippedReason || null,
+    score_error_summary: (scoreErrorSummary || "").slice(0, 500),
+    script_score_detail: scriptScoreDetail,
     scriptChars: outputChars,
     chars_after: outputChars,
     chars_min: MIN_CHARS,
     chars_target_min: TARGET_MIN_CHARS,
     chars_target_max: TARGET_MAX_CHARS,
     script_polished_preview_chars: preview.length,
-    instructions_version: "ja-radio-v2-expand"
+    instructions_version: "ja-radio-v3-fact-tone-score"
   };
 
   await finishRun(runId, payload);

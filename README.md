@@ -47,8 +47,12 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - `write-script-ja` は本文から URL を除去し、URL は `SOURCES` セクションにのみ保持する（`SOURCES_FOR_UI` には `trend_item_id` を保持）
 - `write-script-ja` は `SCRIPT_MIN_CHARS_JA` 以上（推奨 3500〜6000 chars）を満たすように DeepDive/QuickNews の情報密度を調整し、重複行と `補足N` 形式を禁止する
 - `polish-script-ja` / `polish-script-en` は OpenAI で「rewrite + expand」を実行し、JSON schema 固定で受け取った結果を `script_polished` / `script_polished_preview` に保存する
+- polish は DeepDive ごとに concrete reference（数値/固有名詞）を最低2件要求し、不足時は最大1回だけ再生成する
+- polish prompt は section tone を分離する（OP: conversational, HEADLINE: fast-paced, DEEPDIVE: analytical, QUICK NEWS: energetic, LETTERS: empathetic, OUTRO: forward-looking）
 - polish 分量ゲートは JA 最低 `4500` chars、EN 最低 `1800` words（未達時はフォールバック）
-- polish は最大2回試行し（`SCRIPT_POLISH_MAX_ATTEMPTS`）、短すぎる場合のみ1回再生成する。JSON parse失敗/API失敗/分量不足時は即フォールバックし、`job_runs.payload` に `lang / attempt / before_chars / after_chars / input_chars / output_chars / parse_ok / fallback_used / skipped_reason / error_summary` を残して継続する
+- polish は最大2回試行し（`SCRIPT_POLISH_MAX_ATTEMPTS`）、JSON parse失敗/API失敗/分量不足/具体性不足時はフォールバックまたは再試行し、`job_runs.payload` に `lang / attempt / before_chars / after_chars / parse_ok / fallback_used / skipped_reason / error_summary / score` を残して継続する
+- polish 後に script quality を自動評価し、`episodes.script_score`（平均）と `episodes.script_score_detail`（depth/clarity/repetition/concreteness/broadcast_readiness）を保存する
+- `score < 8` の場合は `job_runs.payload.warning=true` として記録する
 - `daily-generate` は `expand-script-ja` 後に `polish-script-ja`、`adapt-script-en` 後に `polish-script-en` を実行し、`tts-ja` / `tts-en` は `script_polished` を優先して読み上げる（なければ `script`）。`SCRIPT_POLISH_ENABLED=false` で polish のみ無効化できる
 - `SKIP_TTS=true`（default）では `tts-ja` / `adapt-script-en` / `tts-en` / `publish` をスキップし、台本品質のみを検証できる
 - `adapt-script-en` は script 生成後に `normalizeForSpeech` を適用し、URL を script から除去する（元URLは `trend_items.url` に保持）

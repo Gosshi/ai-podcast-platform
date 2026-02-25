@@ -4,6 +4,7 @@ import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { normalizeScriptText } from "../_shared/scriptNormalize.ts";
 import {
   buildPolishPreview,
+  checkDeepDiveConcreteReferences,
   countWords,
   finalizePolishedScriptText,
   hasOpenAiApiKey,
@@ -19,6 +20,7 @@ import {
   resolveScriptPolishTimeoutMs,
   summarizeError
 } from "../_shared/scriptPolish.ts";
+import { evaluateScriptQuality } from "../_shared/evaluateScriptQuality.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -47,6 +49,9 @@ const SYSTEM_PROMPT = [
   "The script must be long-form narration, not short notes.",
   "Remove URL-like strings, placeholders, broken fragments, and repeated boilerplate.",
   "Do not hallucinate or add unverified claims.",
+  "Do not repeat the same sentence pattern three times in a row.",
+  "Do not repeat the same phrase three times or more.",
+  "Replace ambiguous proper nouns with clear general wording when context is unclear.",
   "Output must be JSON only with no extra prose."
 ].join(" ");
 
@@ -57,6 +62,7 @@ const toUserPrompt = (params: {
   previousWords: number;
   shortageWords: number;
   previousDraft: string;
+  retryReason: string;
 }): string => {
   const sourceScript = params.attempt > 1 && params.previousDraft
     ? params.previousDraft
@@ -65,7 +71,7 @@ const toUserPrompt = (params: {
     ? "Previous draft to expand"
     : "Input script";
   const retryNote = params.attempt > 1
-    ? `Retry requirement: previous output had ${params.previousWords} words, still short by ${params.shortageWords} words. Expand with concrete implications and practical guidance until it exceeds ${MIN_WORDS} words.`
+    ? `Retry requirement: previous output had ${params.previousWords} words, still short by ${params.shortageWords} words. Retry reason: ${params.retryReason || "quality_shortfall"}. Expand with concrete implications and practical guidance until it exceeds ${MIN_WORDS} words.`
     : "First attempt: prioritize depth and pacing to avoid a short script.";
 
   return [
@@ -76,6 +82,19 @@ const toUserPrompt = (params: {
     "- OP/HEADLINE/LETTERS/CLOSING should each be 2+ paragraphs",
     "- DEEPDIVE (3 sections) must be 4+ paragraphs each: context -> current update -> impact -> next actions",
     "- QUICK NEWS (6 items) must be narrated in 3-4 sentences each, not bullet-only fragments",
+    "- Each DEEPDIVE must include at least 2 concrete references (numbers, organizations, named examples)",
+    "- Each DEEPDIVE must include at least one benefit and one concern",
+    "- Add at least one dedicated background paragraph in each DEEPDIVE",
+    "- Avoid repeated abstract phrases such as 'this is important' / 'this impacts everyone'",
+    "- Remove or generalize unclear proper nouns",
+    "- OP tone: conversational / warm",
+    "- HEADLINE tone: fast-paced / concise",
+    "- DEEPDIVE tone: analytical / structured",
+    "- QUICK NEWS tone: energetic / lighter",
+    "- LETTERS tone: friendly / empathetic",
+    "- OUTRO tone: forward-looking summary",
+    "- Do not repeat the same sentence structure 3+ times",
+    "- Do not keep the same phrase 3+ times",
     "- Add concrete examples and practical implications in every section",
     "- Keep factual content intact; no made-up details",
     "- Keep the fact/interpretation/next-action framing",
@@ -154,6 +173,20 @@ Deno.serve(async (req) => {
   let wordCount = 0;
   let attemptsUsed = 0;
   let skippedReason = "";
+  let retryReason = "";
+  let deepDiveConcreteOk = false;
+  let deepDiveConcreteCounts: [number, number, number] = [0, 0, 0];
+  let scriptScore: number | null = null;
+  let scoreDepth: number | null = null;
+  let scoreClarity: number | null = null;
+  let scoreRepetition: number | null = null;
+  let scoreConcreteness: number | null = null;
+  let scoreBroadcastReadiness: number | null = null;
+  let scoreWarning = false;
+  let scoreAttemptsUsed = 0;
+  let scoreSkippedReason = "";
+  let scoreErrorSummary = "";
+  let scriptScoreDetail: Record<string, unknown> | null = null;
 
   try {
     const { data, error } = await supabaseAdmin
@@ -213,7 +246,8 @@ Deno.serve(async (req) => {
                 attempt,
                 previousWords,
                 shortageWords: Math.max(0, MIN_WORDS - previousWords),
-                previousDraft
+                previousDraft,
+                retryReason
               }),
               schemaName: "polished_script_en",
               maxCompletionTokens: MAX_COMPLETION_TOKENS
@@ -238,6 +272,20 @@ Deno.serve(async (req) => {
             previousWords = countWords(finalized.text);
             previousDraft = finalized.text;
             sentenceCount = countSentences(finalized.text);
+            const concreteCheck = checkDeepDiveConcreteReferences("en", parsed.data.sections.deepdive);
+            deepDiveConcreteCounts = concreteCheck.counts;
+            deepDiveConcreteOk = concreteCheck.ok;
+            if (!concreteCheck.ok) {
+              fallbackUsed = true;
+              retryReason = `deepdive_concrete_refs_missing:${concreteCheck.failingIndices
+                .map((index) => index + 1)
+                .join(",")}`;
+              errorSummary = retryReason;
+              if (attempt >= maxAttempts) {
+                break;
+              }
+              continue;
+            }
 
             if (isEnLengthAcceptable(finalized.text)) {
               finalScript = finalized.text;
@@ -248,7 +296,8 @@ Deno.serve(async (req) => {
             }
 
             fallbackUsed = true;
-            errorSummary = `polished_script_too_short:${finalized.text.length}:${previousWords}`;
+            retryReason = `polished_script_too_short:${finalized.text.length}:${previousWords}`;
+            errorSummary = retryReason;
             if (attempt >= maxAttempts) {
               break;
             }
@@ -274,12 +323,40 @@ Deno.serve(async (req) => {
     sentenceCount = sentenceCount || countSentences(finalScript);
     wordCount = countWords(finalScript);
     noOp = finalScript === fallbackScript;
+    const qualityEvaluation = await evaluateScriptQuality({
+      script: finalScript,
+      lang: "en"
+    });
+    if (qualityEvaluation.ok) {
+      scriptScore = qualityEvaluation.detail.score;
+      scoreDepth = qualityEvaluation.detail.depth;
+      scoreClarity = qualityEvaluation.detail.clarity;
+      scoreRepetition = qualityEvaluation.detail.repetition;
+      scoreConcreteness = qualityEvaluation.detail.concreteness;
+      scoreBroadcastReadiness = qualityEvaluation.detail.broadcast_readiness;
+      scoreWarning = qualityEvaluation.detail.warning;
+      scoreAttemptsUsed = qualityEvaluation.detail.attempts_used;
+      scriptScoreDetail = qualityEvaluation.detail;
+    } else {
+      scoreAttemptsUsed = qualityEvaluation.attempts_used;
+      scoreSkippedReason = qualityEvaluation.skipped_reason ?? "";
+      scoreErrorSummary = qualityEvaluation.error_summary ?? "";
+      scriptScoreDetail = {
+        skipped_reason: scoreSkippedReason || null,
+        error_summary: scoreErrorSummary || null,
+        attempts_used: scoreAttemptsUsed,
+        model: qualityEvaluation.model,
+        timeout_ms: qualityEvaluation.timeout_ms
+      };
+    }
 
     const { error: updateError } = await supabaseAdmin
       .from("episodes")
       .update({
         script_polished: finalScript || null,
-        script_polished_preview: preview || null
+        script_polished_preview: preview || null,
+        script_score: scriptScore,
+        script_score_detail: scriptScoreDetail
       })
       .eq("id", episodeId);
 
@@ -305,7 +382,9 @@ Deno.serve(async (req) => {
         .from("episodes")
         .update({
           script_polished: finalScript || null,
-          script_polished_preview: preview || null
+          script_polished_preview: preview || null,
+          script_score: scriptScore,
+          script_score_detail: scriptScoreDetail
         })
         .eq("id", episodeId);
     }
@@ -326,6 +405,7 @@ Deno.serve(async (req) => {
     before_chars: inputChars,
     after_chars: outputChars,
     skipped_reason: skippedReason || null,
+    retry_reason: retryReason || null,
     input_chars: inputChars,
     output_chars: outputChars,
     parse_ok: parseOk,
@@ -333,6 +413,19 @@ Deno.serve(async (req) => {
     error_summary: (errorSummary || "").slice(0, 500),
     no_op: noOp,
     deduped_lines_count: dedupedLinesCount,
+    deepdive_concrete_ok: deepDiveConcreteOk,
+    deepdive_concrete_counts: deepDiveConcreteCounts,
+    score: scriptScore,
+    depth: scoreDepth,
+    clarity: scoreClarity,
+    repetition: scoreRepetition,
+    concreteness: scoreConcreteness,
+    broadcast_readiness: scoreBroadcastReadiness,
+    warning: scoreWarning,
+    score_attempts_used: scoreAttemptsUsed,
+    score_skipped_reason: scoreSkippedReason || null,
+    score_error_summary: (scoreErrorSummary || "").slice(0, 500),
+    script_score_detail: scriptScoreDetail,
     sentence_count: sentenceCount,
     word_count: wordCount,
     words_after: wordCount,
@@ -342,7 +435,7 @@ Deno.serve(async (req) => {
     scriptChars: outputChars,
     chars_after: outputChars,
     script_polished_preview_chars: preview.length,
-    instructions_version: "en-radio-v2-expand"
+    instructions_version: "en-radio-v3-fact-tone-score"
   };
 
   await finishRun(runId, payload);

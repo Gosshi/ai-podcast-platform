@@ -10,13 +10,15 @@ export type Episode = {
   script: string | null;
   script_polished: string | null;
   script_polished_preview: string | null;
+  script_score: number | null;
+  script_score_detail: Record<string, unknown> | null;
   audio_url: string | null;
   duration_sec: number | null;
   published_at: string | null;
 };
 
 const EPISODE_SELECT_COLUMNS =
-  "id, master_id, lang, status, title, description, script, script_polished, script_polished_preview, audio_url, duration_sec, published_at";
+  "id, master_id, lang, status, title, description, script, script_polished, script_polished_preview, script_score, script_score_detail, audio_url, duration_sec, published_at";
 
 const normalizeScript = (value: string | null | undefined): string => {
   return typeof value === "string" ? value.trim() : "";
