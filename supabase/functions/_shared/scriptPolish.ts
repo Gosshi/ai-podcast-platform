@@ -40,6 +40,40 @@ const FALSE_ENV_VALUES = new Set(["0", "false", "no", "off"]);
 const URL_PATTERN = /https?:\/\/[^\s)\]}>]+/gi;
 const WWW_URL_PATTERN = /\bwww\.[^\s)\]}>]+/gi;
 const SOURCES_SECTION_PATTERN = /^SOURCES(?:_FOR_UI)?$/i;
+const JA_NUMERIC_REFERENCE_PATTERN =
+  /\b\d[\d,./-]*(?:%|％|倍|人|円|ドル|万|億|兆|年|月|日|時間|分|秒|件|社|台|GB|MB|万人|万件|万台)?\b/g;
+const JA_ORG_REFERENCE_PATTERN = /[一-龯々]{2,}(?:省|庁|大学|研究所|機構|銀行|政府|委員会|協会|企業|社|市|県|都|府)/g;
+const JA_QUOTED_REFERENCE_PATTERN = /「[^」]{2,40}」/g;
+const EN_NUMERIC_REFERENCE_PATTERN =
+  /\b\d[\d,./-]*(?:%|percent|million|billion|trillion|k|m|bn|year|years|month|months|day|days|hour|hours)?\b/gi;
+const EN_PROPER_NOUN_PATTERN = /\b[A-Z][A-Za-z0-9&.+-]{2,}(?:\s+[A-Z][A-Za-z0-9&.+-]{2,}){0,3}\b/g;
+const EN_ABBREVIATION_PATTERN = /\b[A-Z]{2,6}\b/g;
+const ROMAN_REFERENCE_PATTERN = /\b[A-Z][A-Za-z0-9&.+-]{1,}(?:\s+[A-Z][A-Za-z0-9&.+-]{1,}){0,3}\b/g;
+const EN_PROPER_NOUN_STOPWORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "as",
+  "at",
+  "but",
+  "for",
+  "from",
+  "if",
+  "in",
+  "into",
+  "it",
+  "of",
+  "on",
+  "or",
+  "so",
+  "than",
+  "that",
+  "the",
+  "this",
+  "to",
+  "we",
+  "with"
+]);
 
 const toStringValue = (value: unknown): string => {
   if (typeof value !== "string") {
@@ -173,6 +207,79 @@ export const countWords = (value: string): number => {
     .split(/\s+/)
     .map((token) => token.trim())
     .filter((token) => /[A-Za-z0-9]/.test(token)).length;
+};
+
+const countUniqueMatches = (
+  value: string,
+  pattern: RegExp,
+  normalize?: (token: string) => string
+): number => {
+  const unique = new Set<string>();
+
+  for (const matched of value.matchAll(pattern)) {
+    const token = matched[0]?.trim();
+    if (!token) {
+      continue;
+    }
+    const normalized = normalize ? normalize(token) : token.toLowerCase();
+    if (!normalized) {
+      continue;
+    }
+    unique.add(normalized);
+  }
+
+  return unique.size;
+};
+
+const countJaConcreteReferences = (value: string): number => {
+  return (
+    countUniqueMatches(value, JA_NUMERIC_REFERENCE_PATTERN) +
+    countUniqueMatches(value, JA_ORG_REFERENCE_PATTERN) +
+    countUniqueMatches(value, JA_QUOTED_REFERENCE_PATTERN) +
+    countUniqueMatches(value, ROMAN_REFERENCE_PATTERN)
+  );
+};
+
+const countEnConcreteReferences = (value: string): number => {
+  const properNounCount = countUniqueMatches(value, EN_PROPER_NOUN_PATTERN, (token) => {
+    const normalized = token.trim().toLowerCase();
+    return EN_PROPER_NOUN_STOPWORDS.has(normalized) ? "" : normalized;
+  });
+
+  return (
+    countUniqueMatches(value, EN_NUMERIC_REFERENCE_PATTERN) +
+    properNounCount +
+    countUniqueMatches(value, EN_ABBREVIATION_PATTERN)
+  );
+};
+
+export type DeepDiveConcreteCheck = {
+  ok: boolean;
+  minRequired: number;
+  counts: [number, number, number];
+  failingIndices: number[];
+};
+
+export const checkDeepDiveConcreteReferences = (
+  lang: PolishLang,
+  deepDive: [string, string, string]
+): DeepDiveConcreteCheck => {
+  const minRequired = 2;
+  const counts = deepDive.map((section) => {
+    const normalized = collapseWhitespace(section);
+    return lang === "ja" ? countJaConcreteReferences(normalized) : countEnConcreteReferences(normalized);
+  }) as [number, number, number];
+
+  const failingIndices = counts
+    .map((count, index) => (count < minRequired ? index : -1))
+    .filter((index) => index >= 0);
+
+  return {
+    ok: failingIndices.length === 0,
+    minRequired,
+    counts,
+    failingIndices
+  };
 };
 
 export const requestPolishJsonFromOpenAi = async (params: {

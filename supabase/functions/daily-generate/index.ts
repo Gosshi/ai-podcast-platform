@@ -157,6 +157,16 @@ type ScriptNormalizationAudit = {
   changed: boolean;
 };
 
+type ScriptScoreSnapshot = {
+  score: number | null;
+  depth: number | null;
+  clarity: number | null;
+  repetition: number | null;
+  concreteness: number | null;
+  broadcast_readiness: number | null;
+  warning: boolean;
+};
+
 const BASE_ORDERED_STEPS = ["plan-topics", "write-script-ja", "expand-script-ja"] as const;
 
 const MAX_TREND_ITEMS = 30;
@@ -965,6 +975,16 @@ const readNumberField = (source: InvokeResult, keys: string[]): number | null =>
   return null;
 };
 
+const readDecimalField = (source: InvokeResult, keys: string[]): number | null => {
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return Math.min(10, Math.max(0, Number(value.toFixed(2))));
+    }
+  }
+  return null;
+};
+
 const readRecordField = (source: InvokeResult, key: string): Record<string, unknown> | null => {
   const value = source[key];
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -988,6 +1008,18 @@ const readNormalizationMetric = (source: InvokeResult, key: string): number => {
 const readBooleanField = (source: InvokeResult, key: string): boolean => {
   const value = source[key];
   return typeof value === "boolean" ? value : false;
+};
+
+const readScriptScoreSnapshot = (source: InvokeResult): ScriptScoreSnapshot => {
+  return {
+    score: readDecimalField(source, ["score"]),
+    depth: readDecimalField(source, ["depth"]),
+    clarity: readDecimalField(source, ["clarity"]),
+    repetition: readDecimalField(source, ["repetition"]),
+    concreteness: readDecimalField(source, ["concreteness"]),
+    broadcast_readiness: readDecimalField(source, ["broadcast_readiness"]),
+    warning: readBooleanField(source, "warning")
+  };
 };
 
 const readPlanTrendItems = (plan: InvokeResult): TrendItem[] => {
@@ -1382,6 +1414,26 @@ Deno.serve(async (req) => {
       lettersMarkedUsed = true;
     }
 
+    const jaScore = readScriptScoreSnapshot(polishJa);
+    const enScore = skipTts ? null : readScriptScoreSnapshot(polishEn);
+    const scoreCandidates = [jaScore.score, enScore?.score ?? null].filter(
+      (value): value is number => typeof value === "number" && Number.isFinite(value)
+    );
+    const scriptQualityScore =
+      scoreCandidates.length > 0
+        ? Number((scoreCandidates.reduce((sum, value) => sum + value, 0) / scoreCandidates.length).toFixed(2))
+        : null;
+    const scriptQualityWarning =
+      jaScore.warning ||
+      Boolean(enScore?.warning) ||
+      (typeof scriptQualityScore === "number" && scriptQualityScore < 8);
+    const scriptQualitySummary = {
+      score: scriptQualityScore,
+      warning: scriptQualityWarning,
+      ja: jaScore,
+      en: enScore
+    };
+
     await finishRun(runId, {
       step: "daily-generate",
       episodeDate,
@@ -1403,6 +1455,7 @@ Deno.serve(async (req) => {
       digest_used_count: digestUsedCount,
       digest_filtered_count: digestFilteredCount,
       digest_category_distribution: digestCategoryDistribution,
+      script_quality_score: scriptQualitySummary,
       scriptMetrics,
       estimatedDurationSec,
       scriptGate: {
@@ -1443,6 +1496,7 @@ Deno.serve(async (req) => {
       digestUsedCount,
       digestFilteredCount,
       digestCategoryDistribution,
+      scriptQualityScore: scriptQualitySummary,
       scriptMetrics,
       estimatedDurationSec,
       scriptGate: {
