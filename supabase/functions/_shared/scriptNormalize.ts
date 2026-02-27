@@ -43,6 +43,8 @@ const HTML_ENTITIES: Record<string, string> = {
 };
 
 const SOURCES_SECTION_PATTERN = /\[(SOURCES(?:_FOR_UI)?)\]([\s\S]*?)(?=\n\[[^\]]+\]\s*\n?|$)/gi;
+const DEDUPE_PROTECTED_LINE_PATTERN =
+  /^(?:\d+\.\s|(?:\d+本目)|事実:|意味:|あなたの行動:|[1-7]\.\s*(?:何が起きたか|現在の立ち位置|リスク|チャンス|今日の判断|判断期限|監視ポイント))/u;
 
 const protectSourceUrls = (value: string): { text: string; tokenMap: Map<string, string> } => {
   let cursor = 0;
@@ -162,6 +164,12 @@ export const dedupeSimilarLines = (
         kept.push("");
         keptNormalized.push("");
       }
+      continue;
+    }
+
+    if (DEDUPE_PROTECTED_LINE_PATTERN.test(trimmed)) {
+      kept.push(trimmed);
+      keptNormalized.push("");
       continue;
     }
 

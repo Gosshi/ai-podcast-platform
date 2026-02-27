@@ -1,0 +1,11 @@
+[Check 1] Forbidden terms in sample script
+OK: none
+
+[Check 2] DeepDive decision lines ending
+19:5. 今日の判断（個人視点）: 今日は課金しない。無料枠で30分だけ試し、合わなければ即停止する。あなたはどうするか。
+31:5. 今日の判断（個人視点）: 今日はDisneyに使う時間を30分に固定し、追加課金は見送る。あなたはどうするか。
+42:5. 今日の判断（個人視点）: 今日はNetflixに使う時間を30分に固定し、追加課金は見送る。あなたはどうするか。
+count=3
+
+[Check 3] QuickNews allowed tags only
+OK: only allowed tags

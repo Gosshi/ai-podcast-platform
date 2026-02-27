@@ -1,6 +1,11 @@
 # ai-podcast-platform
 
-Staging 用の AI Podcast Platform 初期スキャフォールドです。
+個人の時間とお金の最適化を支援する、意思決定支援型 AI Podcast Platform です。
+
+## Product Concept
+- ブランド: `15分で、今日の“時間とお金”の使い方を決めるニュース`
+- 提供価値: 解説ではなく、個人が「今日どう行動するか」を決める判断支援
+- 対象: 忙しい社会人 / サブスク整理層 / エンタメに時間を使いすぎたくない人
 
 ## Stack
 - Next.js (App Router)
@@ -44,9 +49,12 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - `plan-topics` は `editor-in-chief` ロールで `trend digest` を作成し、`main_topics(3) / quick_news(6) / letters / ending` を返す
 - `trend digest` は HTML/URL を除去し、`cleanedTitle / whatHappened / whyItMatters / toneTag` を生成して planning に利用する
 - `write-script-ja` は入力 trend/letters を sanitize（HTML/entity/URL/placeholder除去）し、`OP / HEADLINE / DEEPDIVE x3 / QUICK NEWS x6 / LETTERS / OUTRO / SOURCES` の固定構造で生成する
+- `write-script-ja` は判断視点を個人の時間とお金に限定し、DeepDiveの⑤⑥⑦を `今日の判断（個人視点） / 判断期限（個人の行動期限） / 監視ポイント（個人が見るべき数値）` として生成する
+- `write-script-ja` は `予算配分 / 媒体配分 / 事業者視点 / 業界戦略 / 媒体再設計` を本文で禁止し、QuickNewsタグを `【今使う】/【今使わない】/【監視】` に固定する
 - `write-script-ja` は本文から URL を除去し、URL は `SOURCES` セクションにのみ保持する（`SOURCES_FOR_UI` には `trend_item_id` を保持）
 - `write-script-ja` は `SCRIPT_MIN_CHARS_JA` 以上（推奨 3500〜6000 chars）を満たすように DeepDive/QuickNews の情報密度を調整し、重複行と `補足N` 形式を禁止する
 - `polish-script-ja` / `polish-script-en` は OpenAI で「rewrite + expand」を実行し、JSON schema 固定で受け取った結果を `script_polished` / `script_polished_preview` に保存する
+- `polish-script-ja` は OP固定文言（「この番組はあなたの時間とお金を守る」「解説ではなく意思決定支援」）と個人最適化ルールを維持し、各判断文を「あなたはどうするか」で締める
 - polish は DeepDive ごとに concrete reference（数値/固有名詞）を最低2件要求し、不足時は最大1回だけ再生成する
 - polish prompt は section tone を分離する（OP: conversational, HEADLINE: fast-paced, DEEPDIVE: analytical, QUICK NEWS: energetic, LETTERS: empathetic, OUTRO: forward-looking）
 - polish 分量ゲートは JA 最低 `4500` chars、EN 最低 `1800` words（未達時はフォールバック）
