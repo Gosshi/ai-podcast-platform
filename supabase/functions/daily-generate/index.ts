@@ -1174,7 +1174,7 @@ Deno.serve(async (req) => {
   let digestMetricsForFailure: Record<string, unknown> = {};
 
   try {
-    const latestEpisodeDate = await findLatestEpisodeDate();
+    const latestEpisodeDate = await findLatestEpisodeDate({ genre });
     const lastEpisodeDate = latestEpisodeDate.date;
     const shouldSkip = shouldSkipGenerationByInterval({
       requestedEpisodeDate,
@@ -1207,6 +1207,7 @@ Deno.serve(async (req) => {
         ok: true,
         runId,
         skipped: true,
+        genre,
         reason,
         intervalDays,
         allowedGenres,

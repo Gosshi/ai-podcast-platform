@@ -43,6 +43,10 @@ const toUtcDateTimestamp = (value: string): number | null => {
   return Date.UTC(parsed.year, parsed.month - 1, parsed.day);
 };
 
+const normalizeGenreKey = (value: string): string => {
+  return value.trim().toLowerCase();
+};
+
 export const resolveGenerateIntervalDays = (
   rawValue: string | undefined,
   defaultValue = 2
@@ -103,3 +107,20 @@ export const shouldSkipGenerationByInterval = (params: {
   return diffDays < params.intervalDays;
 };
 
+export const shouldSkipGenerationByGenreInterval = (params: {
+  requestedEpisodeDate: string;
+  requestedGenre: string;
+  lastEpisodeDateByGenre: Record<string, string | null | undefined>;
+  intervalDays: number;
+  force: boolean;
+}): boolean => {
+  const normalizedGenre = normalizeGenreKey(params.requestedGenre);
+  const lastEpisodeDate = params.lastEpisodeDateByGenre[normalizedGenre] ?? null;
+
+  return shouldSkipGenerationByInterval({
+    requestedEpisodeDate: params.requestedEpisodeDate,
+    lastEpisodeDate,
+    intervalDays: params.intervalDays,
+    force: params.force
+  });
+};

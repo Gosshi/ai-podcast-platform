@@ -81,6 +81,10 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 9. `audio_url` が `/audio/<episodeId>.<lang>.<audioVersion>.<ext>` なら `/episodes` で再生可能。
 10. ローカル検証専用として `--no-verify-jwt` を使用。staging では通常どおり Authorization を付けて実行する。
 
+### Genre Interval Example
+- run: `curl -i -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H "Content-Type: application/json" -d '{"episodeDate":"2026-02-20","genre":"entertainment"}'`
+- skip (same genre, interval未達): `curl -i -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H "Content-Type: application/json" -d '{"episodeDate":"2026-02-21","genre":"entertainment"}'`
+
 ### Scheduler (staging)
 - GitHub Actions: `.github/workflows/scheduled-daily-publish.yml`
 - cron: `0 22 * * *`（UTC 22:00 = JST 翌日 07:00）
