@@ -6,6 +6,7 @@ export type EpisodeRow = {
   id: string;
   master_id: string | null;
   lang: EpisodeLang;
+  genre: string | null;
   status: EpisodeStatus;
   title: string | null;
   script: string | null;

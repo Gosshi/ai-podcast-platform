@@ -43,9 +43,11 @@ import {
   sanitizeSpeechText,
   summarizeForSpeech
 } from "../_shared/speechText.ts";
+import { normalizeGenre } from "../../../src/lib/genre/allowedGenres.ts";
 
 type RequestBody = {
   episodeDate?: string;
+  genre?: string;
   idempotencyKey?: string;
   topic?: {
     title?: string;
@@ -1020,6 +1022,7 @@ Deno.serve(async (req) => {
 
   const body = (await req.json().catch(() => ({}))) as RequestBody;
   const episodeDate = body.episodeDate ?? new Date().toISOString().slice(0, 10);
+  const genre = typeof body.genre === "string" ? normalizeGenre(body.genre) || "general" : "general";
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
   const topicTitle = resolveTopicTitle(body.topic?.title, episodeDate);
   const trendItems = normalizeTrendItems(body.trendItems);
@@ -1078,6 +1081,7 @@ Deno.serve(async (req) => {
     step: "write-script-ja",
     role: "editor-in-chief",
     episodeDate,
+    genre,
     idempotencyKey,
     title,
     trendItemsCount: trendItems.length,
@@ -1126,7 +1130,8 @@ Deno.serve(async (req) => {
         title,
         description,
         script: finalScript,
-        episodeDate
+        episodeDate,
+        genre
       });
       episode = await updateEpisode(episode.id, { duration_sec: finalEstimatedDurationSec });
     } else if (!episode.script || episode.status === "failed" || episode.script !== finalScript) {
@@ -1136,7 +1141,8 @@ Deno.serve(async (req) => {
         description,
         status: "draft",
         duration_sec: finalEstimatedDurationSec,
-        episode_date: episodeDate
+        episode_date: episodeDate,
+        genre
       });
     } else {
       noOp = true;
@@ -1152,6 +1158,7 @@ Deno.serve(async (req) => {
     return jsonResponse({
       ok: true,
       episodeDate,
+      genre,
       idempotencyKey,
       episodeId: episode.id,
       title: episode.title,

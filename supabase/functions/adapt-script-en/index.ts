@@ -10,9 +10,11 @@ import {
   assertNoBadTokens,
   sanitizeScriptText
 } from "../_shared/scriptSanitizer.ts";
+import { normalizeGenre } from "../../../src/lib/genre/allowedGenres.ts";
 
 type RequestBody = {
   episodeDate?: string;
+  genre?: string;
   idempotencyKey?: string;
   masterEpisodeId?: string;
 };
@@ -290,6 +292,8 @@ Deno.serve(async (req) => {
 
   const body = (await req.json().catch(() => ({}))) as RequestBody;
   const episodeDate = body.episodeDate ?? new Date().toISOString().slice(0, 10);
+  const requestedGenre =
+    typeof body.genre === "string" ? normalizeGenre(body.genre) || "general" : null;
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
 
   if (!body.masterEpisodeId) {
@@ -299,12 +303,14 @@ Deno.serve(async (req) => {
   const runId = await startRun("adapt-script-en", {
     step: "adapt-script-en",
     episodeDate,
+    genre: requestedGenre,
     idempotencyKey,
     masterEpisodeId: body.masterEpisodeId
   });
 
   try {
     const ja = await fetchEpisodeById(body.masterEpisodeId);
+    const genre = requestedGenre ?? (typeof ja.genre === "string" ? normalizeGenre(ja.genre) : "general");
     const title = (ja.title ?? `Episode ${episodeDate}`)
       .replace(/\s*\(JA\)\s*$/, "")
       .concat(" (EN)");
@@ -320,7 +326,8 @@ Deno.serve(async (req) => {
         title,
         description,
         script,
-        episodeDate
+        episodeDate,
+        genre
       });
     } else if (!en.script || en.status === "failed" || en.script !== script) {
       await updateEpisode(en.id, { status: "generating" });
@@ -328,13 +335,15 @@ Deno.serve(async (req) => {
         script,
         description,
         status: "draft",
-        episode_date: episodeDate
+        episode_date: episodeDate,
+        genre
       });
     }
 
     await finishRun(runId, {
       step: "adapt-script-en",
       episodeDate,
+      genre,
       idempotencyKey,
       masterEpisodeId: ja.id,
       episodeId: en.id,
@@ -344,6 +353,7 @@ Deno.serve(async (req) => {
     return jsonResponse({
       ok: true,
       episodeDate,
+      genre,
       idempotencyKey,
       masterEpisodeId: ja.id,
       episodeId: en.id,
@@ -354,6 +364,7 @@ Deno.serve(async (req) => {
     await failRun(runId, message, {
       step: "adapt-script-en",
       episodeDate,
+      genre: requestedGenre,
       idempotencyKey,
       masterEpisodeId: body.masterEpisodeId
     });
