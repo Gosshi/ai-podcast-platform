@@ -1,4 +1,5 @@
 import { toJstDateString } from "./dailyGenerateInterval.ts";
+import { normalizeGenre } from "../../../src/lib/genre/allowedGenres.ts";
 
 const EPISODE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -21,11 +22,6 @@ const isValidEpisodeDate = (value: string): boolean => {
     parsed.getUTCMonth() === month - 1 &&
     parsed.getUTCDate() === day
   );
-};
-
-const normalizeGenre = (value: string | undefined): string => {
-  const trimmed = (value ?? "").trim();
-  return trimmed.length > 0 ? trimmed : "general";
 };
 
 export type DailyGenerateRequestEcho = {
@@ -62,7 +58,8 @@ export const parseDailyGenerateRequest = (
   const forceRaw = record.force;
 
   const episodeDate = typeof episodeDateRaw === "string" ? episodeDateRaw : defaultEpisodeDate;
-  const genre = typeof genreRaw === "string" ? normalizeGenre(genreRaw) : "general";
+  const genre =
+    typeof genreRaw === "string" ? normalizeGenre(genreRaw) || "general" : "general";
   const force = typeof forceRaw === "boolean" ? forceRaw : false;
   const requestEcho: DailyGenerateRequestEcho = {
     episodeDate,
@@ -118,4 +115,3 @@ export const parseDailyGenerateRequest = (
     requestEcho
   };
 };
-

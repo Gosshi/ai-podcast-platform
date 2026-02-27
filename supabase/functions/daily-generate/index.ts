@@ -13,6 +13,10 @@ import {
 } from "../_shared/dailyGenerateInterval.ts";
 import { parseDailyGenerateRequest } from "../_shared/dailyGenerateRequest.ts";
 import {
+  isGenreAllowed,
+  resolveAllowedGenres
+} from "../../../src/lib/genre/allowedGenres.ts";
+import {
   REQUIRED_ENTERTAINMENT_CATEGORIES,
   isEntertainmentTrendCategory,
   isHardTrendCategory,
@@ -1113,6 +1117,17 @@ Deno.serve(async (req) => {
   }
 
   const { episodeDate, genre, force, requestEcho } = parsedRequest;
+  const allowedGenres = resolveAllowedGenres(Deno.env.get("ALLOWED_GENRES"));
+  if (!isGenreAllowed(genre, allowedGenres)) {
+    return jsonResponse({
+      ok: false,
+      error: "validation_error",
+      message: "genre is not allowed",
+      allowedGenres,
+      requestEcho
+    }, 400);
+  }
+
   const requestedEpisodeDate = episodeDate;
   const intervalDays = resolveGenerateIntervalDays(Deno.env.get("GENERATE_INTERVAL_DAYS"), 2);
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
@@ -1146,6 +1161,7 @@ Deno.serve(async (req) => {
     idempotencyKey,
     force,
     intervalDays,
+    allowedGenres,
     requestEcho,
     decision: "run",
     orderedSteps,
@@ -1180,6 +1196,7 @@ Deno.serve(async (req) => {
         scriptPolishEnabled,
         skipTts,
         intervalDays,
+        allowedGenres,
         lastEpisodeDate,
         lastEpisodeDateSource: latestEpisodeDate.source,
         requestedEpisodeDate,
@@ -1192,6 +1209,7 @@ Deno.serve(async (req) => {
         skipped: true,
         reason,
         intervalDays,
+        allowedGenres,
         lastEpisodeDate,
         requestedEpisodeDate,
         requestEcho
@@ -1518,6 +1536,7 @@ Deno.serve(async (req) => {
       idempotencyKey,
       force,
       intervalDays,
+      allowedGenres,
       requestEcho,
       decision: "run",
       orderedSteps,
@@ -1565,6 +1584,7 @@ Deno.serve(async (req) => {
       idempotencyKey,
       force,
       intervalDays,
+      allowedGenres,
       requestEcho,
       scriptPolishEnabled,
       skipTts,
@@ -1610,6 +1630,7 @@ Deno.serve(async (req) => {
       idempotencyKey,
       force,
       intervalDays,
+      allowedGenres,
       requestEcho,
       decision: "run",
       orderedSteps,

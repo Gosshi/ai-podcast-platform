@@ -5,9 +5,11 @@ import {
   findPublishedEpisodeByJstDate,
   updateEpisode
 } from "../_shared/episodes.ts";
+import { normalizeGenre } from "../../../src/lib/genre/allowedGenres.ts";
 
 type RequestBody = {
   episodeDate?: string;
+  genre?: string;
   idempotencyKey?: string;
   episodeIdJa?: string;
   episodeIdEn?: string;
@@ -20,6 +22,8 @@ Deno.serve(async (req) => {
 
   const body = (await req.json().catch(() => ({}))) as RequestBody;
   const episodeDate = body.episodeDate ?? new Date().toISOString().slice(0, 10);
+  const requestedGenre =
+    typeof body.genre === "string" ? normalizeGenre(body.genre) || "general" : null;
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
 
   if (!body.episodeIdJa || !body.episodeIdEn) {
@@ -29,6 +33,7 @@ Deno.serve(async (req) => {
   const runId = await startRun("publish", {
     step: "publish",
     episodeDate,
+    genre: requestedGenre,
     idempotencyKey,
     episodeIdJa: body.episodeIdJa,
     episodeIdEn: body.episodeIdEn
@@ -37,6 +42,9 @@ Deno.serve(async (req) => {
   try {
     const ja = await fetchEpisodeById(body.episodeIdJa);
     const en = await fetchEpisodeById(body.episodeIdEn);
+    const genre =
+      requestedGenre ??
+      (typeof ja.genre === "string" ? normalizeGenre(ja.genre) : "general");
 
     if (!ja.audio_url || !en.audio_url) {
       throw new Error("audio_url must exist for both ja/en episodes before publish");
@@ -59,6 +67,7 @@ Deno.serve(async (req) => {
       await finishRun(runId, {
         step: "publish",
         episodeDate,
+        genre,
         idempotencyKey,
         episodeIdJa: ja.id,
         episodeIdEn: en.id,
@@ -71,6 +80,7 @@ Deno.serve(async (req) => {
       return jsonResponse({
         ok: true,
         episodeDate,
+        genre,
         episodeIdJa: ja.id,
         episodeIdEn: en.id,
         noOp: true,
@@ -87,7 +97,8 @@ Deno.serve(async (req) => {
         : await updateEpisode(ja.id, {
             status: "published",
             published_at: nowIso,
-            episode_date: episodeDate
+            episode_date: episodeDate,
+            genre
           });
 
     const publishedEn =
@@ -96,12 +107,14 @@ Deno.serve(async (req) => {
         : await updateEpisode(en.id, {
             status: "published",
             published_at: nowIso,
-            episode_date: episodeDate
+            episode_date: episodeDate,
+            genre
           });
 
     await finishRun(runId, {
       step: "publish",
       episodeDate,
+      genre,
       idempotencyKey,
       episodeIdJa: publishedJa.id,
       episodeIdEn: publishedEn.id,
@@ -114,6 +127,7 @@ Deno.serve(async (req) => {
     return jsonResponse({
       ok: true,
       episodeDate,
+      genre,
       episodeIdJa: publishedJa.id,
       episodeIdEn: publishedEn.id,
       statusJa: publishedJa.status,
@@ -126,6 +140,7 @@ Deno.serve(async (req) => {
     await failRun(runId, message, {
       step: "publish",
       episodeDate,
+      genre: requestedGenre,
       idempotencyKey,
       episodeIdJa: body.episodeIdJa,
       episodeIdEn: body.episodeIdEn

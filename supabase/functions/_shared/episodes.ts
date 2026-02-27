@@ -5,6 +5,7 @@ export type Episode = {
   id: string;
   master_id: string | null;
   lang: "ja" | "en";
+  genre: string | null;
   status: "draft" | "queued" | "generating" | "ready" | "published" | "failed";
   title: string | null;
   description: string | null;
@@ -20,7 +21,7 @@ export type Episode = {
 };
 
 const EPISODE_SELECT_COLUMNS =
-  "id, master_id, lang, status, title, description, script, script_polished, script_polished_preview, script_score, script_score_detail, audio_url, duration_sec, episode_date, published_at";
+  "id, master_id, lang, genre, status, title, description, script, script_polished, script_polished_preview, script_score, script_score_detail, audio_url, duration_sec, episode_date, published_at";
 
 const normalizeScript = (value: string | null | undefined): string => {
   return typeof value === "string" ? value.trim() : "";
@@ -151,6 +152,7 @@ export const insertJapaneseEpisode = async (values: {
   description: string;
   script: string;
   episodeDate?: string;
+  genre?: string;
 }): Promise<Episode> => {
   const { data, error } = await supabaseAdmin
     .from("episodes")
@@ -160,7 +162,8 @@ export const insertJapaneseEpisode = async (values: {
       title: values.title,
       description: values.description,
       script: values.script,
-      episode_date: values.episodeDate ?? null
+      episode_date: values.episodeDate ?? null,
+      genre: values.genre ?? null
     })
     .select(EPISODE_SELECT_COLUMNS)
     .single();
@@ -178,6 +181,7 @@ export const insertEnglishEpisode = async (values: {
   description: string;
   script: string;
   episodeDate?: string;
+  genre?: string;
 }): Promise<Episode> => {
   const { data, error } = await supabaseAdmin
     .from("episodes")
@@ -188,7 +192,8 @@ export const insertEnglishEpisode = async (values: {
       title: values.title,
       description: values.description,
       script: values.script,
-      episode_date: values.episodeDate ?? null
+      episode_date: values.episodeDate ?? null,
+      genre: values.genre ?? null
     })
     .select(EPISODE_SELECT_COLUMNS)
     .single();
@@ -205,14 +210,19 @@ export type LatestEpisodeDate = {
   source: "published_at" | "episode_date" | "none";
 };
 
-export const findLatestEpisodeDate = async (): Promise<LatestEpisodeDate> => {
-  const { data: publishedRow, error: publishedError } = await supabaseAdmin
+export const findLatestEpisodeDate = async (params?: { genre?: string }): Promise<LatestEpisodeDate> => {
+  let publishedQuery = supabaseAdmin
     .from("episodes")
     .select("published_at")
     .not("published_at", "is", null)
     .order("published_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+
+  if (params?.genre) {
+    publishedQuery = publishedQuery.eq("genre", params.genre);
+  }
+
+  const { data: publishedRow, error: publishedError } = await publishedQuery.maybeSingle();
 
   if (publishedError) {
     throw publishedError;
@@ -228,13 +238,18 @@ export const findLatestEpisodeDate = async (): Promise<LatestEpisodeDate> => {
     };
   }
 
-  const { data: datedRow, error: datedError } = await supabaseAdmin
+  let datedQuery = supabaseAdmin
     .from("episodes")
     .select("episode_date")
     .not("episode_date", "is", null)
     .order("episode_date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+
+  if (params?.genre) {
+    datedQuery = datedQuery.eq("genre", params.genre);
+  }
+
+  const { data: datedRow, error: datedError } = await datedQuery.maybeSingle();
 
   if (datedError) {
     throw datedError;

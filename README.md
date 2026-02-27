@@ -63,6 +63,9 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
   - `episodeDate?: string` (`YYYY-MM-DD`, 未指定時は JST 今日)
   - `genre?: string` (未指定時は `general`)
   - `force?: boolean` (未指定時は `false`)
+- `ALLOWED_GENRES` で `daily-generate` の許可 `genre` を制御する（default: `general,entertainment,tech`）
+  - `genre` が未許可の場合は `400 validation_error` を返し、`allowedGenres` をレスポンスに含める
+- `episodes.genre` を保持し、`/episodes?genre=<value>` で絞り込み可能
 - `daily-generate` response（success / skipped / failed）には必ず `requestEcho: { episodeDate, genre, force }` を含める
 - 互換性メモ: 旧実装では `episodeDate` 未指定時に UTC 日付を使っていたため、既存運用で日付固定が必要な場合は `episodeDate` を明示指定する
 
