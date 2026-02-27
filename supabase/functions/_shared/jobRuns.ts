@@ -59,6 +59,29 @@ export const failRun = async (
   }
 };
 
+export const skipRun = async (
+  runId: string,
+  reason: string,
+  payload: Record<string, unknown>
+): Promise<void> => {
+  const { error } = await supabaseAdmin
+    .from("job_runs")
+    .update({
+      status: "skipped",
+      payload: {
+        ...payload,
+        reason
+      },
+      error: null,
+      ended_at: new Date().toISOString()
+    })
+    .eq("id", runId);
+
+  if (error) {
+    throw error;
+  }
+};
+
 export const countFailedRunsForAudioVersion = async (params: {
   jobType: string;
   episodeId: string;

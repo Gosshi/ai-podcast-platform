@@ -7,7 +7,7 @@ import styles from "./job-runs.module.css";
 
 export const dynamic = "force-dynamic";
 
-type JobStatus = "running" | "success" | "failed";
+type JobStatus = "running" | "success" | "failed" | "skipped";
 
 type JobRunRow = {
   id: string;
@@ -184,6 +184,10 @@ const resolveRunStatus = (steps: JobRunRow[]): JobStatus => {
 
   if (steps.some((step) => step.status === "running")) {
     return "running";
+  }
+
+  if (steps.length > 0 && steps.every((step) => step.status === "skipped")) {
+    return "skipped";
   }
 
   return "success";
@@ -517,6 +521,8 @@ export default async function JobRunsPage({
                                 ? styles.statusFailed
                                 : step.status === "running"
                                   ? styles.statusRunning
+                                  : step.status === "skipped"
+                                    ? styles.statusSkipped
                                   : styles.statusSuccess
                             }`.trim()}
                           >

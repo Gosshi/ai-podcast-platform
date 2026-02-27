@@ -1122,7 +1122,12 @@ Deno.serve(async (req) => {
     let noOp = false;
 
     if (!episode) {
-      episode = await insertJapaneseEpisode({ title, description, script: finalScript });
+      episode = await insertJapaneseEpisode({
+        title,
+        description,
+        script: finalScript,
+        episodeDate
+      });
       episode = await updateEpisode(episode.id, { duration_sec: finalEstimatedDurationSec });
     } else if (!episode.script || episode.status === "failed" || episode.script !== finalScript) {
       await updateEpisode(episode.id, { status: "generating" });
@@ -1130,7 +1135,8 @@ Deno.serve(async (req) => {
         script: finalScript,
         description,
         status: "draft",
-        duration_sec: finalEstimatedDurationSec
+        duration_sec: finalEstimatedDurationSec,
+        episode_date: episodeDate
       });
     } else {
       noOp = true;
