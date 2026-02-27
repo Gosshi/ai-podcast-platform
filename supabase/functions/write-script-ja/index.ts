@@ -117,6 +117,23 @@ type SummaryCompressionStats = {
   after: number;
 };
 
+type DecisionFrameId = "A" | "B" | "C" | "D";
+
+type DecisionFrameDefinition = {
+  id: DecisionFrameId;
+  label: string;
+  metric: string;
+  criteria: string;
+};
+
+type DecisionFrameEvaluation = {
+  frame: DecisionFrameDefinition;
+  decisionLine: string;
+  chanceLine: string;
+  monitorLine: string;
+  quickNewsLine: string;
+};
+
 const REQUIRED_DEEPDIVE_COUNT = 3;
 const REQUIRED_QUICKNEWS_COUNT = 6;
 const MAX_TREND_ITEMS = 20;
@@ -125,6 +142,32 @@ const SCRIPT_MIN_CHARS_FLOOR = 3500;
 const MAX_HARD_TOPICS = 1;
 const SECTION_BAD_TOKENS = ["http://", "https://", "<a href", "数式", "アンド#8217;"];
 const PERSONAL_FORBIDDEN_TERMS = ["予算配分", "媒体配分", "事業者視点", "業界戦略", "媒体再設計"];
+const DECISION_FRAMES: Record<DecisionFrameId, DecisionFrameDefinition> = {
+  A: {
+    id: "A",
+    label: "Frame A: 体験型コンテンツフレーム",
+    metric: "予想プレイ時間 ÷ 価格（補助指標: 1時間単価=価格÷予想プレイ時間）",
+    criteria: "1時間単価500円以下なら検討、800円超なら見送り"
+  },
+  B: {
+    id: "B",
+    label: "Frame B: サブスク整理フレーム",
+    metric: "月額 ÷ 月間視聴時間",
+    criteria: "600円以下は妥当、1,000円超は整理候補"
+  },
+  C: {
+    id: "C",
+    label: "Frame C: セール／衝動課金フレーム",
+    metric: "実行予定日が確定しているか",
+    criteria: "カレンダーに入らないなら買わない"
+  },
+  D: {
+    id: "D",
+    label: "Frame D: 広告ストレスフレーム",
+    metric: "広告時間 ÷ 月間視聴時間",
+    criteria: "15%超なら非広告プランを検討"
+  }
+};
 
 const HARD_CATEGORIES = new Set([
   "news",
@@ -223,7 +266,7 @@ const dedupeExactLines = (value: string): { text: string; dedupedCount: number }
     }
 
     if (
-      /^(?:導入:|What happened|具体語:|Why it matters|For you|Watch next|まとめ:|クイックニュース\d+|何が起きた:|押さえる点:|レター\d+:|事実:|意味:|あなたの行動:|\d+\.\s|\d+本目)/u
+      /^(?:導入:|What happened|具体語:|Why it matters|For you|Watch next|まとめ:|クイックニュース\d+|何が起きた:|押さえる点:|レター\d+:|事実:|意味:|判断モデル:|あなたの行動:|\d+\.\s|\d+本目)/u
         .test(trimmed)
     ) {
       kept.push(trimmed);
@@ -530,6 +573,129 @@ const resolveDeepDiveAnchors = (trend: ScriptTrendItem): string[] => {
   return anchors;
 };
 
+const roundTo = (value: number, digits: number): number => {
+  const scale = 10 ** digits;
+  return Math.round(value * scale) / scale;
+};
+
+const parseNumberToken = (raw: string | undefined): number | null => {
+  if (!raw) return null;
+  const normalized = raw.replace(/,/g, "").trim();
+  const parsed = Number.parseFloat(normalized);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed;
+};
+
+const pickMetric = (text: string, pattern: RegExp, fallback: number, min = 0.1): number => {
+  const matched = text.match(pattern);
+  const parsed = parseNumberToken(matched?.[1]);
+  if (!parsed || parsed < min) return fallback;
+  return parsed;
+};
+
+const hasCalendarSignal = (text: string): boolean => {
+  return /(\d{4}年\d{1,2}月\d{1,2}日|\d{1,2}\/\d{1,2}|今週|来週|週末|土曜|日曜|月曜|火曜|水曜|木曜|金曜|開始日)/u
+    .test(text);
+};
+
+const resolveDecisionFrame = (trend: ScriptTrendItem): DecisionFrameDefinition => {
+  const text = `${trend.broadcastTitle} ${trend.summary}`.toLowerCase();
+
+  if (/(広告|ad-supported|ad tier|ad plan|cm|commercial)/u.test(text)) {
+    return DECISION_FRAMES.D;
+  }
+  if (/(体験版|demo|steam|playtest|プレイ|ゲーム|dlc)/u.test(text)) {
+    return DECISION_FRAMES.A;
+  }
+  if (/(セール|割引|クーポン|%オフ|タイムセール|期間限定)/u.test(text)) {
+    return DECISION_FRAMES.C;
+  }
+  if (/(disney|itvx|netflix|prime|サブスク|月額|配信|見放題|連携)/u.test(text)) {
+    return DECISION_FRAMES.B;
+  }
+
+  if (trend.category === "game") return DECISION_FRAMES.A;
+  if (trend.category === "movie" || trend.category === "anime" || trend.category === "entertainment") {
+    return DECISION_FRAMES.B;
+  }
+  if (trend.category === "tech" || trend.category === "gadgets") return DECISION_FRAMES.C;
+  return DECISION_FRAMES.B;
+};
+
+const evaluateDecisionFrame = (trend: ScriptTrendItem, anchor: string): DecisionFrameEvaluation => {
+  const frame = resolveDecisionFrame(trend);
+  const text = `${trend.broadcastTitle} ${trend.summary} ${trend.concreteSignals.numbers.join(" ")}`;
+
+  if (frame.id === "A") {
+    const expectedHours = pickMetric(text, /(\d[\d,.]*)\s*(?:時間|hours?|h)/iu, 10, 1);
+    const priceYen = Math.round(pickMetric(text, /(\d[\d,]*)\s*(?:円|yen|jpy)/iu, 3000, 100));
+    const hourPerYen = roundTo(expectedHours / priceYen, 4);
+    const yenPerHour = Math.round(priceYen / expectedHours);
+    const verdict = yenPerHour <= 500
+      ? "検討可。体験版の相性が合えば購入候補に残す"
+      : yenPerHour > 800
+      ? "見送り。価格改定か配信評価の更新まで保留する"
+      : "保留。次の価格更新かレビュー確定後に再判定する";
+
+    return {
+      frame,
+      decisionLine: `${frame.label}を適用。予想プレイ時間${expectedHours}時間÷価格${priceYen}円=${hourPerYen}時間/円、1時間単価は${yenPerHour}円。基準は${frame.criteria}なので、結論は${verdict}。`,
+      chanceLine: `${anchor}は体験版で操作性と継続時間を先に測れるため、購入前に1時間単価の仮説を立てやすいです。`,
+      monitorLine: `個人が見る数値は「予想プレイ時間${expectedHours}時間」「価格${priceYen}円」「1時間単価${yenPerHour}円」の3点。単価が800円を超えたら見送りへ更新する。`,
+      quickNewsLine: `${frame.label}。${expectedHours}時間÷${priceYen}円=${hourPerYen}時間/円（1時間単価${yenPerHour}円）で判定し、500円以下なら検討、800円超は見送る。`
+    };
+  }
+
+  if (frame.id === "B") {
+    const monthlyFeeYen = Math.round(pickMetric(text, /(\d[\d,]*)\s*(?:円|yen|jpy|月額)/iu, 1200, 100));
+    const monthlyHours = pickMetric(text, /(\d[\d,.]*)\s*(?:時間|hours?|h)/iu, 3, 0.5);
+    const monthlyCostPerHour = Math.round(monthlyFeeYen / monthlyHours);
+    const verdict = monthlyCostPerHour <= 600
+      ? "妥当。既存契約を維持し、追加契約は抑制する"
+      : monthlyCostPerHour > 1000
+      ? "整理候補。未視聴が続くなら停止候補に入れる"
+      : "中間。来月の視聴実績を見て継続可否を再評価する";
+
+    return {
+      frame,
+      decisionLine: `${frame.label}を適用。月額${monthlyFeeYen}円÷月間視聴時間${monthlyHours}時間=${monthlyCostPerHour}円/時間。基準は${frame.criteria}なので、結論は${verdict}。`,
+      chanceLine: `${anchor}は視聴ログを使って月間視聴時間を見積もると、固定費の重複を削減しやすくなります。`,
+      monitorLine: `個人が見る数値は「月額${monthlyFeeYen}円」「月間視聴時間${monthlyHours}時間」「時間単価${monthlyCostPerHour}円」の3点。1,000円/時間を超えたら整理候補へ更新する。`,
+      quickNewsLine: `${frame.label}。月額${monthlyFeeYen}円÷${monthlyHours}時間=${monthlyCostPerHour}円/時間で判定し、600円以下は維持、1,000円超は整理候補にする。`
+    };
+  }
+
+  if (frame.id === "D") {
+    const adMinutes = pickMetric(text, /(\d[\d,.]*)\s*(?:分|minutes?|min)/iu, 210, 1);
+    const monthlyHours = pickMetric(text, /(\d[\d,.]*)\s*(?:時間|hours?|h)/iu, 20, 1);
+    const monthlyMinutes = Math.max(60, Math.round(monthlyHours * 60));
+    const adRatio = roundTo((adMinutes / monthlyMinutes) * 100, 1);
+    const verdict = adRatio > 15
+      ? "非広告プランを検討。視聴中断ストレスの回避を優先する"
+      : "広告プラン継続。追加支出より視聴習慣の維持を優先する";
+
+    return {
+      frame,
+      decisionLine: `${frame.label}を適用。広告時間${adMinutes}分÷月間視聴時間${monthlyMinutes}分=${adRatio}%。基準は${frame.criteria}なので、結論は${verdict}。`,
+      chanceLine: `${anchor}は広告時間を実測すると、料金差よりも視聴中断の損失を比較しやすくなります。`,
+      monitorLine: `個人が見る数値は「広告時間${adMinutes}分」「月間視聴時間${monthlyMinutes}分」「広告比率${adRatio}%」の3点。15%超で非広告プランを再検討する。`,
+      quickNewsLine: `${frame.label}。広告${adMinutes}分÷視聴${monthlyMinutes}分=${adRatio}%で判定し、15%を超えたら非広告プランを比較する。`
+    };
+  }
+
+  const calendarFixed = hasCalendarSignal(text);
+  const verdict = calendarFixed
+    ? "購入候補として維持。予定日に着手できる前提で実行する"
+    : "購入しない。開始日が確定するまで支払いを保留する";
+  return {
+    frame,
+    decisionLine: `${frame.label}を適用。実行予定日の確定状況は「${calendarFixed ? "確定" : "未確定"}」。基準は${frame.criteria}なので、結論は${verdict}。`,
+    chanceLine: `${anchor}は先に開始日を確定すると、セール価格の魅力と積み残しリスクを同時に管理できます。`,
+    monitorLine: `個人が見る条件は「カレンダー登録の有無」「セール終了時刻」「未着手本数」の3点。開始日が入らない場合は購入を見送る。`,
+    quickNewsLine: `${frame.label}。開始日が${calendarFixed ? "カレンダーに確定" : "未確定"}なので、登録できない限り買わない。`
+  };
+};
+
 const prependAnchorIfMissing = (sentence: string, anchor: string): string => {
   if (!anchor || sentence.includes(anchor)) return sentence;
   const trimmed = sentence.replace(/[。！？!?]+$/u, "");
@@ -554,11 +720,7 @@ const buildForYouLine = (trend: ScriptTrendItem, anchor: string, planImpact: str
     return ensureSentence(planImpact, "個人にとってのチャンスを整理します。", 230);
   }
 
-  return ensureSentence(
-    `${anchor}は無料で試せる範囲を先に使うと、課金前に相性を確認できます。1日30分枠を固定すると、情報収集の過剰消費を防げます。`,
-    "個人にとってのチャンスを整理します。",
-    230
-  );
+  return ensureSentence(`${anchor}の判断は、数値モデルを先に置くと衝動課金を減らせます。`, "個人にとってのチャンスを整理します。", 230);
 };
 
 const ensureDecisionEnding = (value: string): string => {
@@ -577,19 +739,8 @@ const buildPositionLine = (trend: ScriptTrendItem, anchor: string): string => {
   );
 };
 
-const buildDecisionLine = (trend: ScriptTrendItem, anchor: string): string => {
-  const combined = `${trend.broadcastTitle} ${trend.summary}`;
-  if (/(無料|体験版|値下げ|クーポン|セール)/u.test(combined)) {
-    return ensureDecisionEnding("今日は課金しない。無料枠で30分だけ試し、合わなければ即停止する");
-  }
-
-  if (/(値上げ|終了|停止|改定|課金)/u.test(combined)) {
-    return ensureDecisionEnding("今日は新規契約を増やさない。既存契約の未使用枠を1件解約候補にする");
-  }
-
-  return ensureDecisionEnding(
-    `今日は${anchor}に使う時間を30分に固定し、追加課金は見送る`
-  );
+const buildDecisionLine = (evaluation: DecisionFrameEvaluation): string => {
+  return ensureDecisionEnding(evaluation.decisionLine);
 };
 
 const buildDeadlineLine = (trend: ScriptTrendItem): string => {
@@ -607,13 +758,8 @@ const buildDeadlineLine = (trend: ScriptTrendItem): string => {
   return `${deadlineLabel}までに個人の行動を確定する。期限を超えたら見送りに固定する。`;
 };
 
-const buildMonitorLine = (trend: ScriptTrendItem): string => {
-  const metric = trend.concreteSignals.numbers[0];
-  if (metric) {
-    return `個人が見る数値は「${metric}」「1日の視聴時間30分」「追加出費1,000円」の3点。どれかを超えたら判断を更新する。`;
-  }
-
-  return "個人が見る数値は「1日の視聴時間30分」「追加出費1,000円」「未視聴本数3本」の3点。閾値を超えたら判断を更新する。";
+const buildMonitorLine = (evaluation: DecisionFrameEvaluation): string => {
+  return evaluation.monitorLine;
 };
 
 const buildOp = (topicTitle: string): string => {
@@ -667,10 +813,11 @@ const buildDeepDive = (
   const whatHappened = prependAnchorIfMissing(toNarrationSummary(whatHappenedSource, 2), primaryAnchor);
   const position = buildPositionLine(trend, primaryAnchor);
   const risk = buildWhyItMattersLine(trend, primaryAnchor, null);
-  const chance = buildForYouLine(trend, primaryAnchor, null);
-  const decision = buildDecisionLine(trend, primaryAnchor);
+  const evaluation = evaluateDecisionFrame(trend, primaryAnchor);
+  const chance = `${buildForYouLine(trend, primaryAnchor, null)} ${evaluation.chanceLine}`;
+  const decision = buildDecisionLine(evaluation);
   const deadline = buildDeadlineLine(trend);
-  const watchPoint = buildMonitorLine(trend);
+  const watchPoint = buildMonitorLine(evaluation);
 
   return limitSectionBody(
     [
@@ -685,8 +832,8 @@ const buildDeepDive = (
     ].join("\n"),
     {
       maxLines: 14,
-      maxChars: 1650,
-      maxLineChars: 220
+      maxChars: 1900,
+      maxLineChars: 280
     }
   );
 };
@@ -702,14 +849,18 @@ const resolveQuickNewsTag = (item: ScriptTrendItem): "今使う" | "今使わな
   return "監視";
 };
 
-const buildQuickNewsActionLine = (tag: "今使う" | "今使わない" | "監視", anchor: string): string => {
+const buildQuickNewsActionLine = (
+  tag: "今使う" | "今使わない" | "監視",
+  evaluation: DecisionFrameEvaluation,
+  anchor: string
+): string => {
   if (tag === "今使う") {
-    return `今日は${anchor}を20分だけ試し、追加課金はせずに相性だけ確認する。`;
+    return `今日は${anchor}を優先確認し、${evaluation.quickNewsLine}`;
   }
   if (tag === "今使わない") {
-    return `今日は${anchor}への新規支出を止め、既存サービスの未使用枠を先に整理する。`;
+    return `今日は新規支出を止める。${evaluation.quickNewsLine}`;
   }
-  return `今日は${anchor}を監視対象に置き、価格か提供範囲が動くまで時間もお金も追加しない。`;
+  return `今日は監視のみ。${evaluation.quickNewsLine}`;
 };
 
 const buildQuickNewsSection = (quickNewsItems: ScriptTrendItem[]): string => {
@@ -719,19 +870,21 @@ const buildQuickNewsSection = (quickNewsItems: ScriptTrendItem[]): string => {
     const summary = toNarrationSummary(item.summary, 1);
     const anchor = resolveDeepDiveAnchors(item)[0] ?? item.broadcastTitle;
     const tag = resolveQuickNewsTag(item);
+    const evaluation = evaluateDecisionFrame(item, anchor);
     lines.push(`${index + 1}本目。判断タグ:【${tag}】`);
     lines.push(`事実: ${summary}`);
     lines.push(`意味: ${formatPublishedAt(item.publishedAt)}時点で、${anchor}が${resolveCategoryImpact(item.category)}に直結しています。`);
-    lines.push(`あなたの行動: ${buildQuickNewsActionLine(tag, anchor)}`);
+    lines.push(`判断モデル: ${evaluation.frame.label}（指標: ${evaluation.frame.metric}）`);
+    lines.push(`あなたの行動: ${buildQuickNewsActionLine(tag, evaluation, anchor)}`);
   }
 
   lines.push("補足: QuickNewsでは、1項目ごとに使う時間の上限と追加課金の可否を決めてから次に進みます。");
   lines.push("以上、QuickNewsでした。タグが【監視】の項目は、価格と提供範囲の更新時刻だけ明日確認してください。");
 
   return limitSectionBody(lines.join("\n"), {
-    maxLines: 32,
-    maxChars: 2200,
-    maxLineChars: 220
+    maxLines: 40,
+    maxChars: 3000,
+    maxLineChars: 260
   });
 };
 
