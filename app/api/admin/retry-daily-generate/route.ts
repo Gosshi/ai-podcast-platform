@@ -15,6 +15,15 @@ const isRecord = (value: unknown): value is Record<string, unknown> => {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 };
 
+const resolveJstTodayDate = (): string => {
+  const now = new Date();
+  const shifted = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const year = shifted.getUTCFullYear();
+  const month = String(shifted.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(shifted.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const resolveSupabaseUrl = (): string | null => {
   const value = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   return value ? value.replace(/\/$/, "") : null;
@@ -57,7 +66,7 @@ export async function POST(req: NextRequest) {
   const functionsBaseUrl = resolveFunctionsBaseUrl(supabaseUrl);
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? null;
 
-  const fallbackEpisodeDate = new Date().toISOString().slice(0, 10);
+  const fallbackEpisodeDate = resolveJstTodayDate();
   const body = (await req.json().catch(() => ({}))) as unknown;
   const requestedDate = isRecord(body) && typeof body.episodeDate === "string" ? body.episodeDate : null;
   const episodeDate = requestedDate && DATE_PATTERN.test(requestedDate) ? requestedDate : fallbackEpisodeDate;

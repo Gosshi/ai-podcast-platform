@@ -11,6 +11,7 @@ import {
   resolveGenerateIntervalDays,
   shouldSkipGenerationByInterval
 } from "../_shared/dailyGenerateInterval.ts";
+import { parseDailyGenerateRequest } from "../_shared/dailyGenerateRequest.ts";
 import {
   REQUIRED_ENTERTAINMENT_CATEGORIES,
   isEntertainmentTrendCategory,
@@ -20,6 +21,7 @@ import {
 
 type RequestBody = {
   episodeDate?: string;
+  genre?: string;
   force?: boolean;
   idempotencyKey?: string;
   skipTts?: boolean;
@@ -766,6 +768,7 @@ const markLettersAsUsed = async (letters: LetterItem[]): Promise<void> => {
 const resolveTrendItems = async (
   functionsBaseUrl: string,
   episodeDate: string,
+  genre: string,
   idempotencyKey: string,
   auth?: {
     authorization?: string | null;
@@ -775,6 +778,7 @@ const resolveTrendItems = async (
   try {
     await invokeStep(functionsBaseUrl, "ingest_trends_rss", {
       episodeDate,
+      genre,
       idempotencyKey
     }, auth);
 
@@ -1098,9 +1102,18 @@ Deno.serve(async (req) => {
   }
 
   const body = (await req.json().catch(() => ({}))) as RequestBody;
-  const episodeDate = body.episodeDate ?? new Date().toISOString().slice(0, 10);
+  const parsedRequest = parseDailyGenerateRequest(body);
+  if (!parsedRequest.ok) {
+    return jsonResponse({
+      ok: false,
+      error: parsedRequest.error,
+      message: parsedRequest.message,
+      requestEcho: parsedRequest.requestEcho
+    }, parsedRequest.status);
+  }
+
+  const { episodeDate, genre, force, requestEcho } = parsedRequest;
   const requestedEpisodeDate = episodeDate;
-  const force = typeof body.force === "boolean" ? body.force : false;
   const intervalDays = resolveGenerateIntervalDays(Deno.env.get("GENERATE_INTERVAL_DAYS"), 2);
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
   const scriptGateConfig = resolveScriptGateConfig();
@@ -1129,9 +1142,12 @@ Deno.serve(async (req) => {
   const runId = await startRun("daily-generate", {
     step: "daily-generate",
     episodeDate,
+    genre,
     idempotencyKey,
     force,
     intervalDays,
+    requestEcho,
+    decision: "run",
     orderedSteps,
     scriptPolishEnabled,
     skipTts,
@@ -1155,9 +1171,11 @@ Deno.serve(async (req) => {
       await skipRun(runId, reason, {
         step: "daily-generate",
         episodeDate,
+        genre,
         idempotencyKey,
         force,
         decision: "skip",
+        requestEcho,
         orderedSteps,
         scriptPolishEnabled,
         skipTts,
@@ -1175,7 +1193,8 @@ Deno.serve(async (req) => {
         reason,
         intervalDays,
         lastEpisodeDate,
-        requestedEpisodeDate
+        requestedEpisodeDate,
+        requestEcho
       });
     }
 
@@ -1183,6 +1202,7 @@ Deno.serve(async (req) => {
     const { trendItems: trendCandidatesForPlan, usedFallback: fallbackFromDaily } = await resolveTrendItems(
       functionsBaseUrl,
       episodeDate,
+      genre,
       idempotencyKey,
       stepAuth
     );
@@ -1191,6 +1211,7 @@ Deno.serve(async (req) => {
 
     const plan = await invokeStep(functionsBaseUrl, "plan-topics", {
       episodeDate,
+      genre,
       idempotencyKey,
       trendCandidates: trendCandidatesForPlan
     }, stepAuth);
@@ -1239,6 +1260,7 @@ Deno.serve(async (req) => {
 
     const writeJa = await invokeStep(functionsBaseUrl, "write-script-ja", {
       episodeDate,
+      genre,
       idempotencyKey,
       topic: plan.topic,
       programPlan: planProgramPlan,
@@ -1267,6 +1289,7 @@ Deno.serve(async (req) => {
       expandAttempted += 1;
       const expanded = await invokeStep(functionsBaseUrl, "expand-script-ja", {
         episodeDate,
+        genre,
         idempotencyKey,
         episodeId: writeJaEpisodeId,
         attempt: expandAttempted,
@@ -1289,6 +1312,7 @@ Deno.serve(async (req) => {
     const polishJa = scriptPolishEnabled
       ? await invokeStep(functionsBaseUrl, "polish-script-ja", {
           episodeDate,
+          genre,
           idempotencyKey,
           episodeId: writeJaEpisodeId
         }, stepAuth)
@@ -1420,12 +1444,14 @@ Deno.serve(async (req) => {
     } else {
       ttsJa = await invokeStep(functionsBaseUrl, "tts-ja", {
         episodeDate,
+        genre,
         idempotencyKey,
         episodeId: writeJaEpisodeId
       }, stepAuth);
 
       adaptEn = await invokeStep(functionsBaseUrl, "adapt-script-en", {
         episodeDate,
+        genre,
         idempotencyKey,
         masterEpisodeId: writeJaEpisodeId
       }, stepAuth);
@@ -1434,6 +1460,7 @@ Deno.serve(async (req) => {
       polishEn = scriptPolishEnabled
         ? await invokeStep(functionsBaseUrl, "polish-script-en", {
             episodeDate,
+            genre,
             idempotencyKey,
             episodeId: adaptEnEpisodeId
           }, stepAuth)
@@ -1447,12 +1474,14 @@ Deno.serve(async (req) => {
 
       ttsEn = await invokeStep(functionsBaseUrl, "tts-en", {
         episodeDate,
+        genre,
         idempotencyKey,
         episodeId: adaptEnEpisodeId
       }, stepAuth);
 
       publish = await invokeStep(functionsBaseUrl, "publish", {
         episodeDate,
+        genre,
         idempotencyKey,
         episodeIdJa: ttsJa.episodeId,
         episodeIdEn: ttsEn.episodeId
@@ -1485,9 +1514,12 @@ Deno.serve(async (req) => {
     await finishRun(runId, {
       step: "daily-generate",
       episodeDate,
+      genre,
       idempotencyKey,
       force,
       intervalDays,
+      requestEcho,
+      decision: "run",
       orderedSteps,
       scriptPolishEnabled,
       skipTts,
@@ -1529,9 +1561,11 @@ Deno.serve(async (req) => {
       ok: true,
       runId,
       episodeDate,
+      genre,
       idempotencyKey,
       force,
       intervalDays,
+      requestEcho,
       scriptPolishEnabled,
       skipTts,
       trendItems,
@@ -1572,9 +1606,12 @@ Deno.serve(async (req) => {
     await failRun(runId, message, {
       step: "daily-generate",
       episodeDate,
+      genre,
       idempotencyKey,
       force,
       intervalDays,
+      requestEcho,
+      decision: "run",
       orderedSteps,
       scriptPolishEnabled,
       skipTts,
@@ -1587,6 +1624,7 @@ Deno.serve(async (req) => {
       ok: false,
       error: message,
       runId,
+      requestEcho,
       ...(failureDetails ? { details: failureDetails } : {})
     }, 500);
   }

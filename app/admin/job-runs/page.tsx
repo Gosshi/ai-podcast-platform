@@ -39,11 +39,19 @@ type SearchParams = {
   lang?: string | string[];
 };
 
+type RequestEcho = {
+  episodeDate: string;
+  genre: string;
+  force: boolean;
+};
+
 type RunGroup = {
   key: string;
   rootRunId: string | null;
   idempotencyKey: string | null;
   episodeDate: string | null;
+  requestEcho: RequestEcho | null;
+  decision: string | null;
   startedAt: string | null;
   endedAt: string | null;
   steps: JobRunRow[];
@@ -55,6 +63,8 @@ type RunGroupView = {
   rootRunId: string | null;
   idempotencyKey: string | null;
   episodeDate: string | null;
+  requestEcho: RequestEcho | null;
+  decision: string | null;
   startedAt: string | null;
   endedAt: string | null;
   status: JobStatus;
@@ -109,6 +119,15 @@ const formatElapsed = (startedAt: string | null, endedAt: string | null): string
   return `${minutes}m ${remainSeconds}s`;
 };
 
+const resolveJstTodayDate = (): string => {
+  const now = new Date();
+  const shifted = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const year = shifted.getUTCFullYear();
+  const month = String(shifted.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(shifted.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const formatPayload = (payload: unknown): string => {
   try {
     return JSON.stringify(payload ?? {}, null, 2);
@@ -146,6 +165,38 @@ const readPayloadEpisodeDate = (payload: unknown): string | null => {
   }
 
   return value;
+};
+
+const readPayloadRequestEcho = (payload: unknown): RequestEcho | null => {
+  const raw = normalizePayload(payload).requestEcho;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return null;
+  }
+
+  const record = raw as Record<string, unknown>;
+  const episodeDate = typeof record.episodeDate === "string" ? record.episodeDate : null;
+  const genre = typeof record.genre === "string" ? record.genre : null;
+  const force = typeof record.force === "boolean" ? record.force : null;
+  if (!episodeDate || !DATE_PATTERN.test(episodeDate) || !genre || force === null) {
+    return null;
+  }
+
+  return {
+    episodeDate,
+    genre,
+    force
+  };
+};
+
+const readPayloadDecision = (payload: unknown): string | null => {
+  const value = readPayloadString(payload, "decision");
+  if (!value) return null;
+  return value;
+};
+
+const formatRequestEcho = (requestEcho: RequestEcho | null): string => {
+  if (!requestEcho) return "-";
+  return `episodeDate=${requestEcho.episodeDate}, genre=${requestEcho.genre}, force=${requestEcho.force}`;
 };
 
 const collectUuids = (value: unknown, bucket: Set<string>): void => {
@@ -259,6 +310,8 @@ const buildRunGroups = (rows: JobRunRow[]): RunGroupView[] => {
         rootRunId,
         idempotencyKey,
         episodeDate,
+        requestEcho: null,
+        decision: null,
         startedAt: rowStartedAt,
         endedAt: row.ended_at,
         steps: [],
@@ -275,6 +328,16 @@ const buildRunGroups = (rows: JobRunRow[]): RunGroupView[] => {
 
     if (!group.episodeDate && episodeDate) {
       group.episodeDate = episodeDate;
+    }
+
+    const requestEcho = readPayloadRequestEcho(row.payload);
+    if (!group.requestEcho && requestEcho) {
+      group.requestEcho = requestEcho;
+    }
+
+    const decision = readPayloadDecision(row.payload);
+    if (!group.decision && decision) {
+      group.decision = decision;
     }
 
     if (!group.startedAt || toMillis(rowStartedAt) < toMillis(group.startedAt)) {
@@ -305,6 +368,8 @@ const buildRunGroups = (rows: JobRunRow[]): RunGroupView[] => {
         rootRunId: group.rootRunId,
         idempotencyKey: group.idempotencyKey,
         episodeDate: group.episodeDate,
+        requestEcho: group.requestEcho,
+        decision: group.decision,
         startedAt: group.startedAt,
         endedAt,
         status,
@@ -394,7 +459,7 @@ export default async function JobRunsPage({
     }
   }
 
-  const defaultEpisodeDate = new Date().toISOString().slice(0, 10);
+  const defaultEpisodeDate = resolveJstTodayDate();
 
   const buildHref = (status: "failed" | null): string => {
     const query = new URLSearchParams();
@@ -486,6 +551,7 @@ export default async function JobRunsPage({
                   <p>
                     {t.idempotencyKey}={group.idempotencyKey ?? "-"} / {t.episodeDate}={group.episodeDate ?? "-"}
                   </p>
+                  <p>decision={group.decision ?? "-"} / requestEcho={formatRequestEcho(group.requestEcho)}</p>
                 </div>
               </header>
 
