@@ -124,6 +124,7 @@ const MAX_LETTERS = 2;
 const SCRIPT_MIN_CHARS_FLOOR = 3500;
 const MAX_HARD_TOPICS = 1;
 const SECTION_BAD_TOKENS = ["http://", "https://", "<a href", "数式", "アンド#8217;"];
+const PERSONAL_FORBIDDEN_TERMS = ["予算配分", "媒体配分", "事業者視点", "業界戦略", "媒体再設計"];
 
 const HARD_CATEGORIES = new Set([
   "news",
@@ -221,7 +222,10 @@ const dedupeExactLines = (value: string): { text: string; dedupedCount: number }
       continue;
     }
 
-    if (/^(?:導入:|What happened|具体語:|Why it matters|For you|Watch next|まとめ:|クイックニュース\d+|何が起きた:|押さえる点:|レター\d+:)/u.test(trimmed)) {
+    if (
+      /^(?:導入:|What happened|具体語:|Why it matters|For you|Watch next|まとめ:|クイックニュース\d+|何が起きた:|押さえる点:|レター\d+:|事実:|意味:|あなたの行動:|\d+\.\s|\d+本目)/u
+        .test(trimmed)
+    ) {
       kept.push(trimmed);
       continue;
     }
@@ -489,18 +493,18 @@ const formatPublishedAt = (value: string | null): string => {
 };
 
 const CATEGORY_IMPACT_LABEL: Record<string, string> = {
-  game: "運営施策とユーザー行動",
-  movie: "配信戦略と広告設計",
-  entertainment: "視聴体験と規制対応",
-  anime: "配信編成とファン施策",
-  tech: "プロダクト導入と運用負荷",
-  gadgets: "購買判断と利用体験",
-  business: "予算配分と実務優先度",
-  economy: "価格判断とリスク管理"
+  game: "遊ぶ時間と課金判断",
+  movie: "視聴時間とサブスク整理",
+  entertainment: "時間の使い方と固定費管理",
+  anime: "視聴優先順位と課金判断",
+  tech: "導入時間と利用コスト",
+  gadgets: "購入判断と利用体験",
+  business: "個人支出と時間配分",
+  economy: "価格判断と生活防衛"
 };
 
 const resolveCategoryImpact = (category: string): string => {
-  return CATEGORY_IMPACT_LABEL[category] ?? "現場の優先順位";
+  return CATEGORY_IMPACT_LABEL[category] ?? "時間とお金の優先順位";
 };
 
 const resolveDeepDiveAnchors = (trend: ScriptTrendItem): string[] => {
@@ -534,61 +538,82 @@ const prependAnchorIfMissing = (sentence: string, anchor: string): string => {
 
 const buildWhyItMattersLine = (trend: ScriptTrendItem, anchor: string, planIntro: string | null): string => {
   if (planIntro) {
-    return ensureSentence(planIntro, "なぜ重要かを確認します。", 230);
+    return ensureSentence(planIntro, "個人にとってのリスクを確認します。", 230);
   }
 
   const dateLabel = formatPublishedAt(trend.publishedAt);
-  const metric = trend.concreteSignals.numbers[0];
-  const metricPart = metric ? `数字では${metric}が判断の分岐点です。` : "";
   return ensureSentence(
-    `${anchor}の更新は${dateLabel}時点で確認され、${resolveCategoryImpact(trend.category)}に直結します。${metricPart}`,
-    "更新の背景を確認します。",
+    `${anchor}を${dateLabel}時点で追うときは、使う時間を決めないと見出し巡回で時間を消耗しやすくなります。${resolveCategoryImpact(trend.category)}で衝動課金が増える点がリスクです。`,
+    "個人にとってのリスクを確認します。",
     230
   );
 };
 
 const buildForYouLine = (trend: ScriptTrendItem, anchor: string, planImpact: string | null): string => {
   if (planImpact) {
-    return ensureSentence(planImpact, "生活への影響を整理します。", 230);
+    return ensureSentence(planImpact, "個人にとってのチャンスを整理します。", 230);
   }
 
   return ensureSentence(
-    `${anchor}を追うときは、「今日決めること」と「様子を見ること」を先に分けます。一次情報を1本だけ固定すると、ノイズを減らして判断できます。`,
-    "生活への影響を整理します。",
+    `${anchor}は無料で試せる範囲を先に使うと、課金前に相性を確認できます。1日30分枠を固定すると、情報収集の過剰消費を防げます。`,
+    "個人にとってのチャンスを整理します。",
     230
   );
 };
 
-const buildWatchNextLine = (trend: ScriptTrendItem, anchor: string, planSupplement: string | null): string => {
-  if (planSupplement) {
-    return ensureSentence(planSupplement, "次の注目点を確認します。", 230);
-  }
+const ensureDecisionEnding = (value: string): string => {
+  const trimmed = value
+    .replace(/あなたはどうするか[。.!?！？]?$/u, "")
+    .replace(/[。.!?！？]+$/u, "")
+    .trim();
+  return `${trimmed}。あなたはどうするか。`;
+};
 
-  const secondary = resolveDeepDiveAnchors(trend).find((token) => token !== anchor) ?? "次の更新";
+const buildPositionLine = (trend: ScriptTrendItem, anchor: string): string => {
   return ensureSentence(
-    `${formatPublishedAt(trend.publishedAt)}時点の前提が維持されるか、次は${secondary}の更新を確認します。見出しより更新時刻と更新内容の差分を優先します。`,
-    "次の注目点を確認します。",
+    `${formatPublishedAt(trend.publishedAt)}時点で、${anchor}の確定情報と未確定情報を分けて確認します。確定は公開済みの事実、未確定は価格と提供範囲です。`,
+    "確定情報と未確定情報を分けて確認します。",
     230
   );
 };
 
-const buildConcreteSignalLine = (trend: ScriptTrendItem): string => {
-  const parts: string[] = [];
-  const anchors = resolveDeepDiveAnchors(trend);
-  if (anchors.length > 0) {
-    parts.push(`固有語は${anchors.slice(0, 2).join("、")}`);
-  }
-  if (trend.concreteSignals.numbers.length > 0) {
-    parts.push(`数字は${trend.concreteSignals.numbers.slice(0, 2).join("、")}`);
-  }
-  if (trend.concreteSignals.dates.length > 0) {
-    parts.push(`時点は${trend.concreteSignals.dates.slice(0, 1).join("、")}`);
+const buildDecisionLine = (trend: ScriptTrendItem, anchor: string): string => {
+  const combined = `${trend.broadcastTitle} ${trend.summary}`;
+  if (/(無料|体験版|値下げ|クーポン|セール)/u.test(combined)) {
+    return ensureDecisionEnding("今日は課金しない。無料枠で30分だけ試し、合わなければ即停止する");
   }
 
-  if (parts.length === 0) {
-    return ensureSentence("一次情報の更新差分を確認します。", "具体情報を整理します。", 180);
+  if (/(値上げ|終了|停止|改定|課金)/u.test(combined)) {
+    return ensureDecisionEnding("今日は新規契約を増やさない。既存契約の未使用枠を1件解約候補にする");
   }
-  return ensureSentence(parts.join("。"), "具体情報を整理します。", 200);
+
+  return ensureDecisionEnding(
+    `今日は${anchor}に使う時間を30分に固定し、追加課金は見送る`
+  );
+};
+
+const buildDeadlineLine = (trend: ScriptTrendItem): string => {
+  if (!trend.publishedAt) {
+    return "48時間以内に購入・契約・視聴の可否を確定する。期限を超えたら見送りに固定する。";
+  }
+
+  const base = new Date(trend.publishedAt);
+  if (Number.isNaN(base.getTime())) {
+    return "48時間以内に購入・契約・視聴の可否を確定する。期限を超えたら見送りに固定する。";
+  }
+
+  const deadline = new Date(base.getTime() + (48 * 60 * 60 * 1000));
+  const deadlineLabel = `${deadline.getUTCFullYear()}年${deadline.getUTCMonth() + 1}月${deadline.getUTCDate()}日23時59分`;
+  return `${deadlineLabel}までに個人の行動を確定する。期限を超えたら見送りに固定する。`;
+};
+
+const buildMonitorLine = (trend: ScriptTrendItem): string => {
+  const metric = trend.concreteSignals.numbers[0];
+  if (metric) {
+    return `個人が見る数値は「${metric}」「1日の視聴時間30分」「追加出費1,000円」の3点。どれかを超えたら判断を更新する。`;
+  }
+
+  return "個人が見る数値は「1日の視聴時間30分」「追加出費1,000円」「未視聴本数3本」の3点。閾値を超えたら判断を更新する。";
 };
 
 const buildOp = (topicTitle: string): string => {
@@ -596,8 +621,9 @@ const buildOp = (topicTitle: string): string => {
   return limitSectionBody(
     [
       `おはようございます。今日の番組テーマは「${sanitizeNarrationText(broadcastTopicTitle, "今日のトレンド")}」です。`,
-      "まず30秒で全体地図を確認し、そのあとDeepDiveを3本、QuickNewsを6本、最後にレターズとエンディングで締めます。",
-      "速報の熱量に引きずられないように、事実、解釈、次のアクションを分けて話します。"
+      "この番組はあなたの時間とお金を守る、意思決定支援の番組です。",
+      "解説ではなく意思決定支援として、15分で今日の使い方を決めます。",
+      "まず30秒で全体地図を確認し、そのあとDeepDiveを3本、QuickNewsを6本、最後にレターズとエンディングで締めます。"
     ].join("\n"),
     {
       maxLines: 8,
@@ -619,8 +645,8 @@ const buildHeadline = (deepDiveItems: ScriptTrendItem[], quickNewsItems: ScriptT
     [
       "HEADLINEです。今日の全体地図を30秒で確認します。",
       mainLine,
-      `QuickNewsは${quickNewsItems.length}本です。短く回しながら、なぜ話題かだけを押さえます。`,
-      "流し聞きでも追えるように、各セクションの最後で持ち帰りを一行で言い切ります。"
+      `QuickNewsは${quickNewsItems.length}本です。短く回しながら、今日使うか・使わないか・監視かを決めます。`,
+      "流し聞きでも追えるように、各セクションの最後で「あなたはどうするか」を一行で言い切ります。"
     ].join("\n"),
     {
       maxLines: 10,
@@ -639,59 +665,72 @@ const buildDeepDive = (
   const primaryAnchor = anchors[0] ?? trend.broadcastTitle;
   const whatHappenedSource = trend.summary || trend.compressedSummary;
   const whatHappened = prependAnchorIfMissing(toNarrationSummary(whatHappenedSource, 2), primaryAnchor);
-  const concreteSignals = buildConcreteSignalLine(trend);
-  const whyTopic = buildWhyItMattersLine(trend, primaryAnchor, null);
-  const lifeImpact = buildForYouLine(trend, primaryAnchor, null);
-  const watchPoint = buildWatchNextLine(trend, primaryAnchor, null);
-  const closing = ensureSentence(
-    `まとめると、${primaryAnchor}は更新順で追うと、見出しだけでは見えない判断差分が拾えます。`,
-    "まとめると、更新差分を追う視点が今日の持ち帰りです。",
-    180
-  );
+  const position = buildPositionLine(trend, primaryAnchor);
+  const risk = buildWhyItMattersLine(trend, primaryAnchor, null);
+  const chance = buildForYouLine(trend, primaryAnchor, null);
+  const decision = buildDecisionLine(trend, primaryAnchor);
+  const deadline = buildDeadlineLine(trend);
+  const watchPoint = buildMonitorLine(trend);
 
   return limitSectionBody(
     [
       `導入: DeepDive${index + 1}は「${sanitizeNarrationText(trend.broadcastTitle, `トピック${index + 1}`)}」。`,
-      `What happened（何が起きた）: ${whatHappened}`,
-      `具体語: ${concreteSignals}`,
-      `Why it matters（なぜ重要か）: ${whyTopic}`,
-      `For you（あなたへの影響）: ${lifeImpact}`,
-      `Watch next（次の注目）: ${watchPoint}`,
-      `まとめ: ${closing}`,
-      `実務メモ: ${primaryAnchor}は、確定情報・未確定情報・確認期限の3点でメモすると、次回更新時に判断を更新しやすくなります。`
+      `1. 何が起きたか（事実のみ）: ${whatHappened}`,
+      `2. 現在の立ち位置（確定情報／未確定情報）: ${position}`,
+      `3. リスク（個人視点）: ${risk}`,
+      `4. チャンス（個人視点）: ${chance}`,
+      `5. 今日の判断（個人視点）: ${decision}`,
+      `6. 判断期限（個人の行動期限）: ${deadline}`,
+      `7. 監視ポイント（個人が見るべき数値）: ${watchPoint}`
     ].join("\n"),
     {
-      maxLines: 13,
-      maxChars: 1350,
+      maxLines: 14,
+      maxChars: 1650,
       maxLineChars: 220
     }
   );
 };
 
+const resolveQuickNewsTag = (item: ScriptTrendItem): "今使う" | "今使わない" | "監視" => {
+  const text = `${item.broadcastTitle} ${item.summary}`;
+  if (/(無料|体験版|セール|値下げ|公開|配信開始|クーポン)/u.test(text)) {
+    return "今使う";
+  }
+  if (/(値上げ|終了|停止|障害|不具合|遅延)/u.test(text)) {
+    return "今使わない";
+  }
+  return "監視";
+};
+
+const buildQuickNewsActionLine = (tag: "今使う" | "今使わない" | "監視", anchor: string): string => {
+  if (tag === "今使う") {
+    return `今日は${anchor}を20分だけ試し、追加課金はせずに相性だけ確認する。`;
+  }
+  if (tag === "今使わない") {
+    return `今日は${anchor}への新規支出を止め、既存サービスの未使用枠を先に整理する。`;
+  }
+  return `今日は${anchor}を監視対象に置き、価格か提供範囲が動くまで時間もお金も追加しない。`;
+};
+
 const buildQuickNewsSection = (quickNewsItems: ScriptTrendItem[]): string => {
-  const lines: string[] = ["QuickNewsです。ここはテンポ重視で6本続けます。"];
+  const lines: string[] = ["QuickNewsです。ここはテンポ重視で6本続けます。判断タグは【今使う】【今使わない】【監視】の3つです。"];
 
   for (const [index, item] of quickNewsItems.entries()) {
     const summary = toNarrationSummary(item.summary, 1);
     const anchor = resolveDeepDiveAnchors(item)[0] ?? item.broadcastTitle;
-    const why = ensureSentence(
-      `${formatPublishedAt(item.publishedAt)}時点で更新があり、${anchor}が${resolveCategoryImpact(item.category)}に影響するためです。`,
-      "更新速度が速く、判断の材料になるためです。",
-      170
-    );
-    lines.push(
-      `クイックニュース${index + 1}: ${ensureSentence(item.broadcastTitle, `ニュース${index + 1}`, 78)}`
-    );
-    lines.push(`何が起きた: ${summary}`);
-    lines.push(`押さえる点: ${why}`);
+    const tag = resolveQuickNewsTag(item);
+    lines.push(`${index + 1}本目。判断タグ:【${tag}】`);
+    lines.push(`事実: ${summary}`);
+    lines.push(`意味: ${formatPublishedAt(item.publishedAt)}時点で、${anchor}が${resolveCategoryImpact(item.category)}に直結しています。`);
+    lines.push(`あなたの行動: ${buildQuickNewsActionLine(tag, anchor)}`);
   }
 
-  lines.push("補足: QuickNewsの段階では断定せず、明日までに確認する差分項目を一つ決めるだけで十分です。");
-  lines.push("以上、QuickNewsでした。あとで深掘りしたい項目は、タイトルと理由だけ先にメモしておくと追いやすいです。");
+  lines.push("補足: QuickNewsでは、1項目ごとに使う時間の上限と追加課金の可否を決めてから次に進みます。");
+  lines.push("以上、QuickNewsでした。タグが【監視】の項目は、価格と提供範囲の更新時刻だけ明日確認してください。");
 
   return limitSectionBody(lines.join("\n"), {
-    maxLines: 26,
-    maxChars: 1650,
+    maxLines: 32,
+    maxChars: 2200,
     maxLineChars: 220
   });
 };
@@ -806,7 +845,7 @@ const buildFallbackProgramPlan = (topicTitle: string): ProgramPlan => {
       category: "general",
       intro: `${topicTitle}で、いま何が変化しているかを短く確認します。`,
       background: "背景は一次情報の更新順に整理し、先に事実を固定します。",
-      impact: "生活側の体験と、運用側の判断コストの両方に分けて影響を確認します。",
+      impact: "生活で使う時間とお金の観点に限定して影響を確認します。",
       supplement: "次の更新で見直すべきポイントを明示し、断定を避けます。"
     })),
     quick_news: [],
@@ -857,12 +896,18 @@ const assertScriptRules = (script: string): void => {
   if (/https?:\/\//i.test(narrationOnly) || /\bwww\./i.test(narrationOnly)) {
     throw new Error("bad_tokens_detected:url_in_narration");
   }
+
+  for (const term of PERSONAL_FORBIDDEN_TERMS) {
+    if (narrationOnly.includes(term)) {
+      throw new Error(`forbidden_term_detected:${term}`);
+    }
+  }
 };
 
 const padDeepDiveForLength = (value: string, topicTitle: string): string => {
   const additions = [
     `${topicTitle}を追うときは、更新日時と引用元をセットで確認すると誤読を防げます。`,
-    "短期の盛り上がりだけで判断せず、翌日の更新で前提が変わる可能性を残しておくのが実務的です。"
+    "短期の盛り上がりだけで判断せず、翌日の更新で前提が変わる可能性を残しておくと出費の失敗を減らせます。"
   ];
   let padded = value;
   for (const addition of additions) {
@@ -943,8 +988,8 @@ const buildJapaneseScript = (params: {
 
   const minCharsTarget = Math.max(params.scriptGate.minChars, SCRIPT_MIN_CHARS_FLOOR);
   const lengthExpansionPhrases = [
-    "実務の観点では、同じ話題でも前提条件の差分を先に整理しておくと、翌日の更新に追従しやすくなります。",
-    "判断前に、更新主体・対象範囲・確認期限の三点を一行で並べると、関係者との認識ズレを減らせます。",
+    "個人の観点では、同じ話題でも前提条件の差分を先に整理しておくと、翌日の更新に追従しやすくなります。",
+    "判断前に、更新主体・対象範囲・確認期限の三点を一行で並べると、迷いによる時間ロスを減らせます。",
     "確定情報と未確定情報を分け、未確定側には保留条件を添えることで、拙速な判断を避けられます。",
     "次回確認する差分項目を一つだけ決めておくと、情報追跡の負荷を抑えつつ継続できます。"
   ];
