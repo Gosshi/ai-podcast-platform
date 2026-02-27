@@ -84,12 +84,20 @@ Deno.serve(async (req) => {
     const publishedJa =
       ja.status === "published" && ja.published_at
         ? ja
-        : await updateEpisode(ja.id, { status: "published", published_at: nowIso });
+        : await updateEpisode(ja.id, {
+            status: "published",
+            published_at: nowIso,
+            episode_date: episodeDate
+          });
 
     const publishedEn =
       en.status === "published" && en.published_at
         ? en
-        : await updateEpisode(en.id, { status: "published", published_at: nowIso });
+        : await updateEpisode(en.id, {
+            status: "published",
+            published_at: nowIso,
+            episode_date: episodeDate
+          });
 
     await finishRun(runId, {
       step: "publish",

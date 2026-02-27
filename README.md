@@ -58,15 +58,18 @@ Staging 用の AI Podcast Platform 初期スキャフォールドです。
 - `adapt-script-en` は script 生成後に `normalizeForSpeech` を適用し、URL を script から除去する（元URLは `trend_items.url` に保持）
 - `daily-generate` は trend category を hard:soft:entertainment = 4:4:3 目標で選定し、`entertainment_bonus` で娯楽カテゴリを加点する
 - `daily-generate` の script gate は `SCRIPT_MIN_CHARS_JA` / `SCRIPT_TARGET_CHARS_JA` / `SCRIPT_MAX_CHARS_JA`（＋`TARGET_SCRIPT_ESTIMATED_CHARS_PER_MIN`）で調整可能。推奨は `3500 / 4600 / 6000`
+- `daily-generate` は `GENERATE_INTERVAL_DAYS`（default: `2`）未満の間隔では `status=skipped` で終了する。`{"force":true}` 指定時は間隔判定をバイパスして実行する
 
 ### Manual Run (curl)
 1. `supabase start`
 2. `npm run dev -- --hostname 0.0.0.0`（`/api/tts` が provider に応じて `public/audio/*` を生成。Edge Function から到達させるため 0.0.0.0 bind 必須）
 3. `supabase functions serve --env-file .env.local --no-verify-jwt`
 4. `curl -i -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H \"Content-Type: application/json\" -d '{\"episodeDate\":\"2026-02-16\"}'`
-5. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c "select id, lang, audio_url from public.episodes order by created_at desc limit 2;"`
-6. `audio_url` が `/audio/<episodeId>.<lang>.<audioVersion>.<ext>` なら `/episodes` で再生可能。
-7. ローカル検証専用として `--no-verify-jwt` を使用。staging では通常どおり Authorization を付けて実行する。
+5. `curl -i -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H \"Content-Type: application/json\" -d '{\"episodeDate\":\"2026-02-17\"}'`（interval未満なら `skipped:true`）
+6. `curl -i -X POST http://127.0.0.1:54321/functions/v1/daily-generate -H \"Content-Type: application/json\" -d '{\"episodeDate\":\"2026-02-17\",\"force\":true}'`（強制実行）
+7. `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c "select id, lang, audio_url from public.episodes order by created_at desc limit 2;"`
+8. `audio_url` が `/audio/<episodeId>.<lang>.<audioVersion>.<ext>` なら `/episodes` で再生可能。
+9. ローカル検証専用として `--no-verify-jwt` を使用。staging では通常どおり Authorization を付けて実行する。
 
 ### Scheduler (staging)
 - GitHub Actions: `.github/workflows/scheduled-daily-publish.yml`

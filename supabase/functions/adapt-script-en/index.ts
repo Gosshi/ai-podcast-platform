@@ -319,14 +319,16 @@ Deno.serve(async (req) => {
         masterId: ja.id,
         title,
         description,
-        script
+        script,
+        episodeDate
       });
     } else if (!en.script || en.status === "failed" || en.script !== script) {
       await updateEpisode(en.id, { status: "generating" });
       en = await updateEpisode(en.id, {
         script,
         description,
-        status: "draft"
+        status: "draft",
+        episode_date: episodeDate
       });
     }
 

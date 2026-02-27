@@ -99,6 +99,11 @@
   color: #991b1b;
 }
 
+.statusSkipped {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+
 .errorCell {
   white-space: pre-wrap;
   word-break: break-word;

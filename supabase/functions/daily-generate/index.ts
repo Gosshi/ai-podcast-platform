@@ -1,4 +1,4 @@
-import { failRun, finishRun, startRun } from "../_shared/jobRuns.ts";
+import { failRun, finishRun, skipRun, startRun } from "../_shared/jobRuns.ts";
 import { jsonResponse } from "../_shared/http.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { parseCsvList } from "../_shared/trendsConfig.ts";
@@ -6,6 +6,11 @@ import { estimateScriptDurationSec, resolveScriptGateConfig } from "../_shared/s
 import { normalizeScriptText } from "../_shared/scriptNormalize.ts";
 import { checkScriptQuality } from "../_shared/scriptQualityCheck.ts";
 import { buildSectionsCharsBreakdown, parseScriptSections } from "../_shared/scriptSections.ts";
+import { findLatestEpisodeDate } from "../_shared/episodes.ts";
+import {
+  resolveGenerateIntervalDays,
+  shouldSkipGenerationByInterval
+} from "../_shared/dailyGenerateInterval.ts";
 import {
   REQUIRED_ENTERTAINMENT_CATEGORIES,
   isEntertainmentTrendCategory,
@@ -15,6 +20,7 @@ import {
 
 type RequestBody = {
   episodeDate?: string;
+  force?: boolean;
   idempotencyKey?: string;
   skipTts?: boolean;
 };
@@ -1093,6 +1099,9 @@ Deno.serve(async (req) => {
 
   const body = (await req.json().catch(() => ({}))) as RequestBody;
   const episodeDate = body.episodeDate ?? new Date().toISOString().slice(0, 10);
+  const requestedEpisodeDate = episodeDate;
+  const force = typeof body.force === "boolean" ? body.force : false;
+  const intervalDays = resolveGenerateIntervalDays(Deno.env.get("GENERATE_INTERVAL_DAYS"), 2);
   const idempotencyKey = body.idempotencyKey ?? `daily-${episodeDate}`;
   const scriptGateConfig = resolveScriptGateConfig();
   const skipTts = typeof body.skipTts === "boolean"
@@ -1121,6 +1130,8 @@ Deno.serve(async (req) => {
     step: "daily-generate",
     episodeDate,
     idempotencyKey,
+    force,
+    intervalDays,
     orderedSteps,
     scriptPolishEnabled,
     skipTts,
@@ -1131,6 +1142,43 @@ Deno.serve(async (req) => {
   let digestMetricsForFailure: Record<string, unknown> = {};
 
   try {
+    const latestEpisodeDate = await findLatestEpisodeDate();
+    const lastEpisodeDate = latestEpisodeDate.date;
+    const shouldSkip = shouldSkipGenerationByInterval({
+      requestedEpisodeDate,
+      lastEpisodeDate,
+      intervalDays,
+      force
+    });
+    if (shouldSkip) {
+      const reason = "interval_not_reached";
+      await skipRun(runId, reason, {
+        step: "daily-generate",
+        episodeDate,
+        idempotencyKey,
+        force,
+        decision: "skip",
+        orderedSteps,
+        scriptPolishEnabled,
+        skipTts,
+        intervalDays,
+        lastEpisodeDate,
+        lastEpisodeDateSource: latestEpisodeDate.source,
+        requestedEpisodeDate,
+        scriptGate: scriptGateConfig
+      });
+
+      return jsonResponse({
+        ok: true,
+        runId,
+        skipped: true,
+        reason,
+        intervalDays,
+        lastEpisodeDate,
+        requestedEpisodeDate
+      });
+    }
+
     const functionsBaseUrl = getFunctionsBaseUrl(req.url);
     const { trendItems: trendCandidatesForPlan, usedFallback: fallbackFromDaily } = await resolveTrendItems(
       functionsBaseUrl,
@@ -1438,6 +1486,8 @@ Deno.serve(async (req) => {
       step: "daily-generate",
       episodeDate,
       idempotencyKey,
+      force,
+      intervalDays,
       orderedSteps,
       scriptPolishEnabled,
       skipTts,
@@ -1480,6 +1530,8 @@ Deno.serve(async (req) => {
       runId,
       episodeDate,
       idempotencyKey,
+      force,
+      intervalDays,
       scriptPolishEnabled,
       skipTts,
       trendItems,
@@ -1521,6 +1573,8 @@ Deno.serve(async (req) => {
       step: "daily-generate",
       episodeDate,
       idempotencyKey,
+      force,
+      intervalDays,
       orderedSteps,
       scriptPolishEnabled,
       skipTts,

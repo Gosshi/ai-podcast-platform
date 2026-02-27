@@ -232,6 +232,7 @@ fi
 pass "collect local supabase env"
 
 log "start supabase functions serve"
+GENERATE_INTERVAL_DAYS="${GENERATE_INTERVAL_DAYS:-1}" \
 supabase functions serve --no-verify-jwt >"$FUNCTIONS_LOG_FILE" 2>&1 &
 FUNCTIONS_PID=$!
 if wait_for_functions; then
