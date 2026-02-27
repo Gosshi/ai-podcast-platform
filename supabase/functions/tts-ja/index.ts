@@ -1,4 +1,4 @@
-import { countFailedRunsForAudioVersion, failRun, finishRun, startRun } from "../_shared/jobRuns.ts";
+import { countFailedRunsForAudioVersion, failRun, finishRun, skipRun, startRun } from "../_shared/jobRuns.ts";
 import { jsonResponse } from "../_shared/http.ts";
 import { fetchEpisodeById, resolveEpisodeScriptForAudio, updateEpisode } from "../_shared/episodes.ts";
 import {
@@ -17,6 +17,10 @@ type RequestBody = {
 };
 
 const MAX_FAILED_TTS_ATTEMPTS = 3;
+const isTtsDisabled = (): boolean => {
+  const value = (Deno.env.get("DISABLE_TTS") ?? "").trim().toLowerCase();
+  return value === "true" || value === "1" || value === "yes" || value === "on";
+};
 
 const buildForcedAudioVersion = (baseVersion: string): string => {
   const revision = Date.now().toString(36);
@@ -87,6 +91,20 @@ Deno.serve(async (req) => {
     episodeId: body.episodeId,
     timeout_ms: TTS_API_TIMEOUT_MS
   });
+
+  if (isTtsDisabled()) {
+    const durationMs = Date.now() - startedAtMs;
+    await skipRun(runId, "tts_disabled", {
+      step: "tts-ja",
+      lang: "ja",
+      episodeDate,
+      idempotencyKey,
+      episodeId: body.episodeId,
+      duration_ms: durationMs,
+      timeout_ms: TTS_API_TIMEOUT_MS
+    });
+    return jsonResponse({ ok: false, errorType: "tts_disabled", message: "TTS is disabled via DISABLE_TTS" }, 503);
+  }
 
   let attempt = 1;
   let audioVersion: string | null = null;

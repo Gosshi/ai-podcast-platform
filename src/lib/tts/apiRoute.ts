@@ -81,6 +81,11 @@ const hasValidApiKey = (request: Request): boolean => {
   return requestKey === configured;
 };
 
+const isTtsDisabled = (): boolean => {
+  const value = (process.env.DISABLE_TTS ?? "").trim().toLowerCase();
+  return value === "true" || value === "1" || value === "yes" || value === "on";
+};
+
 const isLocalTtsEnabled = (): boolean => {
   if (process.platform !== "darwin") return false;
   if (process.env.ENABLE_LOCAL_TTS === "true") return true;
@@ -279,6 +284,9 @@ export async function handleTtsRequest(request: Request): Promise<Response> {
   }
   if (!hasValidApiKey(request)) {
     return jsonErrorResponse("unauthorized", "Unauthorized", 401);
+  }
+  if (isTtsDisabled()) {
+    return jsonErrorResponse("tts_disabled", "TTS is disabled via DISABLE_TTS", 503);
   }
 
   let payload: { episodeId: string; audioVersion: string | null; synthesizeInput: SynthesizeInput };
