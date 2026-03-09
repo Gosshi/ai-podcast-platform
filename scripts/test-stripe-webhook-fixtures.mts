@@ -28,6 +28,19 @@ const signPayload = (payload: string): string => {
 const run = async (): Promise<void> => {
   const insertedPayments = new Set<string>();
   const insertedTips: { provider_payment_id: string; letter_id: string | null }[] = [];
+  const profiles = new Map<string, { stripe_customer_id: string | null }>();
+  const subscriptions = new Map<
+    string,
+    {
+      user_id: string;
+      plan_type: string;
+      status: string;
+      current_period_end: string | null;
+      stripe_customer_id: string | null;
+      cancel_at_period_end: boolean;
+      checkout_session_id?: string | null;
+    }
+  >();
 
   const deps = {
     stripe,
@@ -49,6 +62,44 @@ const run = async (): Promise<void> => {
         letter_id: tip.letter_id
       });
       return { error: null };
+    },
+    upsertProfile: async (profile: {
+      user_id: string;
+      email?: string | null;
+      stripe_customer_id?: string | null;
+    }) => {
+      profiles.set(profile.user_id, {
+        stripe_customer_id: profile.stripe_customer_id ?? profiles.get(profile.user_id)?.stripe_customer_id ?? null
+      });
+    },
+    upsertSubscription: async (subscription: {
+      user_id: string;
+      plan_type: string;
+      status: string;
+      current_period_end: string | null;
+      stripe_customer_id: string | null;
+      stripe_subscription_id: string;
+      checkout_session_id?: string | null;
+      cancel_at_period_end: boolean;
+    }) => {
+      subscriptions.set(subscription.stripe_subscription_id, subscription);
+    },
+    findUserByStripeCustomerId: async (stripeCustomerId: string) => {
+      for (const [user_id, profile] of profiles.entries()) {
+        if (profile.stripe_customer_id === stripeCustomerId) {
+          return { user_id };
+        }
+      }
+      return null;
+    },
+    findSubscriptionByStripeSubscriptionId: async (subscriptionId: string) => {
+      const row = subscriptions.get(subscriptionId);
+      return row
+        ? {
+            user_id: row.user_id,
+            plan_type: row.plan_type
+          }
+        : null;
     }
   };
 
@@ -167,6 +218,74 @@ const run = async (): Promise<void> => {
   assert(ignoredBody.ok === true, "ignored webhook call should return ok=true");
   assert(ignoredBody.ignored === true, "ignored webhook call should return ignored=true");
   assert(insertedPayments.size === 3, "ignored webhook should not insert tips");
+
+  const checkoutPayload = await loadFixture("checkout_session_completed_subscription.json");
+  const checkoutSignature = signPayload(checkoutPayload);
+
+  const checkoutResponse = await handleStripeWebhook(
+    new Request("http://localhost/api/stripe/webhook", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "stripe-signature": checkoutSignature
+      },
+      body: checkoutPayload
+    }),
+    deps
+  );
+  const checkoutBody = (await checkoutResponse.json()) as Record<string, unknown>;
+
+  assert(checkoutResponse.status === 200, `checkout webhook status should be 200, got ${checkoutResponse.status}`);
+  assert(checkoutBody.ok === true, "checkout webhook call should return ok=true");
+  assert(profiles.get("22222222-2222-4222-8222-222222222222")?.stripe_customer_id === "cus_fixture_001");
+  assert(subscriptions.get("sub_fixture_001")?.status === "incomplete");
+
+  const activeSubscriptionPayload = await loadFixture("customer_subscription_active.json");
+  const activeSubscriptionSignature = signPayload(activeSubscriptionPayload);
+
+  const activeSubscriptionResponse = await handleStripeWebhook(
+    new Request("http://localhost/api/stripe/webhook", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "stripe-signature": activeSubscriptionSignature
+      },
+      body: activeSubscriptionPayload
+    }),
+    deps
+  );
+  const activeSubscriptionBody = (await activeSubscriptionResponse.json()) as Record<string, unknown>;
+
+  assert(
+    activeSubscriptionResponse.status === 200,
+    `active subscription webhook status should be 200, got ${activeSubscriptionResponse.status}`
+  );
+  assert(activeSubscriptionBody.ok === true, "active subscription webhook call should return ok=true");
+  assert(subscriptions.get("sub_fixture_001")?.status === "active");
+
+  const canceledSubscriptionPayload = await loadFixture("customer_subscription_canceled.json");
+  const canceledSubscriptionSignature = signPayload(canceledSubscriptionPayload);
+
+  const canceledSubscriptionResponse = await handleStripeWebhook(
+    new Request("http://localhost/api/stripe/webhook", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "stripe-signature": canceledSubscriptionSignature
+      },
+      body: canceledSubscriptionPayload
+    }),
+    deps
+  );
+  const canceledSubscriptionBody = (await canceledSubscriptionResponse.json()) as Record<string, unknown>;
+
+  assert(
+    canceledSubscriptionResponse.status === 200,
+    `canceled subscription webhook status should be 200, got ${canceledSubscriptionResponse.status}`
+  );
+  assert(canceledSubscriptionBody.ok === true, "canceled subscription webhook call should return ok=true");
+  assert(subscriptions.get("sub_fixture_001")?.status === "canceled");
+  assert(subscriptions.get("sub_fixture_001")?.cancel_at_period_end === true);
 
   console.log("stripe webhook fixtures passed");
 };

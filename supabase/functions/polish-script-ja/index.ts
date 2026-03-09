@@ -20,6 +20,7 @@ import {
   summarizeError
 } from "../_shared/scriptPolish.ts";
 import { evaluateScriptQuality } from "../_shared/evaluateScriptQuality.ts";
+import { extractJudgmentCards } from "../../../src/lib/judgmentCards.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -353,6 +354,7 @@ Deno.serve(async (req) => {
       .update({
         script_polished: finalScript || null,
         script_polished_preview: preview || null,
+        judgment_cards: extractJudgmentCards(finalScript),
         script_score: scriptScore,
         script_score_detail: scriptScoreDetail
       })
@@ -379,6 +381,7 @@ Deno.serve(async (req) => {
         .update({
           script_polished: finalScript || null,
           script_polished_preview: preview || null,
+          judgment_cards: extractJudgmentCards(finalScript),
           script_score: scriptScore,
           script_score_detail: scriptScoreDetail
         })

@@ -1,12 +1,14 @@
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
+import { getViewerFromCookies } from "@/app/lib/viewer";
 import { resolveLocale } from "@/src/lib/i18n/locale";
 import {
   isGenreAllowed,
   normalizeGenre,
   resolveAllowedGenres
 } from "@/src/lib/genre/allowedGenres";
+import type { JudgmentCard } from "@/src/lib/judgmentCards";
 import EpisodesView from "./EpisodesView";
-import type { EpisodeRow, JobRunRow, ViewLang } from "./types";
+import type { EpisodeRow, ViewLang } from "./types";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,23 @@ type SearchParams = {
   lang?: string | string[];
   filter?: string | string[];
   genre?: string | string[];
+};
+
+type EpisodeQueryRow = {
+  id: string;
+  master_id: string | null;
+  lang: "ja" | "en";
+  genre: string | null;
+  status: "draft" | "queued" | "generating" | "ready" | "published" | "failed";
+  title: string | null;
+  description: string | null;
+  script: string | null;
+  script_polished: string | null;
+  script_polished_preview: string | null;
+  judgment_cards: JudgmentCard[] | null;
+  audio_url: string | null;
+  published_at: string | null;
+  created_at: string;
 };
 
 const readFirstParam = (value: string | string[] | undefined): string | undefined => {
@@ -35,56 +54,86 @@ const resolveGenreFilter = (value: string | undefined): string | null => {
   return isGenreAllowed(normalized, allowedGenres) ? normalized : null;
 };
 
-const loadEpisodesWithFailedRuns = async (genreFilter: string | null): Promise<{
-  episodes: EpisodeRow[];
-  failedRuns: JobRunRow[];
-  error: string | null;
-}> => {
+const buildPreviewText = (episode: EpisodeQueryRow): string | null => {
+  const preview = episode.script_polished_preview?.trim();
+  if (preview) return preview;
+
+  const description = episode.description?.trim();
+  if (description) return description;
+
+  const polished = episode.script_polished?.trim();
+  if (polished) {
+    return polished.slice(0, 240).trimEnd();
+  }
+
+  const script = episode.script?.trim();
+  return script ? script.slice(0, 240).trimEnd() : null;
+};
+
+const resolveFullScript = (episode: EpisodeQueryRow, isPaid: boolean): string | null => {
+  if (!isPaid) return null;
+  const polished = episode.script_polished?.trim();
+  if (polished) return polished;
+  const script = episode.script?.trim();
+  return script || null;
+};
+
+const mapEpisodeRow = (episode: EpisodeQueryRow, isPaid: boolean): EpisodeRow => {
+  const judgmentCards = Array.isArray(episode.judgment_cards) ? episode.judgment_cards : [];
+
+  return {
+    id: episode.id,
+    master_id: episode.master_id,
+    lang: episode.lang,
+    genre: episode.genre,
+    status: episode.status,
+    title: episode.title,
+    description: episode.description,
+    preview_text: buildPreviewText(episode),
+    full_script: resolveFullScript(episode, isPaid),
+    judgment_cards: isPaid ? judgmentCards : [],
+    judgment_card_count: judgmentCards.length,
+    audio_url: episode.audio_url,
+    published_at: episode.published_at,
+    created_at: episode.created_at
+  };
+};
+
+const loadEpisodes = async (params: {
+  genreFilter: string | null;
+  isPaid: boolean;
+}): Promise<{ episodes: EpisodeRow[]; error: string | null }> => {
   try {
     const supabase = createServiceRoleClient();
-    let episodeQuery = supabase
+    let query = supabase
       .from("episodes")
       .select(
-        "id, master_id, lang, genre, status, title, script, script_polished, script_polished_preview, audio_url, published_at, created_at"
+        "id, master_id, lang, genre, status, title, description, script, script_polished, script_polished_preview, judgment_cards, audio_url, published_at, created_at"
       )
+      .eq("status", "published")
+      .not("published_at", "is", null)
       .in("lang", ["ja", "en"])
-      .order("created_at", { ascending: false })
+      .order("published_at", { ascending: false })
       .limit(150);
 
-    if (genreFilter) {
-      episodeQuery = episodeQuery.eq("genre", genreFilter);
+    if (params.genreFilter) {
+      query = query.eq("genre", params.genreFilter);
     }
 
-    const { data: episodeRows, error: episodeError } = await episodeQuery;
-
-    if (episodeError) {
-      return { episodes: [], failedRuns: [], error: episodeError.message };
-    }
-
-    const { data: failedRunRows, error: failedRunError } = await supabase
-      .from("job_runs")
-      .select("id, job_type, status, payload, error, started_at")
-      .eq("status", "failed")
-      .order("started_at", { ascending: false })
-      .limit(200);
-
-    if (failedRunError) {
-      return {
-        episodes: (episodeRows as EpisodeRow[]) ?? [],
-        failedRuns: [],
-        error: `failed to load job runs: ${failedRunError.message}`
-      };
+    const { data, error } = await query;
+    if (error) {
+      return { episodes: [], error: error.message };
     }
 
     return {
-      episodes: (episodeRows as EpisodeRow[]) ?? [],
-      failedRuns: (failedRunRows as JobRunRow[]) ?? [],
+      episodes: ((data as EpisodeQueryRow[] | null) ?? []).map((episode) =>
+        mapEpisodeRow(episode, params.isPaid)
+      ),
       error: null
     };
   } catch (error) {
     return {
       episodes: [],
-      failedRuns: [],
       error: error instanceof Error ? error.message : "unknown_error"
     };
   }
@@ -99,15 +148,19 @@ export default async function EpisodesPage({
   const locale = resolveLocale(readFirstParam(params.lang));
   const initialViewLang = resolveViewLang(readFirstParam(params.filter));
   const genreFilter = resolveGenreFilter(readFirstParam(params.genre));
-  const { episodes, failedRuns, error } = await loadEpisodesWithFailedRuns(genreFilter);
+  const viewer = await getViewerFromCookies();
+  const { episodes, error } = await loadEpisodes({
+    genreFilter,
+    isPaid: viewer?.isPaid ?? false
+  });
 
   return (
     <EpisodesView
       episodes={episodes}
-      failedRuns={failedRuns}
       initialLocale={locale}
       initialViewLang={initialViewLang}
       loadError={error}
+      viewer={viewer}
     />
   );
 }
