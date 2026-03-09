@@ -14,6 +14,7 @@ import {
   type ScriptSection,
   type SectionsCharsBreakdown
 } from "../_shared/scriptSections.ts";
+import { extractJudgmentCards } from "../../../src/lib/judgmentCards.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -195,7 +196,8 @@ Deno.serve(async (req) => {
     const updated = await updateEpisode(episode.id, {
       script: expanded.script,
       duration_sec: expanded.estimatedDurationSec,
-      status: episode.status === "failed" ? "draft" : episode.status
+      status: episode.status === "failed" ? "draft" : episode.status,
+      judgment_cards: extractJudgmentCards(expanded.script)
     });
 
     await finishRun(runId, {

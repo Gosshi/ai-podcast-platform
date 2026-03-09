@@ -1,3 +1,6 @@
+import type { ViewerState } from "@/app/lib/viewer";
+import type { JudgmentCard } from "@/src/lib/judgmentCards";
+
 export type EpisodeLang = "ja" | "en";
 
 export type EpisodeStatus = "draft" | "queued" | "generating" | "ready" | "published" | "failed";
@@ -9,21 +12,16 @@ export type EpisodeRow = {
   genre: string | null;
   status: EpisodeStatus;
   title: string | null;
-  script: string | null;
-  script_polished: string | null;
-  script_polished_preview: string | null;
+  description: string | null;
+  preview_text: string | null;
+  full_script: string | null;
+  judgment_cards: JudgmentCard[];
+  judgment_card_count: number;
   audio_url: string | null;
   published_at: string | null;
   created_at: string;
 };
 
-export type JobRunRow = {
-  id: string;
-  job_type: string;
-  status: "failed";
-  payload: unknown;
-  error: string | null;
-  started_at: string;
-};
-
 export type ViewLang = "all" | "ja" | "en";
+
+export type EpisodesViewer = ViewerState | null;

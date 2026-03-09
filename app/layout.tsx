@@ -11,9 +11,21 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const publicSupabaseConfig = JSON.stringify({
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "",
+    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? ""
+  });
+
   return (
     <html lang="ja">
-      <body>{children}</body>
+      <body>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__APP_SUPABASE_CONFIG__ = ${publicSupabaseConfig};`
+          }}
+        />
+        {children}
+      </body>
     </html>
   );
 }

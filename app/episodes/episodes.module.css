@@ -69,9 +69,49 @@
   color: #b91c1c;
 }
 
-.failureSummary {
+.paywallBanner {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 18px;
+  padding: 1rem 1.1rem;
+  background: linear-gradient(135deg, #fff7ed 0%, #fffbeb 100%);
+}
+
+.paywallBanner h2,
+.paywallBanner p {
   margin: 0;
+}
+
+.paywallStats {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.paywallStats span,
+.archiveNotice,
+.cardBadge,
+.metaPill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.26rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.paywallStats span {
+  background: rgba(255, 255, 255, 0.8);
   color: #9a3412;
+}
+
+.archiveNotice {
+  width: fit-content;
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 
 .contentGrid {
@@ -145,7 +185,8 @@
 
 .langBadge,
 .statusBadge,
-.liveBadge {
+.liveBadge,
+.cardBadge {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
@@ -169,6 +210,11 @@
   color: #166534;
 }
 
+.cardBadge {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
 .episodeCard h3 {
   margin: 0;
   font-size: 1rem;
@@ -180,11 +226,11 @@
   font-size: 0.84rem;
 }
 
-.failureDetail {
+.previewText {
   margin: 0;
-  color: #b91c1c;
-  font-size: 0.82rem;
-  word-break: break-word;
+  color: #334155;
+  font-size: 0.9rem;
+  line-height: 1.55;
 }
 
 .episodeActions {
@@ -258,6 +304,64 @@
 
 .detailBody p {
   margin: 0;
+}
+
+.judgmentSection {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.sectionHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.metaPill {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.judgmentCards {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.judgmentCard {
+  border: 1px solid #dbe4f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 0.8rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.metaLine {
+  color: #475569;
+  font-size: 0.84rem;
+}
+
+.watchList {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.lockedCard {
+  border: 1px dashed #f59e0b;
+  background: #fffbeb;
+  border-radius: 12px;
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.lockedHint {
+  margin-top: 0.55rem;
+  color: #9a3412;
+  font-size: 0.84rem;
 }
 
 .scriptPre {
@@ -396,6 +500,11 @@
 
   .header {
     gap: 0.75rem;
+  }
+
+  .paywallBanner {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .groupCard,

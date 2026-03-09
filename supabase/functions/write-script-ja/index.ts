@@ -44,6 +44,7 @@ import {
   summarizeForSpeech
 } from "../_shared/speechText.ts";
 import { normalizeGenre } from "../../../src/lib/genre/allowedGenres.ts";
+import { extractJudgmentCards } from "../../../src/lib/judgmentCards.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -1258,6 +1259,7 @@ Deno.serve(async (req) => {
   assertScriptRules(boundedScript);
 
   const finalScript = boundedScript;
+  const judgmentCards = extractJudgmentCards(finalScript);
   const finalScriptChars = finalScript.length;
   const finalEstimatedDurationSec = estimateScriptDurationSec(finalScriptChars, scriptGate.charsPerMin);
   const finalSectionsCharsBreakdown = buildSectionsCharsBreakdown(finalScript);
@@ -1331,7 +1333,10 @@ Deno.serve(async (req) => {
         episodeDate,
         genre
       });
-      episode = await updateEpisode(episode.id, { duration_sec: finalEstimatedDurationSec });
+      episode = await updateEpisode(episode.id, {
+        duration_sec: finalEstimatedDurationSec,
+        judgment_cards: judgmentCards
+      });
     } else if (!episode.script || episode.status === "failed" || episode.script !== finalScript) {
       await updateEpisode(episode.id, { status: "generating" });
       episode = await updateEpisode(episode.id, {
@@ -1340,7 +1345,8 @@ Deno.serve(async (req) => {
         status: "draft",
         duration_sec: finalEstimatedDurationSec,
         episode_date: episodeDate,
-        genre
+        genre,
+        judgment_cards: judgmentCards
       });
     } else {
       noOp = true;

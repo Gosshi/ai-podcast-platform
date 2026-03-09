@@ -12,6 +12,7 @@ export type Episode = {
   script: string | null;
   script_polished: string | null;
   script_polished_preview: string | null;
+  judgment_cards: Record<string, unknown>[] | null;
   script_score: number | null;
   script_score_detail: Record<string, unknown> | null;
   audio_url: string | null;
@@ -21,7 +22,7 @@ export type Episode = {
 };
 
 const EPISODE_SELECT_COLUMNS =
-  "id, master_id, lang, genre, status, title, description, script, script_polished, script_polished_preview, script_score, script_score_detail, audio_url, duration_sec, episode_date, published_at";
+  "id, master_id, lang, genre, status, title, description, script, script_polished, script_polished_preview, judgment_cards, script_score, script_score_detail, audio_url, duration_sec, episode_date, published_at";
 
 const normalizeScript = (value: string | null | undefined): string => {
   return typeof value === "string" ? value.trim() : "";

@@ -22,6 +22,37 @@
 5. Supabase ローカル設定を確認: `supabase status`
 6. Migration 適用: `supabase db reset --local --yes`
 
+## Paid Membership MVP
+- 会員状態は `profiles` と `subscriptions` で管理します
+- `free` / `paid` 判定は `subscriptions.status` が `trialing | active | past_due` かどうかで決まります
+- `/episodes` は無料版では最新プレビューのみ、有料版では判断カード・DeepDive全文・アーカイブを表示します
+- 判断カードは `episodes.judgment_cards` に保存され、`write-script-ja` / `expand-script-ja` / `polish-script-ja` で更新されます
+
+### Membership Tables
+- `profiles`
+  - `user_id`
+  - `email`
+  - `stripe_customer_id`
+- `subscriptions`
+  - `user_id`
+  - `plan_type`
+  - `status`
+  - `current_period_end`
+  - `stripe_customer_id`
+  - `stripe_subscription_id`
+  - `checkout_session_id`
+
+### Free vs Paid Boundary
+- 無料:
+  - `/episodes` の一覧
+  - 音声再生
+  - `script_polished_preview` ベースの短いプレビュー
+- 有料:
+  - 判断カード全文
+  - DeepDive 完全版
+  - 過去アーカイブ全体
+  - `/account` で会員状態の確認
+
 ## Project Layout
 - `app/`: Next.js App Router
 - `supabase/`: Supabase CLI 管理ディレクトリ
@@ -124,6 +155,31 @@
 - Idempotency key: `tips.provider_payment_id` (UNIQUE)
 - `payment_intent.metadata.letter_id` があれば `tips.letter_id` に保存（UUIDのみ採用）
 
+## Stripe Subscription Checkout (MVP)
+- Endpoint: `POST /api/stripe/subscription-checkout`
+- 認証済みユーザーのみ実行可能
+- 環境変数:
+  - `STRIPE_SECRET_KEY`
+  - `STRIPE_WEBHOOK_SECRET`
+  - `STRIPE_PRICE_PRO_MONTHLY`
+  - `APP_BASE_URL`
+- Checkout 成功時の戻り先: `/account?subscription=success`
+- Checkout キャンセル時の戻り先: `/account?subscription=cancel`
+- webhook では以下を処理:
+  - `checkout.session.completed`
+  - `customer.subscription.created`
+  - `customer.subscription.updated`
+  - `customer.subscription.deleted`
+- `customer.subscription.*` を受けると `subscriptions` が upsert され、`/episodes` の paid 判定に反映されます
+
+### Local Subscription Test
+1. Supabase Auth の Site URL / redirect URL に `http://127.0.0.1:3000/auth/callback` を追加
+2. `npm run dev`
+3. `/episodes` または `/account` から Magic Link でログイン
+4. `stripe listen --forward-to localhost:3000/api/stripe/webhook`
+5. `STRIPE_PRICE_PRO_MONTHLY` に test price id を設定し、`Subscribe` を実行
+6. webhook 後に `/account` の表示が `PAID` に変わることを確認
+
 ## Letter Tip Checkout (MVP)
 - Page: `/letters/[id]/tip`
 - Endpoint: `POST /api/stripe/checkout`
@@ -158,9 +214,9 @@
 
 ## Episodes UI (MVP)
 - Page: `/episodes`
-- Displays: `title`, `lang`, `published_at`
+- Displays: `title`, `lang`, `published_at`, preview
 - Reads published rows from Supabase (`episodes.status='published'` and `published_at is not null`)
-- `script_polished` があれば詳細パネルは polished 版を優先表示し、未生成時のみ `script` を表示
+- 無料ユーザーはプレビューのみ、有料ユーザーは `script_polished` / `script` と `judgment_cards` を表示
 - `audio_url` が `/audio/...` の場合、`public/audio` のローカル音声を `<audio>` タグで再生
 
 ## TTS Provider (OpenAI + local fallback)

@@ -9,7 +9,7 @@
     "lint": "next lint",
     "test": "node --experimental-strip-types --test tests/**/*.test.mts",
     "quality:check": "node --experimental-strip-types scripts/scriptQualityCheck.mts",
-    "test:stripe-fixtures": "node --experimental-strip-types scripts/test-stripe-webhook-fixtures.mts"
+    "test:stripe-fixtures": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/test-stripe-webhook-fixtures.mts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

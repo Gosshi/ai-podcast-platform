@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import MemberControls from "@/app/components/MemberControls";
 import { getMessages } from "@/src/lib/i18n/messages";
 import type { Locale } from "@/src/lib/i18n/locale";
 import { useLocale } from "@/src/lib/i18n/useLocale";
 import styles from "./episodes.module.css";
-import type { EpisodeRow, JobRunRow, ViewLang } from "./types";
+import type { EpisodeRow, EpisodesViewer, ViewLang } from "./types";
 
 type SourceMeta = {
   source: string;
@@ -28,21 +29,13 @@ type EpisodeGroup = {
   en?: EpisodeRow;
 };
 
-type FailedRunIndex = {
-  byEpisodeId: Map<string, JobRunRow>;
-  unlinkedCount: number;
-};
-
 type EpisodesViewProps = {
   episodes: EpisodeRow[];
-  failedRuns: JobRunRow[];
   initialLocale: Locale;
   initialViewLang: ViewLang;
   loadError: string | null;
+  viewer: EpisodesViewer;
 };
-
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const toTimestamp = (value: string): number => {
   const timestamp = new Date(value).getTime();
@@ -72,52 +65,6 @@ const stripLangSuffix = (value: string | null): string => {
   const trimmed = (value ?? "").trim();
   if (!trimmed) return "";
   return trimmed.replace(/\s*\((JA|EN)\)\s*$/i, "").trim() || trimmed;
-};
-
-const collectUuids = (value: unknown, bucket: Set<string>): void => {
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (UUID_PATTERN.test(normalized)) {
-      bucket.add(normalized);
-    }
-    return;
-  }
-
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      collectUuids(item, bucket);
-    }
-    return;
-  }
-
-  if (value && typeof value === "object") {
-    for (const item of Object.values(value as Record<string, unknown>)) {
-      collectUuids(item, bucket);
-    }
-  }
-};
-
-const buildFailedRunIndex = (runs: JobRunRow[]): FailedRunIndex => {
-  const byEpisodeId = new Map<string, JobRunRow>();
-  let unlinkedCount = 0;
-
-  for (const run of runs) {
-    const ids = new Set<string>();
-    collectUuids(run.payload, ids);
-
-    if (ids.size === 0) {
-      unlinkedCount += 1;
-      continue;
-    }
-
-    for (const id of ids) {
-      if (!byEpisodeId.has(id)) {
-        byEpisodeId.set(id, run);
-      }
-    }
-  }
-
-  return { byEpisodeId, unlinkedCount };
 };
 
 const resolveGroupKey = (episode: EpisodeRow, masterIds: Set<string>): string => {
@@ -181,19 +128,6 @@ const pickEpisodesByViewLang = (group: EpisodeGroup, viewLang: ViewLang): Episod
   const rows = [group.ja, group.en].filter((episode): episode is EpisodeRow => Boolean(episode));
   if (viewLang === "all") return rows;
   return rows.filter((episode) => episode.lang === viewLang);
-};
-
-const findFailedRunForEpisode = (episode: EpisodeRow, failedRunIndex: FailedRunIndex): JobRunRow | null => {
-  const ids = [episode.id, episode.master_id]
-    .filter((id): id is string => Boolean(id))
-    .map((id) => id.toLowerCase());
-
-  for (const id of ids) {
-    const run = failedRunIndex.byEpisodeId.get(id);
-    if (run) return run;
-  }
-
-  return null;
 };
 
 const parseScriptSections = (script: string | null): Record<string, string> => {
@@ -300,10 +234,10 @@ const resolveViewLang = (value: string | null, initialViewLang: ViewLang): ViewL
 
 export default function EpisodesView({
   episodes,
-  failedRuns,
   initialLocale,
   initialViewLang,
-  loadError
+  loadError,
+  viewer
 }: EpisodesViewProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -314,13 +248,14 @@ export default function EpisodesView({
 
   const viewLang = resolveViewLang(searchParams.get("filter"), initialViewLang);
   const groups = useMemo(() => buildEpisodeGroups(episodes), [episodes]);
-  const failedRunIndex = useMemo(() => buildFailedRunIndex(failedRuns), [failedRuns]);
+  const isPaid = viewer?.isPaid ?? false;
+  const archiveLockedCount = isPaid ? 0 : Math.max(0, groups.length - 3);
   const episodesById = useMemo(() => new Map(episodes.map((episode) => [episode.id, episode])), [episodes]);
 
-  const visibleGroups = useMemo(
-    () => groups.filter((group) => pickEpisodesByViewLang(group, viewLang).length > 0),
-    [groups, viewLang]
-  );
+  const visibleGroups = useMemo(() => {
+    const filtered = groups.filter((group) => pickEpisodesByViewLang(group, viewLang).length > 0);
+    return isPaid ? filtered : filtered.slice(0, 3);
+  }, [groups, isPaid, viewLang]);
 
   const visibleEpisodes = useMemo(
     () => visibleGroups.flatMap((group) => pickEpisodesByViewLang(group, viewLang)),
@@ -469,25 +404,13 @@ export default function EpisodesView({
 
   const selectedEpisode = selectedEpisodeId ? episodesById.get(selectedEpisodeId) ?? null : null;
   const activeEpisode = activeEpisodeId ? episodesById.get(activeEpisodeId) ?? null : null;
-  const selectedScript = useMemo(() => {
-    const polished = selectedEpisode?.script_polished?.trim() ?? "";
-    if (polished) {
-      return {
-        text: polished,
-        isPolished: true
-      };
-    }
-
-    const original = selectedEpisode?.script?.trim() ?? "";
-    return {
-      text: original || null,
-      isPolished: false
-    };
-  }, [selectedEpisode?.script, selectedEpisode?.script_polished]);
+  const selectedScriptText = isPaid
+    ? selectedEpisode?.full_script ?? null
+    : selectedEpisode?.preview_text ?? null;
 
   const selectedSources = useMemo(
-    () => extractSources(selectedScript.text),
-    [selectedScript.text]
+    () => extractSources(selectedEpisode?.full_script ?? null),
+    [selectedEpisode?.full_script]
   );
 
   const activePlayableIndex = useMemo(
@@ -563,16 +486,30 @@ export default function EpisodesView({
         </div>
       </header>
 
+      <MemberControls viewer={viewer} />
+
       {loadError ? (
         <p className={styles.errorText}>
           {t.errorPrefix}: {loadError}
         </p>
       ) : null}
 
-      {failedRuns.length > 0 ? (
-        <p className={styles.failureSummary}>
-          {t.failedRunsSummary}: {failedRuns.length}
-          {failedRunIndex.unlinkedCount > 0 ? ` (${t.unlinked}: ${failedRunIndex.unlinkedCount})` : ""}
+      {!isPaid ? (
+        <section className={styles.paywallBanner}>
+          <div>
+            <h2>{t.paywallTitle}</h2>
+            <p>{t.paywallCopy}</p>
+          </div>
+          <div className={styles.paywallStats}>
+            <span>{t.previewBadge}</span>
+            <span>{t.membersBadge}</span>
+          </div>
+        </section>
+      ) : null}
+
+      {archiveLockedCount > 0 ? (
+        <p className={styles.archiveNotice}>
+          {t.archiveLockedPrefix}: {archiveLockedCount}
         </p>
       ) : null}
 
@@ -595,17 +532,11 @@ export default function EpisodesView({
                     {rows.map((episode) => {
                       const isSelected = selectedEpisodeId === episode.id;
                       const isPlayingCard = isPlaying && activeEpisodeId === episode.id;
-                      const failedRun =
-                        episode.status === "failed"
-                          ? findFailedRunForEpisode(episode, failedRunIndex)
-                          : null;
-                      const statusLabel = episode.status === "failed"
-                        ? t.statusFailed
-                        : !episode.audio_url
-                          ? t.statusPending
-                          : episode.published_at
-                            ? t.statusPublished
-                            : t.statusReady;
+                      const statusLabel = !episode.audio_url
+                        ? t.statusPending
+                        : episode.published_at
+                          ? t.statusPublished
+                          : t.statusReady;
 
                       return (
                         <div
@@ -618,8 +549,12 @@ export default function EpisodesView({
                           <div className={styles.episodeMetaRow}>
                             <span className={styles.langBadge}>{episode.lang.toUpperCase()}</span>
                             <span className={styles.statusBadge}>{statusLabel}</span>
+                            {episode.judgment_card_count > 0 ? (
+                              <span className={styles.cardBadge}>
+                                {t.judgmentCardCountLabel}: {episode.judgment_card_count}
+                              </span>
+                            ) : null}
                             {isPlayingCard ? <span className={styles.liveBadge}>{t.activeBadge}</span> : null}
-                            {!isPlayingCard && isSelected ? <span className={styles.liveBadge}>{t.selectedBadge}</span> : null}
                           </div>
 
                           <h3>{episode.title ?? t.untitled}</h3>
@@ -627,14 +562,9 @@ export default function EpisodesView({
                           <p className={styles.episodeMetaText}>
                             {t.publishedAt}: {formatDateTime(episode.published_at, locale)}
                           </p>
-                          <p className={styles.episodeMetaText}>
-                            {t.createdAt}: {formatDateTime(episode.created_at, locale)}
-                          </p>
 
-                          {failedRun ? (
-                            <p className={styles.failureDetail}>
-                              {failedRun.job_type}: {failedRun.error ?? messageSet.common.unknownError}
-                            </p>
+                          {episode.preview_text ? (
+                            <p className={styles.previewText}>{episode.preview_text}</p>
                           ) : null}
 
                           <div className={styles.episodeActions}>
@@ -657,8 +587,6 @@ export default function EpisodesView({
                               {isSelected ? t.hideScript : t.viewScript}
                             </button>
                           </div>
-
-                          {!episode.audio_url ? <p className={styles.noAudio}>{t.noAudio}</p> : null}
                         </div>
                       );
                     })}
@@ -681,40 +609,89 @@ export default function EpisodesView({
                   {t.status}: {selectedEpisode.status}
                 </p>
 
-                <section>
-                  <h4>{selectedScript.isPolished ? t.scriptPolished : t.script}</h4>
-                  {selectedScript.text ? (
-                    <pre className={styles.scriptPre}>{selectedScript.text}</pre>
+                <section className={styles.judgmentSection}>
+                  <div className={styles.sectionHeaderRow}>
+                    <h4>{t.judgmentCardsTitle}</h4>
+                    {selectedEpisode.judgment_card_count > 0 ? (
+                      <span className={styles.metaPill}>
+                        {selectedEpisode.judgment_card_count} {t.cardsUnit}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {isPaid ? (
+                    selectedEpisode.judgment_cards.length > 0 ? (
+                      <div className={styles.judgmentCards}>
+                        {selectedEpisode.judgment_cards.map((card, index) => (
+                          <article key={`${selectedEpisode.id}-card-${index}`} className={styles.judgmentCard}>
+                            <div className={styles.sectionHeaderRow}>
+                              <strong>{card.topic_title}</strong>
+                              {card.frame_type ? <span className={styles.metaPill}>{card.frame_type}</span> : null}
+                            </div>
+                            <p>{card.judgment}</p>
+                            {card.deadline ? (
+                              <p className={styles.metaLine}>
+                                {t.deadlineLabel}: {card.deadline}
+                              </p>
+                            ) : null}
+                            {card.watch_points.length > 0 ? (
+                              <ul className={styles.watchList}>
+                                {card.watch_points.map((point) => (
+                                  <li key={point}>{point}</li>
+                                ))}
+                              </ul>
+                            ) : null}
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>{t.noJudgmentCards}</p>
+                    )
                   ) : (
-                    <p>{t.noScript}</p>
+                    <div className={styles.lockedCard}>
+                      <strong>{t.cardsLockedTitle}</strong>
+                      <p>{t.cardsLockedCopy}</p>
+                    </div>
                   )}
                 </section>
 
                 <section>
-                  <h4>{t.sources}</h4>
-                  {selectedSources.length === 0 ? (
-                    <p>{t.noSources}</p>
+                  <h4>{isPaid ? t.scriptPolished : t.previewScript}</h4>
+                  {selectedScriptText ? (
+                    <pre className={styles.scriptPre}>{selectedScriptText}</pre>
                   ) : (
-                    <ul className={styles.sourcesList}>
-                      {selectedSources.map((source, index) => (
-                        <li key={`${selectedEpisode.id}-source-${index}`}>
-                          <strong>{t.sourceName}:</strong> {source.source}
-                          <br />
-                          <strong>{t.sourceTitle}:</strong> {source.title}
-                          <br />
-                          <strong>{t.sourceUrl}:</strong>{" "}
-                          {source.url ? (
-                            <a href={source.url} target="_blank" rel="noreferrer">
-                              {source.url}
-                            </a>
-                          ) : (
-                            <span>-</span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
+                    <p>{t.noScript}</p>
                   )}
+                  {!isPaid ? <p className={styles.lockedHint}>{t.scriptLockedCopy}</p> : null}
                 </section>
+
+                {isPaid ? (
+                  <section>
+                    <h4>{t.sources}</h4>
+                    {selectedSources.length === 0 ? (
+                      <p>{t.noSources}</p>
+                    ) : (
+                      <ul className={styles.sourcesList}>
+                        {selectedSources.map((source, index) => (
+                          <li key={`${selectedEpisode.id}-source-${index}`}>
+                            <strong>{t.sourceName}:</strong> {source.source}
+                            <br />
+                            <strong>{t.sourceTitle}:</strong> {source.title}
+                            <br />
+                            <strong>{t.sourceUrl}:</strong>{" "}
+                            {source.url ? (
+                              <a href={source.url} target="_blank" rel="noreferrer">
+                                {source.url}
+                              </a>
+                            ) : (
+                              <span>-</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                ) : null}
               </div>
             ) : (
               <p>{t.detailsPlaceholder}</p>
