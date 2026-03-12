@@ -44,7 +44,10 @@ import {
   summarizeForSpeech
 } from "../_shared/speechText.ts";
 import { normalizeGenre } from "../../../src/lib/genre/allowedGenres.ts";
-import { extractJudgmentCards } from "../../../src/lib/judgmentCards.ts";
+import {
+  syncEpisodeJudgmentCardsForScript,
+  type JudgmentCardSyncResult
+} from "../_shared/episodeJudgmentCards.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -1259,7 +1262,6 @@ Deno.serve(async (req) => {
   assertScriptRules(boundedScript);
 
   const finalScript = boundedScript;
-  const judgmentCards = extractJudgmentCards(finalScript);
   const finalScriptChars = finalScript.length;
   const finalEstimatedDurationSec = estimateScriptDurationSec(finalScriptChars, scriptGate.charsPerMin);
   const finalSectionsCharsBreakdown = buildSectionsCharsBreakdown(finalScript);
@@ -1324,6 +1326,12 @@ Deno.serve(async (req) => {
 
     let episode = await findJapaneseEpisodeByTitle(title);
     let noOp = false;
+    let judgmentCardSync: JudgmentCardSyncResult = {
+      cards: [],
+      extractedCount: 0,
+      persistedCount: 0,
+      error: null
+    };
 
     if (!episode) {
       episode = await insertJapaneseEpisode({
@@ -1334,8 +1342,7 @@ Deno.serve(async (req) => {
         genre
       });
       episode = await updateEpisode(episode.id, {
-        duration_sec: finalEstimatedDurationSec,
-        judgment_cards: judgmentCards
+        duration_sec: finalEstimatedDurationSec
       });
     } else if (!episode.script || episode.status === "failed" || episode.script !== finalScript) {
       await updateEpisode(episode.id, { status: "generating" });
@@ -1345,18 +1352,29 @@ Deno.serve(async (req) => {
         status: "draft",
         duration_sec: finalEstimatedDurationSec,
         episode_date: episodeDate,
-        genre,
-        judgment_cards: judgmentCards
+        genre
       });
     } else {
       noOp = true;
     }
 
+    judgmentCardSync = await syncEpisodeJudgmentCardsForScript({
+      episodeId: episode.id,
+      lang: "ja",
+      genre,
+      script: finalScript
+    });
+
     await finishRun(runId, {
       ...runPayloadBase,
       episodeId: episode.id,
       status: episode.status,
-      noOp
+      noOp,
+      judgment_card_extraction: {
+        extracted_count: judgmentCardSync.extractedCount,
+        persisted_count: judgmentCardSync.persistedCount,
+        error: judgmentCardSync.error
+      }
     });
 
     return jsonResponse({
@@ -1391,6 +1409,11 @@ Deno.serve(async (req) => {
       items_used_count: drafted.itemsUsedCount,
       deepDiveCount: drafted.itemsUsedCount.deepdive,
       quickNewsCount: drafted.itemsUsedCount.quicknews,
+      judgmentCardExtraction: {
+        extractedCount: judgmentCardSync.extractedCount,
+        persistedCount: judgmentCardSync.persistedCount,
+        error: judgmentCardSync.error
+      },
       normalizedHeadlineUsed: true,
       summaryLengthBefore: summaryCompressionStats.before,
       summaryLengthAfter: summaryCompressionStats.after,

@@ -17,6 +17,7 @@ export type EpisodeRow = {
   full_script: string | null;
   judgment_cards: JudgmentCard[];
   judgment_card_count: number;
+  judgment_cards_preview_limited: boolean;
   audio_url: string | null;
   published_at: string | null;
   created_at: string;

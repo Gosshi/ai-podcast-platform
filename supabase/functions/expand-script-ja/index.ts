@@ -14,7 +14,7 @@ import {
   type ScriptSection,
   type SectionsCharsBreakdown
 } from "../_shared/scriptSections.ts";
-import { extractJudgmentCards } from "../../../src/lib/judgmentCards.ts";
+import { syncEpisodeJudgmentCardsForScript } from "../_shared/episodeJudgmentCards.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -196,8 +196,13 @@ Deno.serve(async (req) => {
     const updated = await updateEpisode(episode.id, {
       script: expanded.script,
       duration_sec: expanded.estimatedDurationSec,
-      status: episode.status === "failed" ? "draft" : episode.status,
-      judgment_cards: extractJudgmentCards(expanded.script)
+      status: episode.status === "failed" ? "draft" : episode.status
+    });
+    const judgmentCardSync = await syncEpisodeJudgmentCardsForScript({
+      episodeId: updated.id,
+      lang: "ja",
+      genre: updated.genre,
+      script: expanded.script
     });
 
     await finishRun(runId, {
@@ -214,7 +219,12 @@ Deno.serve(async (req) => {
       chars_target: scriptGate.targetChars,
       chars_max: scriptGate.maxChars,
       sections_chars_breakdown: expanded.sectionsCharsBreakdown,
-      scriptGate
+      scriptGate,
+      judgment_card_extraction: {
+        extracted_count: judgmentCardSync.extractedCount,
+        persisted_count: judgmentCardSync.persistedCount,
+        error: judgmentCardSync.error
+      }
     });
 
     return jsonResponse({
@@ -231,7 +241,12 @@ Deno.serve(async (req) => {
       chars_target: scriptGate.targetChars,
       chars_max: scriptGate.maxChars,
       sections_chars_breakdown: expanded.sectionsCharsBreakdown,
-      scriptGate
+      scriptGate,
+      judgmentCardExtraction: {
+        extractedCount: judgmentCardSync.extractedCount,
+        persistedCount: judgmentCardSync.persistedCount,
+        error: judgmentCardSync.error
+      }
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

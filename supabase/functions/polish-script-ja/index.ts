@@ -20,7 +20,7 @@ import {
   summarizeError
 } from "../_shared/scriptPolish.ts";
 import { evaluateScriptQuality } from "../_shared/evaluateScriptQuality.ts";
-import { extractJudgmentCards } from "../../../src/lib/judgmentCards.ts";
+import { syncEpisodeJudgmentCardsForScript } from "../_shared/episodeJudgmentCards.ts";
 
 type RequestBody = {
   episodeDate?: string;
@@ -189,6 +189,9 @@ Deno.serve(async (req) => {
   let scoreSkippedReason = "";
   let scoreErrorSummary = "";
   let scriptScoreDetail: Record<string, unknown> | null = null;
+  let judgmentCardsExtractedCount = 0;
+  let judgmentCardsPersistedCount = 0;
+  let judgmentCardsError: string | null = null;
 
   try {
     const { data, error } = await supabaseAdmin
@@ -354,7 +357,6 @@ Deno.serve(async (req) => {
       .update({
         script_polished: finalScript || null,
         script_polished_preview: preview || null,
-        judgment_cards: extractJudgmentCards(finalScript),
         script_score: scriptScore,
         script_score_detail: scriptScoreDetail
       })
@@ -363,6 +365,15 @@ Deno.serve(async (req) => {
     if (updateError) {
       throw updateError;
     }
+
+    const judgmentCardSync = await syncEpisodeJudgmentCardsForScript({
+      episodeId,
+      lang: "ja",
+      script: finalScript
+    });
+    judgmentCardsExtractedCount = judgmentCardSync.extractedCount;
+    judgmentCardsPersistedCount = judgmentCardSync.persistedCount;
+    judgmentCardsError = judgmentCardSync.error;
   } catch (error) {
     fallbackUsed = true;
     parseOk = false;
@@ -381,11 +392,19 @@ Deno.serve(async (req) => {
         .update({
           script_polished: finalScript || null,
           script_polished_preview: preview || null,
-          judgment_cards: extractJudgmentCards(finalScript),
           script_score: scriptScore,
           script_score_detail: scriptScoreDetail
         })
         .eq("id", episodeId);
+
+      const judgmentCardSync = await syncEpisodeJudgmentCardsForScript({
+        episodeId,
+        lang: "ja",
+        script: finalScript
+      });
+      judgmentCardsExtractedCount = judgmentCardSync.extractedCount;
+      judgmentCardsPersistedCount = judgmentCardSync.persistedCount;
+      judgmentCardsError = judgmentCardSync.error;
     }
   }
 
@@ -431,6 +450,11 @@ Deno.serve(async (req) => {
     chars_target_min: TARGET_MIN_CHARS,
     chars_target_max: TARGET_MAX_CHARS,
     script_polished_preview_chars: preview.length,
+    judgment_card_extraction: {
+      extracted_count: judgmentCardsExtractedCount,
+      persisted_count: judgmentCardsPersistedCount,
+      error: judgmentCardsError
+    },
     instructions_version: "ja-radio-v3-fact-tone-score"
   };
 
