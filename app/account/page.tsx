@@ -46,11 +46,11 @@ export default async function AccountPage({
             copy="Stripe webhook で `subscriptions` が更新されると、ここが paid に変わります。"
           />
           <div className={styles.ctaRow}>
-            <Link href="/episodes" className={styles.primaryLink}>
-              Episodesへ戻る
+            <Link href="/decisions" className={styles.primaryLink}>
+              Decisionsへ戻る
             </Link>
-            <Link href="/" className={styles.secondaryLink}>
-              Home
+            <Link href="/episodes" className={styles.secondaryLink}>
+              Episodes
             </Link>
           </div>
         </section>
