@@ -88,7 +88,7 @@ export default function MemberControls({
     const { error: signInError } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent("/episodes")}`
+        emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent("/decisions")}`
       }
     });
 

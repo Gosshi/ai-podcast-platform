@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AppNavigation from "@/app/components/AppNavigation";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,6 +25,7 @@ export default function RootLayout({
             __html: `window.__APP_SUPABASE_CONFIG__ = ${publicSupabaseConfig};`
           }}
         />
+        <AppNavigation />
         {children}
       </body>
     </html>
