@@ -61,6 +61,26 @@ const formatDateOnly = (value: string, locale: Locale): string => {
   return date.toLocaleDateString(locale === "ja" ? "ja-JP" : "en-US");
 };
 
+const formatDeadline = (value: string | null, locale: Locale): string | null => {
+  if (!value) return null;
+  return formatDateTime(value, locale);
+};
+
+const resolveJudgmentTypeLabel = (
+  value: "use_now" | "watch" | "skip",
+  t: ReturnType<typeof getMessages>["episodes"]
+): string => {
+  if (value === "use_now") return t.judgmentTypeUseNow;
+  if (value === "skip") return t.judgmentTypeSkip;
+  return t.judgmentTypeWatch;
+};
+
+const resolveJudgmentTypeClassName = (value: "use_now" | "watch" | "skip"): string => {
+  if (value === "use_now") return styles.judgmentTypeUseNow;
+  if (value === "skip") return styles.judgmentTypeSkip;
+  return styles.judgmentTypeWatch;
+};
+
 const stripLangSuffix = (value: string | null): string => {
   const trimmed = (value ?? "").trim();
   if (!trimmed) return "";
@@ -619,40 +639,55 @@ export default function EpisodesView({
                     ) : null}
                   </div>
 
-                  {isPaid ? (
-                    selectedEpisode.judgment_cards.length > 0 ? (
-                      <div className={styles.judgmentCards}>
-                        {selectedEpisode.judgment_cards.map((card, index) => (
-                          <article key={`${selectedEpisode.id}-card-${index}`} className={styles.judgmentCard}>
-                            <div className={styles.sectionHeaderRow}>
-                              <strong>{card.topic_title}</strong>
+                  {selectedEpisode.judgment_cards.length > 0 ? (
+                    <div className={styles.judgmentCards}>
+                      {selectedEpisode.judgment_cards.map((card, index) => (
+                        <article key={`${selectedEpisode.id}-card-${index}`} className={styles.judgmentCard}>
+                          <div className={styles.sectionHeaderRow}>
+                            <strong>{card.topic_title}</strong>
+                            <div className={styles.cardMetaStack}>
+                              <span
+                                className={`${styles.judgmentTypeBadge} ${resolveJudgmentTypeClassName(card.judgment_type)}`.trim()}
+                              >
+                                {resolveJudgmentTypeLabel(card.judgment_type, t)}
+                              </span>
                               {card.frame_type ? <span className={styles.metaPill}>{card.frame_type}</span> : null}
                             </div>
-                            <p>{card.judgment}</p>
-                            {card.deadline ? (
-                              <p className={styles.metaLine}>
-                                {t.deadlineLabel}: {card.deadline}
-                              </p>
-                            ) : null}
-                            {card.watch_points.length > 0 ? (
+                          </div>
+                          <p>{card.judgment_summary}</p>
+                          {isPaid && card.action_text ? (
+                            <p className={styles.metaLine}>
+                              {t.actionLabel}: {card.action_text}
+                            </p>
+                          ) : null}
+                          {isPaid && card.deadline_at ? (
+                            <p className={styles.metaLine}>
+                              {t.deadlineLabel}: {formatDeadline(card.deadline_at, locale)}
+                            </p>
+                          ) : null}
+                          {isPaid && card.watch_points.length > 0 ? (
+                            <>
+                              <p className={styles.metaLine}>{t.watchPointsLabel}</p>
                               <ul className={styles.watchList}>
                                 {card.watch_points.map((point) => (
                                   <li key={point}>{point}</li>
                                 ))}
                               </ul>
-                            ) : null}
-                          </article>
-                        ))}
-                      </div>
-                    ) : (
-                      <p>{t.noJudgmentCards}</p>
-                    )
+                            </>
+                          ) : null}
+                        </article>
+                      ))}
+                    </div>
                   ) : (
+                    <p>{t.noJudgmentCards}</p>
+                  )}
+
+                  {selectedEpisode.judgment_cards_preview_limited ? (
                     <div className={styles.lockedCard}>
                       <strong>{t.cardsLockedTitle}</strong>
                       <p>{t.cardsLockedCopy}</p>
                     </div>
-                  )}
+                  ) : null}
                 </section>
 
                 <section>

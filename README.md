@@ -26,7 +26,8 @@
 - 会員状態は `profiles` と `subscriptions` で管理します
 - `free` / `paid` 判定は `subscriptions.status` が `trialing | active | past_due` かどうかで決まります
 - `/episodes` は無料版では最新プレビューのみ、有料版では判断カード・DeepDive全文・アーカイブを表示します
-- 判断カードは `episodes.judgment_cards` に保存され、`write-script-ja` / `expand-script-ja` / `polish-script-ja` で更新されます
+- 判断カードは `episode_judgment_cards` に構造化保存され、`write-script-ja` / `expand-script-ja` / `polish-script-ja` の各 step で再抽出・同期されます
+- `episode_judgment_cards` は weekly summary / 再判定ツール / 履歴分析の共通データソースです
 
 ### Membership Tables
 - `profiles`
@@ -41,12 +42,27 @@
   - `stripe_customer_id`
   - `stripe_subscription_id`
   - `checkout_session_id`
+- `episode_judgment_cards`
+  - `episode_id`
+  - `lang`
+  - `genre`
+  - `topic_order`
+  - `topic_title`
+  - `frame_type`
+  - `judgment_type`
+  - `judgment_summary`
+  - `action_text`
+  - `deadline_at`
+  - `threshold_json`
+  - `watch_points_json`
+  - `confidence_score`
 
 ### Free vs Paid Boundary
 - 無料:
   - `/episodes` の一覧
   - 音声再生
   - `script_polished_preview` ベースの短いプレビュー
+  - 判断カードの先頭1件サマリーのみ
 - 有料:
   - 判断カード全文
   - DeepDive 完全版
@@ -71,6 +87,7 @@
 ## DB Notes
 - Migration は `supabase/migrations/` に SQL で追加する
 - 公開判定は `episodes.status='published'` かつ `published_at IS NOT NULL`
+- 判断カードは `episode_judgment_cards` を source of truth とし、`episodes.judgment_cards` は後方互換のため残っていても product UI では参照しない
 - `daily-generate` は未読 `letters` のうち「`tips.letter_id` 付き」を最優先し、次に新着未読を最大2件まで採用
 - 採用済み `letters` は `is_used=true` に更新される
 
@@ -83,6 +100,8 @@
 - `write-script-ja` は入力 trend/letters を sanitize（HTML/entity/URL/placeholder除去）し、`OP / HEADLINE / DEEPDIVE x3 / QUICK NEWS x6 / LETTERS / OUTRO / SOURCES` の固定構造で生成する
 - `write-script-ja` は判断視点を個人の時間とお金に限定し、DeepDiveの⑤⑥⑦を `今日の判断（個人視点） / 判断期限（個人の行動期限） / 監視ポイント（個人が見るべき数値）` として生成する
 - `write-script-ja` の DeepDive ⑤は毎回 Frame A/B/C/D を宣言し、数値計算または条件判定で結論を出す（テンプレ判断の反復は禁止）
+- `write-script-ja` / `expand-script-ja` / `polish-script-ja` は DeepDive から `topic_title / frame_type / judgment_type / judgment_summary / action_text / deadline_at / threshold_json / watch_points_json` を抽出し、`episode_judgment_cards` に同期する
+- judgment extraction 失敗は pipeline を落とさず、`job_runs.payload.judgment_card_extraction` に抽出件数・保存件数・エラーを残す
 - `write-script-ja` は `予算配分 / 媒体配分 / 事業者視点 / 業界戦略 / 媒体再設計` を本文で禁止し、QuickNewsタグを `【今使う】/【今使わない】/【監視】` に固定する
 - `write-script-ja` の QuickNews は判断タグに加えて、可能な項目で Frame A/B/C/D の判断根拠を付与する
 - `write-script-ja` は本文から URL を除去し、URL は `SOURCES` セクションにのみ保持する（`SOURCES_FOR_UI` には `trend_item_id` を保持）
@@ -216,7 +235,8 @@
 - Page: `/episodes`
 - Displays: `title`, `lang`, `published_at`, preview
 - Reads published rows from Supabase (`episodes.status='published'` and `published_at is not null`)
-- 無料ユーザーはプレビューのみ、有料ユーザーは `script_polished` / `script` と `judgment_cards` を表示
+- 無料ユーザーは `episode_judgment_cards` の先頭1件サマリーのみ表示し、`action_text / deadline_at / watch_points_json` はロックする
+- 有料ユーザーは `episode_judgment_cards` の全件と `script_polished` / `script` を表示する
 - `audio_url` が `/audio/...` の場合、`public/audio` のローカル音声を `<audio>` タグで再生
 
 ## TTS Provider (OpenAI + local fallback)
