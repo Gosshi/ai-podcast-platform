@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import DecisionCalculator from "@/app/components/DecisionCalculator";
 import MemberControls from "@/app/components/MemberControls";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { loadPublishedEpisodeById } from "@/app/lib/episodes";
@@ -101,6 +102,7 @@ export default async function EpisodeDetailPage({
                     </div>
                     <h3>{card.topic_title}</h3>
                     <p className={styles.summary}>{card.judgment_summary}</p>
+                    <DecisionCalculator card={card} isPaid={viewer?.isPaid ?? false} locale="ja" />
                     <dl className={styles.metaList}>
                       {card.action_text ? (
                         <div>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import DecisionCalculator from "@/app/components/DecisionCalculator";
 import MemberControls from "@/app/components/MemberControls";
 import { isWithinFreeAccessWindow } from "@/app/lib/contentAccess";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
@@ -664,6 +665,7 @@ export default function EpisodesView({
                             </div>
                           </div>
                           <p>{card.judgment_summary}</p>
+                          <DecisionCalculator card={card} isPaid={isPaid} locale={locale} />
                           {isPaid && card.action_text ? (
                             <p className={styles.metaLine}>
                               {t.actionLabel}: {card.action_text}
