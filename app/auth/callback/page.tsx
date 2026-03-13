@@ -52,7 +52,7 @@ export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const next = resolveSafeNextPath(new URLSearchParams(window.location.search).get("next"), "/episodes");
+    const next = resolveSafeNextPath(new URLSearchParams(window.location.search).get("next"), "/decisions");
     const supabase = createBrowserSupabaseClient();
 
     const finish = async () => {
@@ -93,7 +93,7 @@ export default function AuthCallbackPage() {
   return (
     <main style={{ maxWidth: 560, margin: "4rem auto", padding: "0 1rem" }}>
       <h1>ログインを確定しています</h1>
-      <p>数秒以内に会員ページへ戻ります。</p>
+      <p>数秒以内に前の画面へ戻ります。</p>
       {error ? <p style={{ color: "#b91c1c" }}>{error}</p> : null}
     </main>
   );

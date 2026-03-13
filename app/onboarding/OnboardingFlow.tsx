@@ -1,10 +1,13 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { track } from "@/src/lib/analytics";
 import {
   ACTIVE_SUBSCRIPTION_LABELS,
   ACTIVE_SUBSCRIPTION_OPTIONS,
+  BUDGET_SENSITIVITY_LABELS,
+  BUDGET_SENSITIVITY_OPTIONS,
   DAILY_AVAILABLE_TIME_LABELS,
   DAILY_AVAILABLE_TIME_OPTIONS,
   DECISION_PRIORITY_LABELS,
@@ -12,6 +15,7 @@ import {
   INTEREST_TOPIC_LABELS,
   INTEREST_TOPIC_OPTIONS,
   type ActiveSubscription,
+  type BudgetSensitivity,
   type DailyAvailableTime,
   type DecisionPriority,
   type InterestTopic,
@@ -25,31 +29,41 @@ type OnboardingFlowProps = {
   isFirstRun: boolean;
 };
 
-const STEP_COUNT = 3;
-
 const STEP_TITLES = [
   {
+    id: "interest_topics",
     eyebrow: "Step 1",
     title: "興味ジャンルを選ぶ",
     description: "Decision Engine が cold start で外さないための基本シグナルです。複数選択できます。"
   },
   {
+    id: "active_subscriptions",
     eyebrow: "Step 2",
     title: "使っているサービスを教える",
     description: "今すぐ使える候補か、加入前提の候補かを切り分けるために使います。"
   },
   {
+    id: "decision_priority",
     eyebrow: "Step 3",
-    title: "判断スタイルを決める",
-    description: "何を優先するかと、1日に使える時間を取得して profile を初期化します。"
+    title: "判断で何を優先するかを決める",
+    description: "お金、時間、新規発見、後悔回避のどれを優先したいかを explicit signal として保存します。"
+  },
+  {
+    id: "time_and_budget",
+    eyebrow: "Step 4",
+    title: "使える時間を教える",
+    description: "毎日の時間帯と予算感度を入れて、ranking / hints / alerts に渡せる基盤を完成させます。"
   }
 ] as const;
+
+const STEP_COUNT = STEP_TITLES.length;
 
 const ERROR_MESSAGES: Record<string, string> = {
   interest_topics_required: "興味ジャンルを1つ以上選んでください。",
   active_subscriptions_required: "使っているサービスを1つ以上選んでください。",
   decision_priority_required: "判断で優先したいことを選んでください。",
   daily_available_time_required: "1日に使える時間を選んでください。",
+  budget_sensitivity_invalid: "予算感度の値が不正です。もう一度選び直してください。",
   unauthorized: "セッションが切れています。ログインし直してください。"
 };
 
@@ -71,6 +85,7 @@ const canProceedFromStep = (step: number, state: {
   activeSubscriptions: ActiveSubscription[];
   decisionPriority: DecisionPriority | null;
   dailyAvailableTime: DailyAvailableTime | null;
+  budgetSensitivity: BudgetSensitivity | null;
 }): boolean => {
   if (step === 0) {
     return state.interestTopics.length > 0;
@@ -80,7 +95,11 @@ const canProceedFromStep = (step: number, state: {
     return state.activeSubscriptions.length > 0;
   }
 
-  return Boolean(state.decisionPriority && state.dailyAvailableTime);
+  if (step === 2) {
+    return Boolean(state.decisionPriority);
+  }
+
+  return Boolean(state.dailyAvailableTime);
 };
 
 export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRun }: OnboardingFlowProps) {
@@ -96,20 +115,66 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
   const [dailyAvailableTime, setDailyAvailableTime] = useState<DailyAvailableTime | null>(
     initialPreferences?.dailyAvailableTime ?? null
   );
+  const [budgetSensitivity, setBudgetSensitivity] = useState<BudgetSensitivity | null>(
+    initialPreferences?.budgetSensitivity ?? null
+  );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const hasTrackedStartRef = useRef(false);
 
   const currentStep = STEP_TITLES[step];
+  const analyticsSource = isFirstRun ? "onboarding_first_run" : "onboarding_preferences_refresh";
   const canContinue = useMemo(
     () =>
       canProceedFromStep(step, {
         interestTopics,
         activeSubscriptions,
         decisionPriority,
-        dailyAvailableTime
+        dailyAvailableTime,
+        budgetSensitivity
       }),
-    [activeSubscriptions, dailyAvailableTime, decisionPriority, interestTopics, step]
+    [activeSubscriptions, budgetSensitivity, dailyAvailableTime, decisionPriority, interestTopics, step]
   );
+
+  useEffect(() => {
+    if (hasTrackedStartRef.current) {
+      return;
+    }
+
+    hasTrackedStartRef.current = true;
+    track("onboarding_start", {
+      page: "/onboarding",
+      source: analyticsSource,
+      is_first_run: isFirstRun,
+      has_existing_preferences: Boolean(initialPreferences),
+      next_path: nextPath
+    });
+  }, [analyticsSource, initialPreferences, isFirstRun, nextPath]);
+
+  const trackStepCompletion = (completedStep: number) => {
+    const completed = STEP_TITLES[completedStep];
+    if (!completed) {
+      return;
+    }
+
+    const selectedCount =
+      completed.id === "interest_topics"
+        ? interestTopics.length
+        : completed.id === "active_subscriptions"
+          ? activeSubscriptions.length
+          : completed.id === "decision_priority"
+            ? Number(Boolean(decisionPriority))
+            : Number(Boolean(dailyAvailableTime)) + Number(Boolean(budgetSensitivity));
+
+    track("onboarding_step_complete", {
+      page: "/onboarding",
+      source: analyticsSource,
+      is_first_run: isFirstRun,
+      step_number: completedStep + 1,
+      step_key: completed.id,
+      selected_count: selectedCount
+    });
+  };
 
   const handleNext = () => {
     if (!canContinue) {
@@ -118,6 +183,7 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
     }
 
     setError(null);
+    trackStepCompletion(step);
     setStep((current) => Math.min(current + 1, STEP_COUNT - 1));
   };
 
@@ -127,8 +193,13 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
   };
 
   const handleSubmit = () => {
-    if (!decisionPriority || !dailyAvailableTime) {
+    if (!decisionPriority) {
       setError(ERROR_MESSAGES.decision_priority_required);
+      return;
+    }
+
+    if (!dailyAvailableTime) {
+      setError(ERROR_MESSAGES.daily_available_time_required);
       return;
     }
 
@@ -143,7 +214,8 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
           interestTopics,
           activeSubscriptions,
           decisionPriority,
-          dailyAvailableTime
+          dailyAvailableTime,
+          budgetSensitivity
         })
       })
         .then(async (response) => {
@@ -154,6 +226,20 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
 
           if (!response.ok || payload.ok !== true) {
             throw new Error(ERROR_MESSAGES[payload.error ?? ""] ?? "設定の保存に失敗しました。");
+          }
+
+          trackStepCompletion(step);
+          if (isFirstRun) {
+            track("onboarding_complete", {
+              page: "/onboarding",
+              source: analyticsSource,
+              is_first_run: true,
+              interest_topic_count: interestTopics.length,
+              active_subscription_count: activeSubscriptions.filter((entry) => entry !== "none").length,
+              decision_priority: decisionPriority,
+              daily_available_time: dailyAvailableTime,
+              budget_sensitivity: budgetSensitivity
+            });
           }
 
           router.replace(nextPath);
@@ -220,34 +306,36 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
               }}
             >
               <strong>{ACTIVE_SUBSCRIPTION_LABELS[subscription]}</strong>
-              <span>{subscription === "none" ? "サブスクなし" : "active subscription"}</span>
+              <span>{subscription === "none" ? "サブスクなし" : subscription === "other" ? "その他の利用中サービス" : "active subscription"}</span>
             </button>
           ))}
         </div>
       ) : null}
 
       {step === 2 ? (
-        <div className={styles.formGrid}>
-          <div className={styles.group}>
-            <p className={styles.groupLabel}>判断で何を優先しますか</p>
-            <div className={styles.optionGrid}>
-              {DECISION_PRIORITY_OPTIONS.map((priority) => (
-                <button
-                  key={priority}
-                  type="button"
-                  className={`${styles.optionCard} ${decisionPriority === priority ? styles.optionCardActive : ""}`.trim()}
-                  onClick={() => {
-                    setError(null);
-                    setDecisionPriority(priority);
-                  }}
-                >
-                  <strong>{DECISION_PRIORITY_LABELS[priority]}</strong>
-                  <span>{priority}</span>
-                </button>
-              ))}
-            </div>
+        <div className={styles.group}>
+          <p className={styles.groupLabel}>判断で何を優先しますか</p>
+          <div className={styles.optionGrid}>
+            {DECISION_PRIORITY_OPTIONS.map((priority) => (
+              <button
+                key={priority}
+                type="button"
+                className={`${styles.optionCard} ${decisionPriority === priority ? styles.optionCardActive : ""}`.trim()}
+                onClick={() => {
+                  setError(null);
+                  setDecisionPriority(priority);
+                }}
+              >
+                <strong>{DECISION_PRIORITY_LABELS[priority]}</strong>
+                <span>{priority}</span>
+              </button>
+            ))}
           </div>
+        </div>
+      ) : null}
 
+      {step === 3 ? (
+        <div className={styles.formGrid}>
           <div className={styles.group}>
             <p className={styles.groupLabel}>1日にどれくらい時間を使えますか</p>
             <div className={styles.optionGrid}>
@@ -263,6 +351,29 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
                 >
                   <strong>{DAILY_AVAILABLE_TIME_LABELS[time]}</strong>
                   <span>{time}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.group}>
+            <div className={styles.groupLabelRow}>
+              <p className={styles.groupLabel}>予算感度</p>
+              <span className={styles.optionalTag}>任意</span>
+            </div>
+            <div className={styles.optionGrid}>
+              {BUDGET_SENSITIVITY_OPTIONS.map((budgetValue) => (
+                <button
+                  key={budgetValue}
+                  type="button"
+                  className={`${styles.optionCard} ${budgetSensitivity === budgetValue ? styles.optionCardActive : ""}`.trim()}
+                  onClick={() => {
+                    setError(null);
+                    setBudgetSensitivity((current) => (current === budgetValue ? null : budgetValue));
+                  }}
+                >
+                  <strong>{BUDGET_SENSITIVITY_LABELS[budgetValue]}</strong>
+                  <span>{budgetValue}</span>
                 </button>
               ))}
             </div>

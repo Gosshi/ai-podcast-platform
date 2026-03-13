@@ -53,6 +53,10 @@ const FUNNEL_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: string }
 
 const ENGAGEMENT_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: string }> = [
   { eventName: "page_view", label: "Page Views" },
+  { eventName: "onboarding_start", label: "Onboarding Starts" },
+  { eventName: "onboarding_step_complete", label: "Onboarding Step Completions" },
+  { eventName: "onboarding_complete", label: "Onboarding Completions" },
+  { eventName: "preference_update", label: "Preference Updates" },
   { eventName: "judgment_card_click", label: "Judgment Card Clicks" },
   { eventName: "library_view", label: "Library Views" },
   { eventName: "watchlist_view", label: "Watchlist Views" },

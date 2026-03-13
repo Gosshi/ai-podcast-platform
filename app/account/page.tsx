@@ -10,6 +10,18 @@ import {
   resolvePlanName
 } from "@/app/lib/membership";
 import { getViewerFromCookies } from "@/app/lib/viewer";
+import {
+  ACTIVE_SUBSCRIPTION_LABELS,
+  BUDGET_SENSITIVITY_LABELS,
+  DAILY_AVAILABLE_TIME_LABELS,
+  DECISION_PRIORITY_LABELS,
+  INTEREST_TOPIC_LABELS,
+  type ActiveSubscription,
+  type BudgetSensitivity,
+  type DailyAvailableTime,
+  type DecisionPriority,
+  type InterestTopic
+} from "@/src/lib/userPreferences";
 import styles from "./page.module.css";
 
 type SearchParams = {
@@ -19,6 +31,30 @@ type SearchParams = {
 const readParam = (value: string | string[] | undefined): string | null => {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
+};
+
+const formatSelectionList = <T extends string>(
+  values: T[] | null | undefined,
+  labels: Record<T, string>,
+  fallback = "未設定"
+): string => {
+  if (!values?.length) {
+    return fallback;
+  }
+
+  return values.map((value) => labels[value]).join(", ");
+};
+
+const formatSingleSelection = <T extends string>(
+  value: T | null | undefined,
+  labels: Record<T, string>,
+  fallback = "未設定"
+): string => {
+  if (!value) {
+    return fallback;
+  }
+
+  return labels[value];
 };
 
 export default async function AccountPage({
@@ -180,7 +216,7 @@ export default async function AccountPage({
               <p className={styles.eyebrow}>Preference Setup</p>
               <h2>Onboarding と判断嗜好の設定</h2>
               <p className={styles.sectionLead}>
-                初回に取得した preference は cold start の補助に使います。あとから更新しても既存の decision history は壊しません。
+                explicit preference は cold start の補助、Personal Decision Profile は履歴から学習した implicit signal です。両者は競合させず、ranking と hints を補完する前提で分離しています。
               </p>
             </div>
 
@@ -192,22 +228,47 @@ export default async function AccountPage({
               <article className={styles.statCard}>
                 <span className={styles.statLabel}>興味ジャンル</span>
                 <strong className={styles.statValue}>
-                  {viewer.preferences?.interestTopics.length ? viewer.preferences.interestTopics.join(", ") : "未設定"}
+                  {formatSelectionList<InterestTopic>(viewer.preferences?.interestTopics, INTEREST_TOPIC_LABELS)}
+                </strong>
+              </article>
+              <article className={styles.statCard}>
+                <span className={styles.statLabel}>利用サービス</span>
+                <strong className={styles.statValue}>
+                  {formatSelectionList<ActiveSubscription>(
+                    viewer.preferences?.activeSubscriptions,
+                    ACTIVE_SUBSCRIPTION_LABELS
+                  )}
                 </strong>
               </article>
               <article className={styles.statCard}>
                 <span className={styles.statLabel}>判断優先</span>
-                <strong className={styles.statValue}>{viewer.preferences?.decisionPriority ?? "未設定"}</strong>
+                <strong className={styles.statValue}>
+                  {formatSingleSelection<DecisionPriority>(viewer.preferences?.decisionPriority, DECISION_PRIORITY_LABELS)}
+                </strong>
               </article>
               <article className={styles.statCard}>
                 <span className={styles.statLabel}>使える時間</span>
-                <strong className={styles.statValue}>{viewer.preferences?.dailyAvailableTime ?? "未設定"}</strong>
+                <strong className={styles.statValue}>
+                  {formatSingleSelection<DailyAvailableTime>(
+                    viewer.preferences?.dailyAvailableTime,
+                    DAILY_AVAILABLE_TIME_LABELS
+                  )}
+                </strong>
+              </article>
+              <article className={styles.statCard}>
+                <span className={styles.statLabel}>予算感度</span>
+                <strong className={styles.statValue}>
+                  {formatSingleSelection<BudgetSensitivity>(
+                    viewer.preferences?.budgetSensitivity,
+                    BUDGET_SENSITIVITY_LABELS
+                  )}
+                </strong>
               </article>
             </div>
 
             <div className={styles.ctaRow}>
               <Link href={buildOnboardingPath("/account")} className={styles.primaryLink}>
-                Preferences を設定
+                {viewer.needsOnboarding ? "Preferences を設定" : "Preferences を見直す"}
               </Link>
               <Link href="/decisions" className={styles.secondaryLink}>
                 Decisions を見る

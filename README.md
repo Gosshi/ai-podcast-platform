@@ -26,6 +26,7 @@
 - 会員状態は `profiles` と `subscriptions` で管理します
 - `free` / `paid` 判定は `subscriptions.status` が `trialing | active | past_due` かどうかで決まります
 - `/account` ではプラン名、購読ステータス、次回更新日、支払い状態を見やすく表示します
+- `/onboarding` と `user_preferences` で explicit preference を保存し、cold start 時の personalisation seed を作ります
 - `/episodes` は無料版では最新プレビューのみ、有料版では判断カード・DeepDive全文・アーカイブを表示します
 - 判断カードは `episode_judgment_cards` に構造化保存され、`write-script-ja` / `expand-script-ja` / `polish-script-ja` の各 step で再抽出・同期されます
 - `episode_judgment_cards` は weekly summary / 再判定ツール / 履歴分析の共通データソースです
@@ -40,6 +41,27 @@
 - `/history/replay/[id]` は Decision Replay として、当時の judgment card と outcome を並べて学び直せる詳細ページです
 - 購読中ユーザーは Stripe Billing Portal から支払い方法更新、解約、購読管理をセルフサービスで行います
 - `/weekly-decisions` で直近7日間の judgment digest を閲覧できます
+
+## User Onboarding And Preference Storage
+- purpose:
+  - `user_preferences` は初回の cold start を補う explicit signal です
+  - `Personal Decision Profile` は `user_decisions` から学習する implicit signal です
+  - 両者は競合させず、ranking / hints / alerts / digest personalisation を補完する前提で分離します
+- onboarding flow:
+  - 初回ログイン後または preference 未設定時、`/decisions` と auth callback から `/onboarding` に誘導します
+  - step は `interest_topics -> active_subscriptions -> decision_priority -> daily_available_time (+ optional budget_sensitivity)` の 4 段です
+  - 完了後は `next` つきで元画面に戻し、デフォルトは `/decisions` に戻します
+- stored fields:
+  - `interest_topics`
+  - `active_subscriptions`
+  - `decision_priority`
+  - `daily_available_time`
+  - `budget_sensitivity` (optional)
+- product connection:
+  - `src/lib/userPreferences.ts` の `initializeUserPreferenceProfile` と `buildUserPreferenceSurfaceContext` を入口として使います
+  - `Next Best Decision` は `preferenceProfile` を ranking context に渡せます
+  - `Personal Hints / Watchlist Alerts / Paywall Copy / Weekly Digest` は `buildUserPreferenceSurfaceContext` を共通 adapter として使う前提です
+- details: [Onboarding Personalization](docs/onboarding-personalization.md)
 
 ## Product Analytics Foundation
 - 保存先は Supabase の `analytics_events` テーブルです
@@ -69,6 +91,12 @@
   - `history_view`
   - `weekly_digest_view`
   - `account_view`
+  - `onboarding_view`
+- Onboarding / preferences:
+  - `onboarding_start`
+  - `onboarding_step_complete`
+  - `onboarding_complete`
+  - `preference_update`
 - Judgment cards:
   - `judgment_card_impression`
   - `judgment_card_click`
@@ -125,16 +153,20 @@
   - `analytics_events.event_properties.page/source`
 
 ### Manual Validation
-1. `/decisions` を開き、`page_view` と `decisions_view` が増えることを確認
-2. judgment card を開き、`judgment_card_impression` / `judgment_card_click` が増えることを確認
-3. calculator を開いて再判定し、`decision_calculator_open` / `decision_calculator_submit` / `decision_calculator_result_view` を確認
-4. Save 後、Outcome Reminder が出る decision で quick submit し、`outcome_reminder_impression` / `outcome_quick_submit` / `outcome_update` を確認
-5. reminder から History / Replay に遷移し、`outcome_reminder_click` / `outcome_reminder_to_replay_click` / `decision_replay_view` を確認
-6. paid で replay insight が表示される場合は `decision_replay_insight_impression` を確認
-7. Judgment Card で Save / Watch / Remove を押し、`watchlist_add` / `watchlist_remove` を確認
-8. `/watchlist` を開いて filter / link 操作を行い、`watchlist_view` / `watchlist_filter_change` / `watchlist_card_click` を確認
-9. free で paywall を見たあと subscribe を押し、`paywall_view` / `subscribe_cta_click` / `checkout_started` を確認
-10. Stripe webhook 後に `checkout_completed` を確認
+1. preference 未設定ユーザーでログインし、`/onboarding` に入ることと `onboarding_start` が増えることを確認
+2. onboarding の各 step を進めて、`onboarding_step_complete` が step ごとに増えることを確認
+3. 完了後に `user_preferences` が保存され、`onboarding_complete` と `preference_update` が増えることを確認
+4. `/account` から preference を再確認し、更新後に `preference_update` が増えることを確認
+5. `/decisions` を開き、`page_view` と `decisions_view` が増えることを確認
+6. judgment card を開き、`judgment_card_impression` / `judgment_card_click` が増えることを確認
+7. calculator を開いて再判定し、`decision_calculator_open` / `decision_calculator_submit` / `decision_calculator_result_view` を確認
+8. Save 後、Outcome Reminder が出る decision で quick submit し、`outcome_reminder_impression` / `outcome_quick_submit` / `outcome_update` を確認
+9. reminder から History / Replay に遷移し、`outcome_reminder_click` / `outcome_reminder_to_replay_click` / `decision_replay_view` を確認
+10. paid で replay insight が表示される場合は `decision_replay_insight_impression` を確認
+11. Judgment Card で Save / Watch / Remove を押し、`watchlist_add` / `watchlist_remove` を確認
+12. `/watchlist` を開いて filter / link 操作を行い、`watchlist_view` / `watchlist_filter_change` / `watchlist_card_click` を確認
+13. free で paywall を見たあと subscribe を押し、`paywall_view` / `subscribe_cta_click` / `checkout_started` を確認
+14. Stripe webhook 後に `checkout_completed` を確認
 
 ### SQL Spot Checks
 ```sql
@@ -199,6 +231,15 @@ where created_at >= now() - interval '30 days';
   - `episode_id`
   - `decision_type`
   - `outcome`
+  - `created_at`
+  - `updated_at`
+- `user_preferences`
+  - `user_id`
+  - `interest_topics`
+  - `active_subscriptions`
+  - `decision_priority`
+  - `daily_available_time`
+  - `budget_sensitivity`
   - `created_at`
   - `updated_at`
 
