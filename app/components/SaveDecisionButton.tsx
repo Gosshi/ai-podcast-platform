@@ -23,7 +23,7 @@ type SaveDecisionResponse =
       ok: true;
       decision: {
         id: string;
-        outcome: string;
+        outcome: string | null;
         alreadySaved: boolean;
       };
     }

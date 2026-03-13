@@ -1,7 +1,8 @@
 import type { JudgmentCard, JudgmentThresholdJson, JudgmentType } from "../../src/lib/judgmentCards";
-import type { DecisionProfile } from "../../src/lib/decisionProfile";
+import type { DecisionProfile, DecisionProfileEntry } from "../../src/lib/decisionProfile";
 
-export type DecisionOutcome = "success" | "regret" | "neutral";
+export type DecisionOutcomeValue = "success" | "regret" | "neutral";
+export type DecisionOutcome = DecisionOutcomeValue | null;
 
 export type SavedDecisionRecord = {
   id: string;
@@ -25,6 +26,7 @@ export type DecisionHistoryEntry = {
   decision_type: JudgmentType;
   outcome: DecisionOutcome;
   threshold_json: JudgmentThresholdJson;
+  deadline_at: string | null;
   created_at: string;
   updated_at: string;
   episode_title: string | null;
@@ -33,6 +35,8 @@ export type DecisionHistoryEntry = {
 
 export type DecisionHistoryStats = {
   totalDecisions: number;
+  resolvedCount: number;
+  unresolvedCount: number;
   successCount: number;
   regretCount: number;
   neutralCount: number;
@@ -55,6 +59,7 @@ type DecisionCardLookupRow = {
   frame_type: string | null;
   genre: string | null;
   threshold_json: JudgmentThresholdJson | null;
+  deadline_at: string | null;
 };
 
 type EpisodeLookupRow = {
@@ -64,6 +69,7 @@ type EpisodeLookupRow = {
 };
 
 export const FREE_DECISION_HISTORY_LIMIT = 10;
+export const UNRESOLVED_OUTCOME_LABEL = "未記録";
 
 export const DECISION_TYPE_LABELS: Record<JudgmentType, string> = {
   use_now: "使う",
@@ -71,7 +77,7 @@ export const DECISION_TYPE_LABELS: Record<JudgmentType, string> = {
   skip: "見送り"
 };
 
-export const OUTCOME_LABELS: Record<DecisionOutcome, string> = {
+export const OUTCOME_LABELS: Record<DecisionOutcomeValue, string> = {
   success: "満足",
   regret: "後悔",
   neutral: "普通"
@@ -157,8 +163,20 @@ const createEmptyDecisionProfile = (): DecisionProfile => ({
   insights: []
 });
 
-export const isDecisionOutcome = (value: unknown): value is DecisionOutcome => {
+export const isDecisionOutcomeValue = (value: unknown): value is DecisionOutcomeValue => {
   return value === "success" || value === "regret" || value === "neutral";
+};
+
+export const formatDecisionOutcomeLabel = (value: DecisionOutcome): string => {
+  if (!value) {
+    return UNRESOLVED_OUTCOME_LABEL;
+  }
+
+  return OUTCOME_LABELS[value];
+};
+
+export const hasDecisionOutcome = (value: DecisionOutcome): value is DecisionOutcomeValue => {
+  return isDecisionOutcomeValue(value);
 };
 
 export const hasReachedDecisionHistoryLimit = (count: number, isPaid: boolean): boolean => {
@@ -172,13 +190,17 @@ export const calculateDecisionHistoryStats = (
   const regretCount = entries.filter((entry) => entry.outcome === "regret").length;
   const neutralCount = entries.filter((entry) => entry.outcome === "neutral").length;
   const totalDecisions = entries.length;
+  const resolvedCount = successCount + regretCount + neutralCount;
+  const unresolvedCount = totalDecisions - resolvedCount;
 
   return {
     totalDecisions,
+    resolvedCount,
+    unresolvedCount,
     successCount,
     regretCount,
     neutralCount,
-    successRate: totalDecisions > 0 ? Math.round((successCount / totalDecisions) * 100) : 0
+    successRate: resolvedCount > 0 ? Math.round((successCount / resolvedCount) * 100) : 0
   };
 };
 
@@ -292,7 +314,7 @@ export const loadDecisionHistory = async (
         judgmentCardIds.length > 0
           ? supabase
               .from("episode_judgment_cards")
-              .select("id, topic_title, frame_type, genre, threshold_json")
+              .select("id, topic_title, frame_type, genre, threshold_json, deadline_at")
               .in("id", judgmentCardIds)
           : Promise.resolve({ data: [], error: null }),
         episodeIds.length > 0
@@ -341,6 +363,7 @@ export const loadDecisionHistory = async (
         decision_type: decision.decision_type,
         outcome: decision.outcome,
         threshold_json: card?.threshold_json ?? {},
+        deadline_at: card?.deadline_at ?? null,
         created_at: decision.created_at,
         updated_at: decision.updated_at,
         episode_title: episode?.title ?? null,
@@ -348,10 +371,26 @@ export const loadDecisionHistory = async (
       } satisfies DecisionHistoryEntry;
     });
 
+    const resolvedEntries: DecisionProfileEntry[] = entries.flatMap((entry) => {
+      if (!hasDecisionOutcome(entry.outcome)) {
+        return [];
+      }
+
+      return [
+        {
+          decision_type: entry.decision_type,
+          outcome: entry.outcome,
+          frame_type: entry.frame_type,
+          genre: entry.genre,
+          threshold_json: entry.threshold_json
+        }
+      ];
+    });
+
     return {
       entries,
       stats: calculateDecisionHistoryStats(entries),
-      profile: (await import("../../src/lib/decisionProfile")).buildPersonalDecisionProfile(entries),
+      profile: (await import("../../src/lib/decisionProfile")).buildPersonalDecisionProfile(resolvedEntries),
       error: null
     };
   } catch (error) {

@@ -84,18 +84,28 @@ test("buildAnalyticsOverview summarizes funnel, engagement, and page views", () 
         source: "page",
         is_paid: true,
         created_at: "2026-03-13T00:05:00.000Z"
+      },
+      {
+        anonymous_id: null,
+        user_id: "user-1",
+        event_name: "outcome_quick_submit",
+        page: "/history",
+        source: "outcome_reminder_quick_submit",
+        is_paid: false,
+        created_at: "2026-03-13T00:06:00.000Z"
       }
     ],
     30
   );
 
-  assert.equal(overview.totals.events, 6);
+  assert.equal(overview.totals.events, 7);
   assert.equal(overview.totals.anonymous, 1);
-  assert.equal(overview.totals.free, 3);
+  assert.equal(overview.totals.free, 4);
   assert.equal(overview.totals.paid, 3);
   assert.equal(overview.pageViews[0]?.page, "/decisions");
   assert.equal(overview.pageViews[0]?.total, 1);
   assert.equal(overview.funnel.find((item) => item.eventName === "checkout_completed")?.paid, 1);
   assert.equal(overview.engagement.find((item) => item.eventName === "decision_save")?.paid, 1);
   assert.equal(overview.engagement.find((item) => item.eventName === "decision_replay_view")?.paid, 1);
+  assert.equal(overview.engagement.find((item) => item.eventName === "outcome_quick_submit")?.free, 1);
 });

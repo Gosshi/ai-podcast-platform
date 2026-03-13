@@ -34,6 +34,7 @@
 - `/decisions` は Next Best Decision を最上段に表示し、締切・judgment type・personal profile を使って「今日先に見るべき判断」を返します
 - `/decisions/library` は Decision Library として `episode_judgment_cards` を横断検索し、再訪・比較できる状態を作ります
 - Decision Library は Replay / Saved Decisions / Alerts に接続する基盤で、episode 起点ではなく judgment 起点の再利用面を担当します
+- Outcome Reminder は `user_decisions` の未記録 outcome を抽出し、判断 → 結果 → 学習のループを `/decisions` と `/history` 上で閉じます
 - `/history/replay/[id]` は Decision Replay として、当時の judgment card と outcome を並べて学び直せる詳細ページです
 - 購読中ユーザーは Stripe Billing Portal から支払い方法更新、解約、購読管理をセルフサービスで行います
 - `/weekly-decisions` で直近7日間の judgment digest を閲覧できます
@@ -79,6 +80,10 @@
   - `decision_save`
   - `decision_remove`
   - `outcome_update`
+  - `outcome_reminder_impression`
+  - `outcome_reminder_click`
+  - `outcome_quick_submit`
+  - `outcome_reminder_to_replay_click`
   - `decision_replay_from_history_click`
   - `decision_replay_view`
   - `decision_replay_insight_impression`
@@ -109,6 +114,8 @@
 - retention:
   - `weekly_digest_open`
   - `weekly_digest_item_click`
+  - `outcome_reminder_impression`
+  - `outcome_quick_submit`
   - `outcome_update`
 - free / paid 差分:
   - `analytics_events.is_paid`
@@ -119,8 +126,8 @@
 1. `/decisions` を開き、`page_view` と `decisions_view` が増えることを確認
 2. judgment card を開き、`judgment_card_impression` / `judgment_card_click` が増えることを確認
 3. calculator を開いて再判定し、`decision_calculator_open` / `decision_calculator_submit` / `decision_calculator_result_view` を確認
-4. Save / outcome update / remove で `decision_save` / `outcome_update` / `decision_remove` を確認
-5. `/history` から replay を開き、`decision_replay_from_history_click` / `decision_replay_view` を確認
+4. Save 後、Outcome Reminder が出る decision で quick submit し、`outcome_reminder_impression` / `outcome_quick_submit` / `outcome_update` を確認
+5. reminder から History / Replay に遷移し、`outcome_reminder_click` / `outcome_reminder_to_replay_click` / `decision_replay_view` を確認
 6. paid で replay insight が表示される場合は `decision_replay_insight_impression` を確認
 7. free で paywall を見たあと subscribe を押し、`paywall_view` / `subscribe_cta_click` / `checkout_started` を確認
 8. Stripe webhook 後に `checkout_completed` を確認
@@ -230,6 +237,23 @@ where created_at >= now() - interval '30 days';
   - free は preview と outcome 比較まで
   - paid は full replay と rules-based insight まで
 - details: [docs/decision-replay.md](docs/decision-replay.md)
+
+## Outcome Reminder
+- path: `/decisions`, `/history`
+- purpose: outcome 未入力の saved decision を先回りで見つけ、結果入力率を上げて personal learning loop を閉じる
+- why it matters:
+  - outcome が入らないと `Personal Decision Profile` の学習密度が上がらない
+  - replay の比較軸が薄くなり、`Next Best Decision` に返す信号も弱くなる
+- reminder rules:
+  - `deadline_at` を過ぎた判断
+  - 保存から一定日数が経過した判断
+  - `outcome IS NULL`
+  - `use_now` / `watch` を優先
+- free / paid:
+  - free は reminder 表示件数を制限
+  - paid は全件 reminder と full replay / insight を活用
+- future connection:
+  - 同じ helper を email reminder / push / weekly unresolved decisions / replay recommendation に流用する
 
 ## Project Layout
 - `app/`: Next.js App Router

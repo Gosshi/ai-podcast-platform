@@ -1,7 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { OUTCOME_LABELS, type DecisionOutcome } from "@/app/lib/decisionHistory";
+import {
+  OUTCOME_LABELS,
+  type DecisionOutcome,
+  type DecisionOutcomeValue
+} from "@/app/lib/decisionHistory";
 import { track } from "@/src/lib/analytics";
 import styles from "./decision-history-controls.module.css";
 
@@ -9,11 +14,13 @@ type DecisionOutcomeSelectProps = {
   decisionId: string;
   initialOutcome: DecisionOutcome;
   page?: string;
+  source?: string;
   episodeId?: string;
   judgmentCardId?: string;
   genre?: string | null;
   frameType?: string | null;
   judgmentType?: "use_now" | "watch" | "skip";
+  variant?: "select" | "quick";
 };
 
 type UpdateDecisionResponse =
@@ -21,7 +28,7 @@ type UpdateDecisionResponse =
       ok: true;
       decision: {
         id: string;
-        outcome: DecisionOutcome;
+        outcome: DecisionOutcomeValue;
         updated_at: string;
       };
     }
@@ -30,23 +37,26 @@ type UpdateDecisionResponse =
       error: string;
     };
 
-const OUTCOME_OPTIONS: DecisionOutcome[] = ["success", "neutral", "regret"];
+const OUTCOME_OPTIONS: DecisionOutcomeValue[] = ["success", "neutral", "regret"];
 
 export default function DecisionOutcomeSelect({
   decisionId,
   initialOutcome,
   page,
+  source,
   episodeId,
   judgmentCardId,
   genre,
   frameType,
-  judgmentType
+  judgmentType,
+  variant = "select"
 }: DecisionOutcomeSelectProps) {
+  const router = useRouter();
   const [value, setValue] = useState<DecisionOutcome>(initialOutcome);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const onChange = async (nextValue: DecisionOutcome) => {
+  const onChange = async (nextValue: DecisionOutcomeValue) => {
     const previousValue = value;
     setValue(nextValue);
     setError(null);
@@ -72,7 +82,7 @@ export default function DecisionOutcomeSelect({
 
       track("outcome_update", {
         page,
-        source: "history_outcome_select",
+        source: source ?? (variant === "quick" ? "outcome_reminder_quick_submit" : "history_outcome_select"),
         decision_id: decisionId,
         episode_id: episodeId,
         judgment_card_id: judgmentCardId,
@@ -82,6 +92,23 @@ export default function DecisionOutcomeSelect({
         previous_outcome: previousValue,
         outcome: nextValue
       });
+
+      if (variant === "quick") {
+        track("outcome_quick_submit", {
+          page,
+          source: source ?? "outcome_reminder_quick_submit",
+          decision_id: decisionId,
+          episode_id: episodeId,
+          judgment_card_id: judgmentCardId,
+          genre: genre ?? undefined,
+          frame_type: frameType ?? undefined,
+          judgment_type: judgmentType,
+          previous_outcome: previousValue,
+          outcome: nextValue
+        });
+      }
+
+      router.refresh();
     } catch {
       setValue(previousValue);
       setError("結果の更新に失敗しました。");
@@ -90,15 +117,42 @@ export default function DecisionOutcomeSelect({
     }
   };
 
+  if (variant === "quick") {
+    return (
+      <div className={styles.quickOutcomeStack}>
+        <div className={styles.quickOutcomeGroup} role="group" aria-label="判断結果をすばやく記録">
+          {OUTCOME_OPTIONS.map((outcome) => (
+            <button
+              key={outcome}
+              type="button"
+              className={`${styles.quickOutcomeButton} ${
+                value === outcome ? styles.quickOutcomeButtonActive : ""
+              } ${styles[`quickOutcomeButton_${outcome}`]}`.trim()}
+              onClick={() => void onChange(outcome)}
+              disabled={isSubmitting}
+              aria-pressed={value === outcome}
+            >
+              {isSubmitting && value === outcome ? "保存中..." : OUTCOME_LABELS[outcome]}
+            </button>
+          ))}
+        </div>
+        {error ? <p className={styles.error}>{error}</p> : null}
+      </div>
+    );
+  }
+
   return (
     <div className={styles.actionRow}>
       <select
         className={styles.select}
-        value={value}
-        onChange={(event) => void onChange(event.target.value as DecisionOutcome)}
+        value={value ?? ""}
+        onChange={(event) => void onChange(event.target.value as DecisionOutcomeValue)}
         disabled={isSubmitting}
         aria-label="判断結果"
       >
+        <option value="" disabled>
+          結果を選ぶ
+        </option>
         {OUTCOME_OPTIONS.map((outcome) => (
           <option key={outcome} value={outcome}>
             {OUTCOME_LABELS[outcome]}

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
+import OutcomeReminderSection from "@/app/components/OutcomeReminderSection";
 import SaveDecisionButton from "@/app/components/SaveDecisionButton";
 import TrackedLink from "@/app/components/TrackedLink";
 import { loadDecisionHistory } from "@/app/lib/decisionHistory";
@@ -12,6 +13,10 @@ import { buildPersonalDecisionHint } from "@/src/lib/decisionProfile";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import { groupDecisionDashboardCards, pickTodayDecisionCards } from "@/src/lib/decisionDashboard";
 import { rankNextBestDecisions } from "@/src/lib/nextBestDecision";
+import {
+  buildOutcomeReminderCandidates,
+  limitOutcomeReminderCandidates
+} from "@/src/lib/outcomeReminder";
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
@@ -70,8 +75,29 @@ export default async function DecisionsPage() {
   }
 
   const isPaid = viewer?.isPaid ?? false;
-  const { cards, error } = await loadDecisionDashboardCards({ isPaid, userId: viewer?.userId });
-  const personalProfile = viewer?.isPaid && viewer?.userId ? (await loadDecisionHistory(viewer.userId)).profile : null;
+  const [{ cards, error }, historyState] = await Promise.all([
+    loadDecisionDashboardCards({ isPaid, userId: viewer?.userId }),
+    viewer?.userId
+      ? loadDecisionHistory(viewer.userId)
+      : Promise.resolve({
+          entries: [],
+          stats: {
+            totalDecisions: 0,
+            resolvedCount: 0,
+            unresolvedCount: 0,
+            successCount: 0,
+            regretCount: 0,
+            neutralCount: 0,
+            successRate: 0
+          },
+          profile: null,
+          error: null
+        })
+  ]);
+  const personalProfile = viewer?.isPaid ? historyState.profile : null;
+  const allOutcomeReminders = buildOutcomeReminderCandidates(historyState.entries);
+  const visibleOutcomeReminders = limitOutcomeReminderCandidates(allOutcomeReminders, isPaid);
+  const hiddenOutcomeReminderCount = Math.max(allOutcomeReminders.length - visibleOutcomeReminders.length, 0);
   const nextBestDecisions = rankNextBestDecisions({
     cards,
     isPaid,
@@ -251,6 +277,15 @@ export default async function DecisionsPage() {
             Upgrade
           </TrackedLink>
         </section>
+      ) : null}
+
+      {viewer && visibleOutcomeReminders.length > 0 ? (
+        <OutcomeReminderSection
+          reminders={visibleOutcomeReminders}
+          hiddenCount={hiddenOutcomeReminderCount}
+          isPaid={isPaid}
+          page="/decisions"
+        />
       ) : null}
 
       <section className={styles.recommendationSection}>

@@ -1,4 +1,4 @@
-import { isDecisionOutcome } from "@/app/lib/decisionHistory";
+import { isDecisionOutcomeValue } from "@/app/lib/decisionHistory";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 
@@ -32,7 +32,7 @@ export async function PATCH(
   }
 
   const body = (await request.json().catch(() => ({}))) as UpdateDecisionRequest;
-  if (!isDecisionOutcome(body.outcome)) {
+  if (!isDecisionOutcomeValue(body.outcome)) {
     return jsonResponse({ ok: false, error: "invalid_outcome" }, 400);
   }
 

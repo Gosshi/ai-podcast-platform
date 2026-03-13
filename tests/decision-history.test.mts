@@ -25,9 +25,30 @@ test("decision history stats summarize outcomes", () => {
     ]),
     {
       totalDecisions: 4,
+      resolvedCount: 4,
+      unresolvedCount: 0,
       successCount: 2,
       regretCount: 1,
       neutralCount: 1,
+      successRate: 50
+    }
+  );
+});
+
+test("decision history stats keep unresolved outcomes out of success rate", () => {
+  assert.deepEqual(
+    calculateDecisionHistoryStats([
+      { outcome: "success" },
+      { outcome: null },
+      { outcome: "regret" }
+    ]),
+    {
+      totalDecisions: 3,
+      resolvedCount: 2,
+      unresolvedCount: 1,
+      successCount: 1,
+      regretCount: 1,
+      neutralCount: 0,
       successRate: 50
     }
   );
