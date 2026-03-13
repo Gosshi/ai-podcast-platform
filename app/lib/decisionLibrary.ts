@@ -1,21 +1,27 @@
 import type {
+  DecisionLibraryPersonalizationSummary,
   DecisionLibrarySort,
   DecisionLibraryUrgency
 } from "@/src/lib/decisionLibrary";
 import type { WatchlistCardState } from "@/src/lib/watchlist";
 import {
+  buildDecisionLibraryPersonalizationSummary,
   lockDecisionLibraryCardDetails,
   normalizeDecisionLibraryQuery,
+  personalizeDecisionLibraryCards,
   resolveDecisionLibraryUrgency
 } from "@/src/lib/decisionLibrary";
 import type { JudgmentThresholdJson, JudgmentType } from "@/src/lib/judgmentCards";
+import type { UserPreferenceProfile } from "@/src/lib/userPreferences";
 import { FREE_ACCESS_WINDOW_DAYS } from "./contentAccess";
+import { loadSavedDecisions, type DecisionOutcome } from "./decisionHistory";
 import { createServiceRoleClient } from "./supabaseClients";
 import { attachWatchlistState, loadWatchlistRecords } from "./watchlist";
 
 export const FREE_LIBRARY_CARD_LIMIT = 12;
 export const PAID_LIBRARY_PAGE_SIZE = 24;
 export const DEFAULT_DECISION_LIBRARY_SORT: DecisionLibrarySort = "newest";
+const PERSONALIZED_LIBRARY_POOL_SIZE = 96;
 
 type JoinedEpisodeRow = {
   id: string;
@@ -50,6 +56,7 @@ type DecisionLibraryFacetRow = {
 export type DecisionLibraryParams = {
   isPaid: boolean;
   userId?: string | null;
+  preferenceProfile?: UserPreferenceProfile | null;
   query: string;
   genre: string | null;
   frameType: string | null;
@@ -75,6 +82,11 @@ export type DecisionLibraryCard = WatchlistCardState & {
   genre: string | null;
   created_at: string;
   urgency: DecisionLibraryUrgency;
+  is_saved: boolean;
+  saved_decision_id: string | null;
+  saved_outcome: DecisionOutcome | null;
+  personalization_score: number;
+  personalization_reasons: string[];
 };
 
 export type DecisionLibraryResult = {
@@ -88,6 +100,7 @@ export type DecisionLibraryResult = {
     genres: string[];
     frameTypes: string[];
   };
+  personalization: DecisionLibraryPersonalizationSummary | null;
   error: string | null;
 };
 
@@ -216,7 +229,12 @@ const mapDecisionLibraryCard = (row: DecisionLibraryQueryRow): DecisionLibraryCa
     watchlist_item_id: null,
     watchlist_status: null,
     watchlist_created_at: null,
-    watchlist_updated_at: null
+    watchlist_updated_at: null,
+    is_saved: false,
+    saved_decision_id: null,
+    saved_outcome: null,
+    personalization_score: 0,
+    personalization_reasons: []
   };
 };
 
@@ -288,7 +306,16 @@ export const loadDecisionLibrary = async (
     const pageSize = params.isPaid ? PAID_LIBRARY_PAGE_SIZE : FREE_LIBRARY_CARD_LIMIT;
     const currentPage = params.isPaid ? Math.max(params.page, 1) : 1;
     const rangeStart = (currentPage - 1) * pageSize;
-    const rangeEnd = rangeStart + pageSize - 1;
+    const isPersonalizedInitialView =
+      Boolean(params.preferenceProfile) &&
+      currentPage === 1 &&
+      normalizeDecisionLibraryQuery(params.query).length === 0 &&
+      !params.genre &&
+      !params.frameType &&
+      !params.judgmentType &&
+      !params.urgency;
+    const queryWindowSize = isPersonalizedInitialView ? PERSONALIZED_LIBRARY_POOL_SIZE : pageSize;
+    const rangeEnd = isPersonalizedInitialView ? queryWindowSize - 1 : rangeStart + pageSize - 1;
     let query = supabase
       .from("episode_judgment_cards")
       .select(
@@ -305,6 +332,7 @@ export const loadDecisionLibrary = async (
       query,
       loadDecisionLibraryFacetOptions(params.isPaid)
     ]);
+    const personalization = buildDecisionLibraryPersonalizationSummary(params.preferenceProfile);
 
     if (error) {
       return {
@@ -315,6 +343,7 @@ export const loadDecisionLibrary = async (
         previewLimited: false,
         searchPreviewLimited: false,
         options,
+        personalization,
         error: error.message
       };
     }
@@ -322,13 +351,30 @@ export const loadDecisionLibrary = async (
     const mappedCards = ((data as DecisionLibraryQueryRow[] | null) ?? [])
       .map(mapDecisionLibraryCard)
       .filter((card): card is DecisionLibraryCard => Boolean(card));
+    const { savedDecisions, error: savedDecisionsError } = params.userId
+      ? await loadSavedDecisions(params.userId, mappedCards.map((card) => card.id))
+      : { savedDecisions: new Map(), error: null };
     const { watchlist, error: watchlistError } = params.userId
       ? await loadWatchlistRecords(params.userId, mappedCards.map((card) => card.id))
       : { watchlist: new Map(), error: null };
-    const visibleCards = prepareDecisionLibraryCardsForPlan(
-      attachWatchlistState<DecisionLibraryCard>(mappedCards, watchlist),
-      params.isPaid
+    const enrichedCards = attachWatchlistState<DecisionLibraryCard>(
+      mappedCards.map((card) => {
+        const savedDecision = savedDecisions.get(card.id);
+
+        return {
+          ...card,
+          is_saved: Boolean(savedDecision),
+          saved_decision_id: savedDecision?.id ?? null,
+          saved_outcome: savedDecision?.outcome ?? null
+        };
+      }),
+      watchlist
     );
+    const personalizedCards = isPersonalizedInitialView
+      ? personalizeDecisionLibraryCards(enrichedCards, params.preferenceProfile, params.sort)
+      : enrichedCards;
+    const windowedCards = personalizedCards.slice(rangeStart, rangeStart + pageSize);
+    const visibleCards = prepareDecisionLibraryCardsForPlan(windowedCards, params.isPaid);
     const totalCount = count ?? visibleCards.length;
     const totalPages = params.isPaid ? Math.max(1, Math.ceil(totalCount / pageSize)) : 1;
 
@@ -340,7 +386,8 @@ export const loadDecisionLibrary = async (
       previewLimited: !params.isPaid && totalCount > visibleCards.length,
       searchPreviewLimited: !params.isPaid && normalizeDecisionLibraryQuery(params.query).length > 0 && totalCount > visibleCards.length,
       options,
-      error: watchlistError
+      personalization,
+      error: savedDecisionsError ?? watchlistError
     };
   } catch (error) {
     return {
@@ -354,6 +401,7 @@ export const loadDecisionLibrary = async (
         genres: [],
         frameTypes: []
       },
+      personalization: buildDecisionLibraryPersonalizationSummary(params.preferenceProfile),
       error: error instanceof Error ? error.message : "unknown_error"
     };
   }

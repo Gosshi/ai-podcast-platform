@@ -69,6 +69,23 @@
   font-weight: 600;
 }
 
+.heroActions {
+  margin-top: 1rem;
+}
+
+.heroLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 800;
+  background: #0f172a;
+  color: #f8fafc;
+}
+
 .heroBadge,
 .badge,
 .genreTag,

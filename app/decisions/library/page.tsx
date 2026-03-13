@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
+import SaveDecisionButton from "@/app/components/SaveDecisionButton";
 import TrackedLink from "@/app/components/TrackedLink";
 import WatchlistControls from "@/app/components/WatchlistControls";
 import { buildOnboardingPath } from "@/app/lib/onboarding";
+import { buildDecisionReplayPath } from "@/app/lib/decisionReplay";
 import {
   DEFAULT_DECISION_LIBRARY_SORT,
   FREE_LIBRARY_CARD_LIMIT,
@@ -14,10 +17,12 @@ import { getViewerFromCookies } from "@/app/lib/viewer";
 import {
   DECISION_LIBRARY_SORTS,
   DECISION_LIBRARY_URGENCIES,
+  resolveDecisionLibraryDefaultSort,
   type DecisionLibrarySort,
   type DecisionLibraryUrgency
 } from "@/src/lib/decisionLibrary";
 import type { JudgmentType } from "@/src/lib/judgmentCards";
+import { ACTIVE_SUBSCRIPTION_LABELS, DECISION_PRIORITY_LABELS, INTEREST_TOPIC_LABELS } from "@/src/lib/userPreferences";
 import LibraryControls from "./LibraryControls";
 import styles from "./page.module.css";
 
@@ -135,9 +140,13 @@ export default async function DecisionLibraryPage({
   const pageParam = Number.parseInt(toSingleValue(resolvedSearchParams.page), 10);
   const judgmentType = isJudgmentType(judgmentParam) ? judgmentParam : null;
   const urgency = isDecisionLibraryUrgency(urgencyParam) ? urgencyParam : null;
-  const sort = isDecisionLibrarySort(sortParam) ? sortParam : DEFAULT_DECISION_LIBRARY_SORT;
+  const explicitSort = isDecisionLibrarySort(sortParam) ? sortParam : null;
+  const hasExplicitSort = Boolean(explicitSort);
+  const defaultSort = resolveDecisionLibraryDefaultSort(viewer?.preferenceProfile);
+  const sort = explicitSort ?? defaultSort;
   const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
   const isPaid = viewer?.isPaid ?? false;
+  const isInitialView = !query && !genre && !frameType && !judgmentType && !urgency && page === 1;
 
   const activeFilters = {
     query,
@@ -151,6 +160,7 @@ export default async function DecisionLibraryPage({
   const result = await loadDecisionLibrary({
     isPaid,
     userId: viewer?.userId,
+    preferenceProfile: !hasExplicitSort && isInitialView ? viewer?.preferenceProfile : null,
     query,
     genre,
     frameType,
@@ -162,7 +172,27 @@ export default async function DecisionLibraryPage({
 
   return (
     <main className={styles.page}>
-      <AnalyticsPageView page="/decisions/library" pageEventName="library_view" />
+      <AnalyticsPageView
+        page="/decisions/library"
+        pageEventName="library_view"
+        extraProperties={{
+          sort,
+          personalized_initial_view: Boolean(result.personalization && !hasExplicitSort && isInitialView)
+        }}
+      />
+      {result.personalization && !hasExplicitSort && isInitialView ? (
+        <AnalyticsEventOnRender
+          eventName="library_pref_personalized_impression"
+          properties={{
+            page: "/decisions/library",
+            source: "decision_library_personalized_hero",
+            sort,
+            decision_priority: result.personalization.decisionPriority,
+            interest_topics: result.personalization.interestTopics,
+            active_subscriptions: result.personalization.activeSubscriptions
+          }}
+        />
+      ) : null}
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
@@ -177,6 +207,7 @@ export default async function DecisionLibraryPage({
             <span className={styles.heroBadge}>{isPaid ? "PAID" : "FREE"}</span>
             <span>{isPaid ? `全${result.totalCount}件を検索` : `直近カードを最大${FREE_LIBRARY_CARD_LIMIT}件 preview`}</span>
             <span>{query ? `query: ${query}` : "query: all"}</span>
+            <span>{`sort: ${sort}`}</span>
           </div>
 
           <div className={styles.statRow}>
@@ -193,6 +224,33 @@ export default async function DecisionLibraryPage({
               <strong>{isPaid ? "Full Library" : "Recent Preview"}</strong>
             </div>
           </div>
+
+          {result.personalization && !hasExplicitSort && isInitialView ? (
+            <div className={styles.personalizationPanel}>
+              <p className={styles.sectionEyebrow}>Preference-aware Start</p>
+              <h2>初期表示は onboarding preferences を軽く反映しています</h2>
+              <p className={styles.personalizationLead}>
+                {result.personalization.interestTopics.length > 0
+                  ? `${result.personalization.interestTopics
+                      .slice(0, 2)
+                      .map((topic) => INTEREST_TOPIC_LABELS[topic])
+                      .join(" / ")} 系を少し上位にしています。`
+                  : "interest topic に沿ったカードを少し上位にしています。"}{" "}
+                {result.personalization.activeSubscriptions.length > 0
+                  ? `${result.personalization.activeSubscriptions
+                      .slice(0, 2)
+                      .map((subscription) => ACTIVE_SUBSCRIPTION_LABELS[subscription])
+                      .join(" / ")} 関連も補正しています。`
+                  : ""}
+              </p>
+              <div className={styles.personalizationMeta}>
+                <span className={styles.personalizationChip}>
+                  Priority: {DECISION_PRIORITY_LABELS[result.personalization.decisionPriority]}
+                </span>
+                <span className={styles.personalizationChip}>Default sort: {result.personalization.defaultSort}</span>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <MemberControls
@@ -203,7 +261,7 @@ export default async function DecisionLibraryPage({
         />
       </section>
 
-      <LibraryControls initialFilters={activeFilters} options={result.options} isPaid={isPaid} />
+      <LibraryControls initialFilters={activeFilters} defaultSort={defaultSort} options={result.options} isPaid={isPaid} />
 
       {result.error ? <p className={styles.errorText}>decision library の読み込みに失敗しました: {result.error}</p> : null}
 
@@ -266,11 +324,23 @@ export default async function DecisionLibraryPage({
                   <div className={styles.tagRow}>
                     <span className={styles.tag}>{card.genre ?? "general"}</span>
                     <span className={styles.tag}>{card.frame_type ?? "frame unknown"}</span>
+                    {card.is_saved ? <span className={styles.tag}>in history</span> : null}
+                    {card.watchlist_status ? <span className={styles.tag}>{card.watchlist_status}</span> : null}
                   </div>
                 </div>
 
                 <h3>{card.topic_title}</h3>
                 <p className={styles.summary}>{card.judgment_summary}</p>
+
+                {card.personalization_reasons.length > 0 && result.personalization ? (
+                  <div className={styles.personalReasonRow}>
+                    {card.personalization_reasons.map((reason) => (
+                      <span key={`${card.id}:${reason}`} className={styles.personalReasonChip}>
+                        {reason}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
 
                 <dl className={styles.metaList}>
                   <div>
@@ -313,38 +383,94 @@ export default async function DecisionLibraryPage({
                 ) : null}
 
                 <div className={styles.cardFooter}>
-                  <WatchlistControls
-                    judgmentCardId={card.id}
-                    viewer={viewer}
-                    initialItemId={card.watchlist_item_id}
-                    initialStatus={card.watchlist_status}
-                    page="/decisions/library"
-                    source="decision_library_card"
-                    episodeId={card.episode_id}
-                    genre={card.genre}
-                    frameType={card.frame_type}
-                    judgmentType={card.judgment_type}
-                    compact
-                  />
-                  <TrackedLink
-                    href={`/episodes/${card.episode_id}`}
-                    className={styles.cardLink}
-                    eventName="library_card_click"
-                    eventProperties={{
-                      page: "/decisions/library",
-                      source: "decision_library_card",
-                      episode_id: card.episode_id,
-                      judgment_card_id: card.id,
-                      genre: card.genre ?? undefined,
-                      frame_type: card.frame_type ?? undefined,
-                      judgment_type: card.judgment_type,
-                      urgency: card.urgency,
-                      query: activeFilters.query || undefined,
-                      sort: activeFilters.sort
-                    }}
-                  >
-                    Episode を開く
-                  </TrackedLink>
+                  <div className={styles.cardActionStack}>
+                    <WatchlistControls
+                      judgmentCardId={card.id}
+                      viewer={viewer}
+                      initialItemId={card.watchlist_item_id}
+                      initialStatus={card.watchlist_status}
+                      page="/decisions/library"
+                      source="decision_library_card"
+                      episodeId={card.episode_id}
+                      genre={card.genre}
+                      frameType={card.frame_type}
+                      judgmentType={card.judgment_type}
+                      compact
+                    />
+                    <SaveDecisionButton
+                      judgmentCardId={card.id}
+                      viewer={viewer}
+                      initialSaved={card.is_saved}
+                      page="/decisions/library"
+                      source="decision_library_card"
+                      episodeId={card.episode_id}
+                      genre={card.genre}
+                      frameType={card.frame_type}
+                      judgmentType={card.judgment_type}
+                    />
+                  </div>
+                  <div className={styles.linkRow}>
+                    <TrackedLink
+                      href={`/episodes/${card.episode_id}`}
+                      className={styles.cardLink}
+                      eventName="library_card_click"
+                      eventProperties={{
+                        page: "/decisions/library",
+                        source: "decision_library_episode_link",
+                        episode_id: card.episode_id,
+                        judgment_card_id: card.id,
+                        genre: card.genre ?? undefined,
+                        frame_type: card.frame_type ?? undefined,
+                        judgment_type: card.judgment_type,
+                        urgency: card.urgency,
+                        query: activeFilters.query || undefined,
+                        sort: activeFilters.sort
+                      }}
+                    >
+                      Episode
+                    </TrackedLink>
+                    <TrackedLink
+                      href="/history"
+                      className={styles.secondaryLink}
+                      eventName="library_card_click"
+                      eventProperties={{
+                        page: "/decisions/library",
+                        source: "decision_library_history_link",
+                        episode_id: card.episode_id,
+                        judgment_card_id: card.id,
+                        genre: card.genre ?? undefined,
+                        frame_type: card.frame_type ?? undefined,
+                        judgment_type: card.judgment_type,
+                        urgency: card.urgency,
+                        query: activeFilters.query || undefined,
+                        sort: activeFilters.sort
+                      }}
+                    >
+                      History
+                    </TrackedLink>
+                    {card.saved_decision_id ? (
+                      <TrackedLink
+                        href={buildDecisionReplayPath(card.saved_decision_id)}
+                        className={styles.secondaryLink}
+                        eventName="library_card_click"
+                        eventProperties={{
+                          page: "/decisions/library",
+                          source: "decision_library_replay_link",
+                          episode_id: card.episode_id,
+                          judgment_card_id: card.id,
+                          decision_id: card.saved_decision_id,
+                          genre: card.genre ?? undefined,
+                          frame_type: card.frame_type ?? undefined,
+                          judgment_type: card.judgment_type,
+                          urgency: card.urgency,
+                          query: activeFilters.query || undefined,
+                          sort: activeFilters.sort
+                        }}
+                      >
+                        Replay
+                      </TrackedLink>
+                    ) : null}
+                  </div>
                 </div>
               </article>
             ))}

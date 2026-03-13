@@ -60,6 +60,7 @@
 - product connection:
   - `src/lib/userPreferences.ts` の `initializeUserPreferenceProfile` と `buildUserPreferenceSurfaceContext` を入口として使います
   - `Next Best Decision` は `preferenceProfile` を ranking context に渡せます
+  - `Decision Library` は `resolveDecisionLibraryDefaultSort` と lightweight personalization score を使って初期一覧だけ軽く最適化します
   - `Personal Hints / Watchlist Alerts / Paywall Copy / Weekly Digest` は `buildUserPreferenceSurfaceContext` を共通 adapter として使う前提です
 - details: [Onboarding Personalization](docs/onboarding-personalization.md)
 
@@ -120,7 +121,9 @@
 - Decision library:
   - `library_search`
   - `library_filter_change`
+  - `library_sort_change`
   - `library_card_click`
+  - `library_pref_personalized_impression`
 - Recommendations / monetization / retention:
   - `next_best_decision_impression`
   - `next_best_decision_click`
@@ -164,9 +167,13 @@
 9. reminder から History / Replay に遷移し、`outcome_reminder_click` / `outcome_reminder_to_replay_click` / `decision_replay_view` を確認
 10. paid で replay insight が表示される場合は `decision_replay_insight_impression` を確認
 11. Judgment Card で Save / Watch / Remove を押し、`watchlist_add` / `watchlist_remove` を確認
-12. `/watchlist` を開いて filter / link 操作を行い、`watchlist_view` / `watchlist_filter_change` / `watchlist_card_click` を確認
-13. free で paywall を見たあと subscribe を押し、`paywall_view` / `subscribe_cta_click` / `checkout_started` を確認
-14. Stripe webhook 後に `checkout_completed` を確認
+12. `/decisions/library` を開き、`library_view` が増えること、free / paid で表示件数と detail の差が出ることを確認
+13. `/decisions/library` で search / filter / sort を操作し、`library_search` / `library_filter_change` / `library_sort_change` を確認
+14. preference 設定済みユーザーが `/decisions/library` 初回表示を開き、`library_pref_personalized_impression` と default sort / 並び順の差分を確認
+15. library card から Episode / History / Replay を開き、`library_card_click` を確認
+16. `/watchlist` を開いて filter / link 操作を行い、`watchlist_view` / `watchlist_filter_change` / `watchlist_card_click` を確認
+17. free で paywall を見たあと subscribe を押し、`paywall_view` / `subscribe_cta_click` / `checkout_started` を確認
+18. Stripe webhook 後に `checkout_completed` を確認
 
 ### SQL Spot Checks
 ```sql
@@ -268,6 +275,10 @@ where created_at >= now() - interval '30 days';
 - path: `/decisions/library`
 - role: Judgment Cards を「一度見るだけ」ではなく、あとで検索・再訪・比較できる library に変える面です
 - value: `topic_title / judgment_summary` 検索、`genre / frame_type / judgment_type / urgency` filter、`newest / deadline_soon / judgment_priority` sort を提供します
+- personalization:
+  - `interest_topics` に合う genre を初期一覧で少し上位に寄せます
+  - `decision_priority` に応じて default sort を切り替えます
+  - `active_subscriptions` に関連する topic を軽くブーストします
 - future: Replay / Saved Decisions / Alerts はこの library の検索面と urgency 分類を土台として使います
 - details: [docs/decision-library.md](docs/decision-library.md)
 
