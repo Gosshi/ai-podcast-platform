@@ -5,6 +5,7 @@ import MemberControls from "@/app/components/MemberControls";
 import OutcomeReminderSection from "@/app/components/OutcomeReminderSection";
 import SaveDecisionButton from "@/app/components/SaveDecisionButton";
 import TrackedLink from "@/app/components/TrackedLink";
+import WatchlistControls from "@/app/components/WatchlistControls";
 import { loadDecisionHistory } from "@/app/lib/decisionHistory";
 import { buildOnboardingPath } from "@/app/lib/onboarding";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
@@ -212,6 +213,19 @@ export default async function DecisionsPage() {
           ) : null}
         </TrackedLink>
         <div className={styles.cardActionRow}>
+          <WatchlistControls
+            judgmentCardId={card.id}
+            viewer={viewer}
+            initialItemId={card.watchlist_item_id}
+            initialStatus={card.watchlist_status}
+            page="/decisions"
+            source="decision_dashboard_card"
+            episodeId={card.episode_id}
+            genre={card.genre}
+            frameType={card.frame_type}
+            judgmentType={card.judgment_type}
+            compact
+          />
           <SaveDecisionButton
             judgmentCardId={card.id}
             viewer={viewer}

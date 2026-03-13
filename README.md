@@ -34,6 +34,8 @@
 - `/decisions` は Next Best Decision を最上段に表示し、締切・judgment type・personal profile を使って「今日先に見るべき判断」を返します
 - `/decisions/library` は Decision Library として `episode_judgment_cards` を横断検索し、再訪・比較できる状態を作ります
 - Decision Library は Replay / Saved Decisions / Alerts に接続する基盤で、episode 起点ではなく judgment 起点の再利用面を担当します
+- `/watchlist` は Saved Decisions / Watchlist として、まだ採用していない judgment card を `saved / watching / archived` で保留管理します
+- Watchlist は Decision History の手前にある中間レイヤーで、deadline / urgency / alerts / replay 導線の土台を担当します
 - Outcome Reminder は `user_decisions` の未記録 outcome を抽出し、判断 → 結果 → 学習のループを `/decisions` と `/history` 上で閉じます
 - `/history/replay/[id]` は Decision Replay として、当時の judgment card と outcome を並べて学び直せる詳細ページです
 - 購読中ユーザーは Stripe Billing Portal から支払い方法更新、解約、購読管理をセルフサービスで行います
@@ -129,8 +131,10 @@
 4. Save 後、Outcome Reminder が出る decision で quick submit し、`outcome_reminder_impression` / `outcome_quick_submit` / `outcome_update` を確認
 5. reminder から History / Replay に遷移し、`outcome_reminder_click` / `outcome_reminder_to_replay_click` / `decision_replay_view` を確認
 6. paid で replay insight が表示される場合は `decision_replay_insight_impression` を確認
-7. free で paywall を見たあと subscribe を押し、`paywall_view` / `subscribe_cta_click` / `checkout_started` を確認
-8. Stripe webhook 後に `checkout_completed` を確認
+7. Judgment Card で Save / Watch / Remove を押し、`watchlist_add` / `watchlist_remove` を確認
+8. `/watchlist` を開いて filter / link 操作を行い、`watchlist_view` / `watchlist_filter_change` / `watchlist_card_click` を確認
+9. free で paywall を見たあと subscribe を押し、`paywall_view` / `subscribe_cta_click` / `checkout_started` を確認
+10. Stripe webhook 後に `checkout_completed` を確認
 
 ### SQL Spot Checks
 ```sql
@@ -225,6 +229,22 @@ where created_at >= now() - interval '30 days';
 - value: `topic_title / judgment_summary` 検索、`genre / frame_type / judgment_type / urgency` filter、`newest / deadline_soon / judgment_priority` sort を提供します
 - future: Replay / Saved Decisions / Alerts はこの library の検索面と urgency 分類を土台として使います
 - details: [docs/decision-library.md](docs/decision-library.md)
+
+## Saved Decisions / Watchlist
+- path: `/watchlist`
+- purpose: まだ採用していない judgment card を `saved / watching / archived` の中間状態で残し、未来の判断を管理する
+- difference from history: `Decision History` は採用済み判断と outcome 学習、`Watchlist` は未採用判断の保留・再訪・監視を担当する
+- filters / sort:
+  - filter: `status / genre / frame_type / urgency`
+  - sort: `newest / deadline_soon / saved_order`
+- free / paid:
+  - free は active item を最大5件まで、一覧も簡易表示
+  - paid は件数無制限で deadline / urgency を使った再訪を開放
+- future connection:
+  - alerts の送信対象
+  - decision workflow で「未決判断」を再提示する面
+  - replay / history へ戻る導線
+- details: [docs/watchlist.md](docs/watchlist.md)
 
 ## Decision Replay
 - path: `/history/replay/[id]`

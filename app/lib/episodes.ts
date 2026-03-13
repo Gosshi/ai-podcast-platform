@@ -1,8 +1,12 @@
 import type { JudgmentCard, JudgmentThresholdJson, JudgmentType } from "@/src/lib/judgmentCards";
+import type { WatchlistCardState } from "@/src/lib/watchlist";
 import { isWithinFreeAccessWindow } from "./contentAccess";
 import { attachSavedDecisionState, type SavedJudgmentCard, loadSavedDecisions } from "./decisionHistory";
 import { lockJudgmentDetails } from "./judgmentAccess";
 import { createServiceRoleClient } from "./supabaseClients";
+import { attachWatchlistState, loadWatchlistRecords } from "./watchlist";
+
+export type EpisodeJudgmentCardState = SavedJudgmentCard & WatchlistCardState;
 
 export type PublishedEpisodeRow = {
   id: string;
@@ -14,7 +18,7 @@ export type PublishedEpisodeRow = {
   description: string | null;
   preview_text: string | null;
   full_script: string | null;
-  judgment_cards: SavedJudgmentCard[];
+  judgment_cards: EpisodeJudgmentCardState[];
   judgment_card_count: number;
   judgment_cards_preview_limited: boolean;
   archive_locked: boolean;
@@ -115,13 +119,13 @@ const mapJudgmentCardRow = (card: EpisodeJudgmentCardRow): JudgmentCard => {
   };
 };
 
-const buildFreeJudgmentPreview = (cards: SavedJudgmentCard[]): SavedJudgmentCard[] => {
+const buildFreeJudgmentPreview = (cards: EpisodeJudgmentCardState[]): EpisodeJudgmentCardState[] => {
   return cards.map((card) => lockJudgmentDetails(card));
 };
 
 const mapEpisodeRow = (
   episode: EpisodeQueryRow,
-  judgmentCards: SavedJudgmentCard[],
+  judgmentCards: EpisodeJudgmentCardState[],
   isPaid: boolean
 ): PublishedEpisodeRow => {
   const archiveLocked = !isPaid && !isWithinFreeAccessWindow(resolveFreeAccessKey(episode));
@@ -239,16 +243,25 @@ export const loadPublishedEpisodes = async (params: {
           allJudgmentCards.flatMap((card) => (card.id ? [card.id] : []))
         )
       : { savedDecisions: new Map(), error: null };
+    const { watchlist, error: watchlistError } = params.userId
+      ? await loadWatchlistRecords(
+          params.userId,
+          allJudgmentCards.flatMap((card) => (card.id ? [card.id] : []))
+        )
+      : { watchlist: new Map(), error: null };
 
     return {
       episodes: episodes.map((episode) =>
         mapEpisodeRow(
           episode,
-          attachSavedDecisionState(judgmentCardsByEpisode.get(episode.id) ?? [], savedDecisions),
+          attachWatchlistState<SavedJudgmentCard>(
+            attachSavedDecisionState(judgmentCardsByEpisode.get(episode.id) ?? [], savedDecisions),
+            watchlist
+          ),
           params.isPaid
         )
       ),
-      error: judgmentError ?? savedDecisionsError
+      error: judgmentError ?? savedDecisionsError ?? watchlistError
     };
   } catch (error) {
     return {
@@ -301,10 +314,23 @@ export const loadPublishedEpisodeById = async (params: {
           judgmentCards.flatMap((card) => (card.id ? [card.id] : []))
         )
       : { savedDecisions: new Map(), error: null };
+    const { watchlist, error: watchlistError } = params.userId
+      ? await loadWatchlistRecords(
+          params.userId,
+          judgmentCards.flatMap((card) => (card.id ? [card.id] : []))
+        )
+      : { watchlist: new Map(), error: null };
 
     return {
-      episode: mapEpisodeRow(episode, attachSavedDecisionState(judgmentCards, savedDecisions), params.isPaid),
-      error: judgmentError ?? savedDecisionsError
+      episode: mapEpisodeRow(
+        episode,
+        attachWatchlistState<SavedJudgmentCard>(
+          attachSavedDecisionState(judgmentCards, savedDecisions),
+          watchlist
+        ),
+        params.isPaid
+      ),
+      error: judgmentError ?? savedDecisionsError ?? watchlistError
     };
   } catch (error) {
     return {

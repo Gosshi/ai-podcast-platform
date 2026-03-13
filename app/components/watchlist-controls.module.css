@@ -1,0 +1,85 @@
+.shell {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.shellCompact {
+  gap: 0.4rem;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.button,
+.buttonDanger {
+  border-radius: 999px;
+  border: 1px solid rgba(22, 36, 61, 0.16);
+  background: rgba(247, 249, 252, 0.95);
+  color: #16243d;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.55rem 0.9rem;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    transform 120ms ease;
+}
+
+.button:hover,
+.buttonDanger:hover {
+  transform: translateY(-1px);
+}
+
+.buttonActive {
+  background: #16243d;
+  border-color: #16243d;
+  color: #f8fbff;
+}
+
+.buttonGhost {
+  background: transparent;
+}
+
+.buttonMuted {
+  background: rgba(233, 238, 245, 0.85);
+}
+
+.buttonMutedActive {
+  background: #68758c;
+  border-color: #68758c;
+  color: #f8fbff;
+}
+
+.buttonDanger {
+  background: rgba(255, 239, 237, 0.92);
+  border-color: rgba(195, 54, 48, 0.22);
+  color: #a52924;
+}
+
+.button:disabled,
+.buttonDanger:disabled {
+  cursor: wait;
+  opacity: 0.66;
+  transform: none;
+}
+
+.hint,
+.error {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.hint {
+  color: #52627d;
+}
+
+.error {
+  color: #b42318;
+}

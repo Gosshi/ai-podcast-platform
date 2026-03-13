@@ -313,8 +313,8 @@
 }
 
 .cardFooter {
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
+  gap: 0.8rem;
 }
 
 .pagination {

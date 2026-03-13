@@ -2,6 +2,7 @@ import type {
   DecisionLibrarySort,
   DecisionLibraryUrgency
 } from "@/src/lib/decisionLibrary";
+import type { WatchlistCardState } from "@/src/lib/watchlist";
 import {
   lockDecisionLibraryCardDetails,
   normalizeDecisionLibraryQuery,
@@ -10,6 +11,7 @@ import {
 import type { JudgmentThresholdJson, JudgmentType } from "@/src/lib/judgmentCards";
 import { FREE_ACCESS_WINDOW_DAYS } from "./contentAccess";
 import { createServiceRoleClient } from "./supabaseClients";
+import { attachWatchlistState, loadWatchlistRecords } from "./watchlist";
 
 export const FREE_LIBRARY_CARD_LIMIT = 12;
 export const PAID_LIBRARY_PAGE_SIZE = 24;
@@ -47,6 +49,7 @@ type DecisionLibraryFacetRow = {
 
 export type DecisionLibraryParams = {
   isPaid: boolean;
+  userId?: string | null;
   query: string;
   genre: string | null;
   frameType: string | null;
@@ -56,7 +59,7 @@ export type DecisionLibraryParams = {
   page: number;
 };
 
-export type DecisionLibraryCard = {
+export type DecisionLibraryCard = WatchlistCardState & {
   id: string;
   episode_id: string;
   episode_title: string | null;
@@ -208,7 +211,12 @@ const mapDecisionLibraryCard = (row: DecisionLibraryQueryRow): DecisionLibraryCa
     frame_type: row.frame_type,
     genre: row.genre ?? episode.genre,
     created_at: row.created_at,
-    urgency: resolveDecisionLibraryUrgency(row.deadline_at)
+    urgency: resolveDecisionLibraryUrgency(row.deadline_at),
+    is_in_watchlist: false,
+    watchlist_item_id: null,
+    watchlist_status: null,
+    watchlist_created_at: null,
+    watchlist_updated_at: null
   };
 };
 
@@ -314,7 +322,13 @@ export const loadDecisionLibrary = async (
     const mappedCards = ((data as DecisionLibraryQueryRow[] | null) ?? [])
       .map(mapDecisionLibraryCard)
       .filter((card): card is DecisionLibraryCard => Boolean(card));
-    const visibleCards = prepareDecisionLibraryCardsForPlan(mappedCards, params.isPaid);
+    const { watchlist, error: watchlistError } = params.userId
+      ? await loadWatchlistRecords(params.userId, mappedCards.map((card) => card.id))
+      : { watchlist: new Map(), error: null };
+    const visibleCards = prepareDecisionLibraryCardsForPlan(
+      attachWatchlistState<DecisionLibraryCard>(mappedCards, watchlist),
+      params.isPaid
+    );
     const totalCount = count ?? visibleCards.length;
     const totalPages = params.isPaid ? Math.max(1, Math.ceil(totalCount / pageSize)) : 1;
 
@@ -326,7 +340,7 @@ export const loadDecisionLibrary = async (
       previewLimited: !params.isPaid && totalCount > visibleCards.length,
       searchPreviewLimited: !params.isPaid && normalizeDecisionLibraryQuery(params.query).length > 0 && totalCount > visibleCards.length,
       options,
-      error: null
+      error: watchlistError
     };
   } catch (error) {
     return {
