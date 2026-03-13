@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --experimental-strip-types --test tests/**/*.test.mts",
+    "test": "node --experimental-strip-types --experimental-specifier-resolution=node --test tests/**/*.test.mts",
     "quality:check": "node --experimental-strip-types scripts/scriptQualityCheck.mts",
     "test:stripe-fixtures": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/test-stripe-webhook-fixtures.mts"
   },

@@ -1,8 +1,6 @@
-import type { JudgmentThresholdJson, JudgmentType } from "../../src/lib/judgmentCards.ts";
-import { EMPTY_DECISION_PROFILE, buildPersonalDecisionProfile, type DecisionProfile } from "../../src/lib/decisionProfile.ts";
-import type { DecisionOutcome } from "./decisionHistory.ts";
-import { formatThresholdHighlights, lockJudgmentDetails } from "./judgmentAccess.ts";
-import { createServiceRoleClient } from "./supabaseClients.ts";
+import type { JudgmentThresholdJson, JudgmentType } from "../../src/lib/judgmentCards";
+import type { DecisionProfile } from "../../src/lib/decisionProfile";
+import type { DecisionOutcome } from "./decisionHistory";
 
 export type DecisionReplay = {
   id: string;
@@ -66,6 +64,105 @@ type ReplayInsightCandidate = DecisionReplayInsight & {
   score: number;
 };
 
+type DecisionProfileEntryLike = {
+  decision_type: JudgmentType;
+  outcome: DecisionOutcome;
+  frame_type: string | null;
+  genre: string | null;
+  threshold_json?: JudgmentThresholdJson | null;
+};
+
+const THRESHOLD_LABELS = {
+  price: "価格基準",
+  play_time: "プレイ時間",
+  watch_time: "視聴時間",
+  monthly_cost: "月額",
+  ad_time: "広告時間",
+  time_limit: "時間基準",
+  unit_cost: "単価基準",
+  ratio: "比率基準"
+} as const;
+
+const EMPTY_REPLAY_PROFILE: DecisionProfile = {
+  totalDecisions: 0,
+  minimumHistoryMet: false,
+  decisionRatios: {
+    use_now: { count: 0, percentage: 0 },
+    watch: { count: 0, percentage: 0 },
+    skip: { count: 0, percentage: 0 }
+  },
+  outcomeRatios: {
+    success: { count: 0, percentage: 0 },
+    regret: { count: 0, percentage: 0 },
+    neutral: { count: 0, percentage: 0 }
+  },
+  decisionTypeStats: {
+    use_now: {
+      key: "use_now",
+      label: "使う",
+      count: 0,
+      successCount: 0,
+      regretCount: 0,
+      neutralCount: 0,
+      successRate: 0,
+      regretRate: 0,
+      neutralRate: 0,
+      useNowCount: 0,
+      watchCount: 0,
+      skipCount: 0,
+      useNowRate: 0,
+      watchRate: 0,
+      skipRate: 0,
+      dominantDecisionType: null
+    },
+    watch: {
+      key: "watch",
+      label: "監視",
+      count: 0,
+      successCount: 0,
+      regretCount: 0,
+      neutralCount: 0,
+      successRate: 0,
+      regretRate: 0,
+      neutralRate: 0,
+      useNowCount: 0,
+      watchCount: 0,
+      skipCount: 0,
+      useNowRate: 0,
+      watchRate: 0,
+      skipRate: 0,
+      dominantDecisionType: null
+    },
+    skip: {
+      key: "skip",
+      label: "見送り",
+      count: 0,
+      successCount: 0,
+      regretCount: 0,
+      neutralCount: 0,
+      successRate: 0,
+      regretRate: 0,
+      neutralRate: 0,
+      useNowCount: 0,
+      watchCount: 0,
+      skipCount: 0,
+      useNowRate: 0,
+      watchRate: 0,
+      skipRate: 0,
+      dominantDecisionType: null
+    }
+  },
+  frameTypeStats: [],
+  genreStats: [],
+  signalStats: [],
+  topGenres: [],
+  regretGenres: [],
+  bestFrameType: null,
+  riskyFrameType: null,
+  favoriteFrameTypes: [],
+  insights: []
+};
+
 const DECISION_REPLAY_BASE_PATH = "/history/replay";
 
 export const buildDecisionReplayPath = (decisionId: string): string => {
@@ -84,7 +181,8 @@ export const formatDecisionReplayDateTime = (value: string | null): string => {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false
+    hour12: false,
+    timeZone: "Asia/Tokyo"
   });
 };
 
@@ -107,12 +205,44 @@ const parseWatchPoints = (value: unknown): string[] => {
     .slice(0, 5);
 };
 
+const formatThresholdHighlightsLocal = (thresholdJson: JudgmentThresholdJson): string[] => {
+  const lines = (Object.entries(THRESHOLD_LABELS) as Array<
+    [keyof typeof THRESHOLD_LABELS, (typeof THRESHOLD_LABELS)[keyof typeof THRESHOLD_LABELS]]
+  >).flatMap(([key, label]) =>
+    (thresholdJson[key] ?? []).map((entry) => `${entry.label ?? label}: ${entry.raw}`)
+  );
+
+  return [...lines, ...(thresholdJson.other ?? [])].slice(0, 4);
+};
+
+const lockReplayDetails = (replay: DecisionReplay): DecisionReplay => {
+  return {
+    ...replay,
+    action_text: null,
+    deadline_at: null,
+    threshold_json: {},
+    watch_points: []
+  };
+};
+
+const loadDecisionProfileBuilder = async (): Promise<{
+  buildPersonalDecisionProfile: (entries: DecisionProfileEntryLike[]) => DecisionProfile;
+}> => {
+  return import(new URL("../../src/lib/decisionProfile.ts", import.meta.url).href);
+};
+
+const loadSupabaseClientFactory = async (): Promise<{
+  createServiceRoleClient: typeof import("./supabaseClients").createServiceRoleClient;
+}> => {
+  return import(new URL("./supabaseClients.ts", import.meta.url).href);
+};
+
 export const buildDecisionReplayView = (replay: DecisionReplay, isPaid: boolean): DecisionReplay => {
   if (isPaid) {
     return replay;
   }
 
-  const lockedReplay = lockJudgmentDetails(replay);
+  const lockedReplay = lockReplayDetails(replay);
 
   return {
     ...replay,
@@ -280,13 +410,14 @@ export const loadDecisionReplay = async (
   if (!userId || !decisionId.trim()) {
     return {
       replay: null,
-      profile: EMPTY_DECISION_PROFILE,
+      profile: EMPTY_REPLAY_PROFILE,
       insights: [],
       error: null
     };
   }
 
   try {
+    const { createServiceRoleClient } = await loadSupabaseClientFactory();
     const supabase = createServiceRoleClient();
     const { data: decisionData, error: decisionError } = await supabase
       .from("user_decisions")
@@ -298,7 +429,7 @@ export const loadDecisionReplay = async (
     if (decisionError) {
       return {
         replay: null,
-        profile: EMPTY_DECISION_PROFILE,
+        profile: EMPTY_REPLAY_PROFILE,
         insights: [],
         error: decisionError.message
       };
@@ -308,7 +439,7 @@ export const loadDecisionReplay = async (
     if (!decision) {
       return {
         replay: null,
-        profile: EMPTY_DECISION_PROFILE,
+        profile: EMPTY_REPLAY_PROFILE,
         insights: [],
         error: null
       };
@@ -335,7 +466,7 @@ export const loadDecisionReplay = async (
     if (cardError) {
       return {
         replay: null,
-        profile: EMPTY_DECISION_PROFILE,
+        profile: EMPTY_REPLAY_PROFILE,
         insights: [],
         error: cardError.message
       };
@@ -344,7 +475,7 @@ export const loadDecisionReplay = async (
     if (episodeError) {
       return {
         replay: null,
-        profile: EMPTY_DECISION_PROFILE,
+        profile: EMPTY_REPLAY_PROFILE,
         insights: [],
         error: episodeError.message
       };
@@ -353,7 +484,7 @@ export const loadDecisionReplay = async (
     if (historyResult.error) {
       return {
         replay: null,
-        profile: EMPTY_DECISION_PROFILE,
+        profile: EMPTY_REPLAY_PROFILE,
         insights: [],
         error: historyResult.error.message
       };
@@ -373,7 +504,7 @@ export const loadDecisionReplay = async (
     if (historyCardsError) {
       return {
         replay: null,
-        profile: EMPTY_DECISION_PROFILE,
+        profile: EMPTY_REPLAY_PROFILE,
         insights: [],
         error: historyCardsError.message
       };
@@ -394,6 +525,7 @@ export const loadDecisionReplay = async (
       return map;
     }, new Map<string, { id: string; frame_type: string | null; genre: string | null; threshold_json: JudgmentThresholdJson | null }>());
 
+    const { buildPersonalDecisionProfile } = await loadDecisionProfileBuilder();
     const profile = buildPersonalDecisionProfile(
       historyRows.map((row) => {
         const card = historyCards.get(row.judgment_card_id);
@@ -434,7 +566,7 @@ export const loadDecisionReplay = async (
       deadline_at: card.deadline_at,
       watch_points: parseWatchPoints(card.watch_points_json),
       threshold_json: normalizeThresholdJson(card.threshold_json),
-      threshold_highlights: formatThresholdHighlights(normalizeThresholdJson(card.threshold_json)),
+      threshold_highlights: formatThresholdHighlightsLocal(normalizeThresholdJson(card.threshold_json)),
       created_at: decision.created_at,
       outcome: decision.outcome,
       outcome_updated_at: decision.updated_at,
@@ -451,7 +583,7 @@ export const loadDecisionReplay = async (
   } catch (error) {
     return {
       replay: null,
-      profile: EMPTY_DECISION_PROFILE,
+      profile: EMPTY_REPLAY_PROFILE,
       insights: [],
       error: error instanceof Error ? error.message : "unknown_error"
     };
