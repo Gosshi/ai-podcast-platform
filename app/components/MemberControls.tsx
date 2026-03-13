@@ -3,6 +3,13 @@
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
+import {
+  formatMembershipDate,
+  resolveMembershipBadgeLabel,
+  resolveMembershipStatusLabel,
+  resolvePaymentStateLabel,
+  resolvePlanName
+} from "@/app/lib/membership";
 import type { ViewerState } from "@/app/lib/viewer";
 import { createBrowserSupabaseClient } from "@/src/lib/supabase/browserClient";
 import styles from "./member-controls.module.css";
@@ -11,6 +18,7 @@ type MemberControlsProps = {
   viewer: ViewerState | null;
   title?: string;
   copy?: string;
+  showBillingPortal?: boolean;
 };
 
 const syncServerSession = async (session: Session | null): Promise<void> => {
@@ -33,17 +41,11 @@ const syncServerSession = async (session: Session | null): Promise<void> => {
   });
 };
 
-const formatDate = (value: string | null): string => {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("ja-JP");
-};
-
 export default function MemberControls({
   viewer,
   title = "会員ステータス",
-  copy = "無料版はプレビューまで。有料会員になると判断カード、DeepDive全文、アーカイブが開放されます。"
+  copy = "無料版は判断の入口まで。有料会員になると行動指針、期限、監視ポイント、アーカイブが開放されます。",
+  showBillingPortal = false
 }: MemberControlsProps) {
   const router = useRouter();
   const [email, setEmail] = useState(viewer?.email ?? "");
@@ -136,27 +138,83 @@ export default function MemberControls({
     window.location.href = payload.url;
   };
 
+  const handleBillingPortal = async () => {
+    setError(null);
+    setMessage(null);
+
+    const response = await fetch("/api/stripe/billing-portal", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+    const payload = (await response.json().catch(() => ({}))) as {
+      ok?: boolean;
+      url?: string;
+      error?: string;
+    };
+
+    if (!response.ok || payload.ok !== true || !payload.url) {
+      setError(payload.error ?? "billing_portal_failed");
+      return;
+    }
+
+    window.location.href = payload.url;
+  };
+
   return (
     <section className={styles.panel}>
       <div className={styles.header}>
-        <p className={styles.eyebrow}>Membership MVP</p>
+        <p className={styles.eyebrow}>Membership</p>
         <h2 className={styles.title}>{title}</h2>
         <p className={styles.copy}>{copy}</p>
       </div>
 
       <div className={styles.statusRow}>
         <span className={`${styles.badge} ${viewer?.isPaid ? styles.badgePaid : styles.badgeFree}`}>
-          {viewer?.isPaid ? "PAID" : "FREE"}
+          {resolveMembershipBadgeLabel(viewer?.isPaid ?? false)}
         </span>
         <span className={styles.meta}>
           {viewer?.email ? viewer.email : "未ログイン"}
         </span>
-        {viewer?.subscriptionStatus ? (
-          <span className={styles.meta}>
-            {viewer.planType ?? "pro_monthly"} / {viewer.subscriptionStatus} / 次回期限 {formatDate(viewer.currentPeriodEnd)}
-          </span>
-        ) : null}
       </div>
+
+      {viewer ? (
+        <dl className={styles.detailGrid}>
+          <div className={styles.detailItem}>
+            <dt>プラン</dt>
+            <dd>{resolvePlanName(viewer.planType, viewer.isPaid)}</dd>
+          </div>
+          <div className={styles.detailItem}>
+            <dt>ステータス</dt>
+            <dd>{resolveMembershipStatusLabel(viewer.subscriptionStatus, viewer.cancelAtPeriodEnd)}</dd>
+          </div>
+          <div className={styles.detailItem}>
+            <dt>支払い状態</dt>
+            <dd>{resolvePaymentStateLabel(viewer.subscriptionStatus)}</dd>
+          </div>
+          <div className={styles.detailItem}>
+            <dt>次回更新日</dt>
+            <dd>
+              {formatMembershipDate(viewer.currentPeriodEnd, "ja-JP", {
+                year: "numeric",
+                month: "short",
+                day: "numeric"
+              })}
+            </dd>
+          </div>
+        </dl>
+      ) : null}
+
+      {viewer?.cancelAtPeriodEnd ? (
+        <p className={styles.hint}>現在の期間が終わるまでは有料機能を利用できます。</p>
+      ) : null}
+
+      {viewer?.isPaid ? (
+        <p className={styles.hint}>行動指針、判断期限、監視ポイント、アーカイブ全文を利用できます。</p>
+      ) : (
+        <p className={styles.hint}>無料版では判断サマリーのプレビューまで。有料会員になると詳細判断を自分で管理できます。</p>
+      )}
 
       {viewer ? (
         <div className={styles.actions}>
@@ -167,7 +225,17 @@ export default function MemberControls({
               onClick={() => void handleSubscribe()}
               disabled={isPending}
             >
-              Subscribe
+              有料会員になる
+            </button>
+          ) : null}
+          {showBillingPortal && viewer.stripeCustomerId ? (
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => void handleBillingPortal()}
+              disabled={isPending}
+            >
+              サブスクを管理
             </button>
           ) : null}
           <button
@@ -176,7 +244,7 @@ export default function MemberControls({
             onClick={() => void handleSignOut()}
             disabled={isPending}
           >
-            Sign out
+            ログアウト
           </button>
         </div>
       ) : (
@@ -194,7 +262,7 @@ export default function MemberControls({
               Magic Linkでログイン
             </button>
           </div>
-          <p className={styles.hint}>Supabase Auth のメールOTPを使います。</p>
+          <p className={styles.hint}>ログインすると、プラン確認と購読管理ができます。</p>
         </form>
       )}
 

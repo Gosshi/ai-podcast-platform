@@ -9,6 +9,7 @@ export type ViewerState = {
   planType: string | null;
   subscriptionStatus: string | null;
   currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
   stripeCustomerId: string | null;
   isPaid: boolean;
 };
@@ -17,6 +18,7 @@ type SubscriptionRow = {
   plan_type: string | null;
   status: string | null;
   current_period_end: string | null;
+  cancel_at_period_end: boolean | null;
   stripe_customer_id: string | null;
 };
 
@@ -59,7 +61,7 @@ const loadViewerState = async (user: User): Promise<ViewerState> => {
 
   const { data, error } = await supabase
     .from("subscriptions")
-    .select("plan_type, status, current_period_end, stripe_customer_id")
+    .select("plan_type, status, current_period_end, cancel_at_period_end, stripe_customer_id")
     .eq("user_id", user.id)
     .order("updated_at", { ascending: false })
     .limit(1)
@@ -78,6 +80,7 @@ const loadViewerState = async (user: User): Promise<ViewerState> => {
     planType: subscription?.plan_type ?? null,
     subscriptionStatus: subscription?.status ?? null,
     currentPeriodEnd: subscription?.current_period_end ?? null,
+    cancelAtPeriodEnd: Boolean(subscription?.cancel_at_period_end),
     stripeCustomerId: subscription?.stripe_customer_id ?? profile?.stripe_customer_id ?? null,
     isPaid: isPaidSubscriptionStatus(subscription?.status ?? null)
   };
