@@ -1,6 +1,7 @@
 export const ANALYTICS_EVENT_NAMES = [
   "page_view",
   "decisions_view",
+  "library_view",
   "episodes_view",
   "history_view",
   "weekly_digest_view",
@@ -16,6 +17,9 @@ export const ANALYTICS_EVENT_NAMES = [
   "decision_save",
   "decision_remove",
   "outcome_update",
+  "library_search",
+  "library_filter_change",
+  "library_card_click",
   "next_best_decision_impression",
   "next_best_decision_click",
   "paywall_view",
@@ -31,6 +35,7 @@ export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];
 
 export const ANALYTICS_PAGE_NAMES = [
   "/decisions",
+  "/decisions/library",
   "/episodes",
   "/history",
   "/weekly-decisions",

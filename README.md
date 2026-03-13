@@ -32,6 +32,8 @@
 - `user_decisions` と `/history` を使って Personal Decision Profile を集計し、履歴保存を「次の判断に返す学習ループ」に変えます
 - paid は judgment card 上で frame / genre / threshold ベースの personal hint を返し、free は履歴保存上限つきで profile を育てます
 - `/decisions` は Next Best Decision を最上段に表示し、締切・judgment type・personal profile を使って「今日先に見るべき判断」を返します
+- `/decisions/library` は Decision Library として `episode_judgment_cards` を横断検索し、再訪・比較できる状態を作ります
+- Decision Library は Replay / Saved Decisions / Alerts に接続する基盤で、episode 起点ではなく judgment 起点の再利用面を担当します
 - 購読中ユーザーは Stripe Billing Portal から支払い方法更新、解約、購読管理をセルフサービスで行います
 - `/weekly-decisions` で直近7日間の judgment digest を閲覧できます
 
@@ -58,6 +60,7 @@
 - Page / surface:
   - `page_view`
   - `decisions_view`
+  - `library_view`
   - `episodes_view`
   - `history_view`
   - `weekly_digest_view`
@@ -75,6 +78,10 @@
   - `decision_save`
   - `decision_remove`
   - `outcome_update`
+- Decision library:
+  - `library_search`
+  - `library_filter_change`
+  - `library_card_click`
 - Recommendations / monetization / retention:
   - `next_best_decision_impression`
   - `next_best_decision_click`
@@ -180,6 +187,7 @@ where created_at >= now() - interval '30 days';
 ### Free vs Paid Boundary
 - 無料:
   - `/episodes` と `/decisions` の最新1週間
+  - `/decisions/library` の最近のカードを最大12件 preview
   - `/decisions` の一般優先判断を 1 件 preview
   - `/weekly-decisions` の一部 preview
   - 音声再生
@@ -187,12 +195,20 @@ where created_at >= now() - interval '30 days';
   - judgment summary
 - 有料:
   - `/decisions` の personal な Next Best Decision を最大 3 件
+  - `/decisions/library` の全件検索 / filter / sort / pagination
   - action_text / deadline_at / watch_points / threshold の詳細
   - DeepDive 完全版
   - 過去アーカイブ全体
   - `/account` で会員状態の確認
   - Personal Decision Profile の育成
   - judgment card 上の personal hint
+
+## Decision Library
+- path: `/decisions/library`
+- role: Judgment Cards を「一度見るだけ」ではなく、あとで検索・再訪・比較できる library に変える面です
+- value: `topic_title / judgment_summary` 検索、`genre / frame_type / judgment_type / urgency` filter、`newest / deadline_soon / judgment_priority` sort を提供します
+- future: Replay / Saved Decisions / Alerts はこの library の検索面と urgency 分類を土台として使います
+- details: [docs/decision-library.md](docs/decision-library.md)
 
 ## Project Layout
 - `app/`: Next.js App Router
