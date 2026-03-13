@@ -1,5 +1,4 @@
-import type { JudgmentType } from "./judgmentCards.ts";
-import { groupDecisionDashboardCards, sortDecisionDashboardCards } from "./decisionDashboard.ts";
+type JudgmentType = "use_now" | "watch" | "skip";
 
 export type WeeklyDecisionDigestCardBase = {
   judgment_type: JudgmentType;
@@ -9,6 +8,69 @@ export type WeeklyDecisionDigestCardBase = {
   genre?: string | null;
   frame_type?: string | null;
 };
+
+const DECISION_TYPE_PRIORITY: Record<JudgmentType, number> = {
+  use_now: 0,
+  watch: 1,
+  skip: 2
+};
+
+const toTimestamp = (value: string | null | undefined): number => {
+  if (!value) return Number.NaN;
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? Number.NaN : timestamp;
+};
+
+const compareOrderValues = (left: number, right: number): number => {
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
+};
+
+const resolveDeadlineRank = (value: string | null): number => {
+  const timestamp = toTimestamp(value);
+  return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
+};
+
+const resolveRecencyRank = (card: WeeklyDecisionDigestCardBase): number => {
+  const publishedTimestamp = toTimestamp(card.episode_published_at);
+  if (!Number.isNaN(publishedTimestamp)) {
+    return publishedTimestamp;
+  }
+
+  const createdTimestamp = toTimestamp(card.created_at);
+  return Number.isNaN(createdTimestamp) ? 0 : createdTimestamp;
+};
+
+const sortWeeklyDecisionDigestCards = <T extends WeeklyDecisionDigestCardBase>(cards: T[]): T[] =>
+  [...cards].sort((left, right) => {
+    const deadlineComparison = compareOrderValues(
+      resolveDeadlineRank(left.deadline_at),
+      resolveDeadlineRank(right.deadline_at)
+    );
+    if (deadlineComparison !== 0) {
+      return deadlineComparison;
+    }
+
+    const recencyComparison = compareOrderValues(resolveRecencyRank(right), resolveRecencyRank(left));
+    if (recencyComparison !== 0) {
+      return recencyComparison;
+    }
+
+    return DECISION_TYPE_PRIORITY[left.judgment_type] - DECISION_TYPE_PRIORITY[right.judgment_type];
+  });
+
+const groupWeeklyDecisionDigestCards = <T extends { judgment_type: JudgmentType }>(cards: T[]) =>
+  cards.reduce<Record<JudgmentType, T[]>>(
+    (groups, card) => {
+      groups[card.judgment_type].push(card);
+      return groups;
+    },
+    {
+      use_now: [],
+      watch: [],
+      skip: []
+    }
+  );
 
 const sortBreakdown = (entries: [string, number][]): { key: string; count: number }[] =>
   entries
@@ -25,8 +87,8 @@ export const buildWeeklyDecisionDigest = <T extends WeeklyDecisionDigestCardBase
   cards: T[],
   perGroupLimit: number | null
 ) => {
-  const sortedCards = sortDecisionDashboardCards(cards);
-  const groupedAll = groupDecisionDashboardCards(sortedCards);
+  const sortedCards = sortWeeklyDecisionDigestCards(cards);
+  const groupedAll = groupWeeklyDecisionDigestCards(sortedCards);
   const groupedVisible =
     typeof perGroupLimit === "number"
       ? {
