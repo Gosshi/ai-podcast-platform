@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import type { Session } from "@supabase/supabase-js";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import {
   formatMembershipDate,
   resolveMembershipBadgeLabel,
@@ -41,6 +41,10 @@ const syncServerSession = async (session: Session | null): Promise<void> => {
   });
 };
 
+const shouldRefreshForAuthEvent = (event: AuthChangeEvent): boolean => {
+  return event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED";
+};
+
 export default function MemberControls({
   viewer,
   title = "会員ステータス",
@@ -52,33 +56,63 @@ export default function MemberControls({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const latestViewerRef = useRef(viewer);
+  const lastSyncedAccessTokenRef = useRef<string | null>(null);
+
+  latestViewerRef.current = viewer;
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient();
+    let isActive = true;
 
     void supabase.auth.getSession().then(async ({ data }) => {
-      if (data.session) {
+      if (!isActive || !data.session) {
+        return;
+      }
+
+      if (lastSyncedAccessTokenRef.current !== data.session.access_token) {
         await syncServerSession(data.session);
-        if (!viewer) {
+        lastSyncedAccessTokenRef.current = data.session.access_token;
+      }
+
+      if (!latestViewerRef.current) {
+        startTransition(() => {
+          router.refresh();
+        });
+      }
+    });
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isActive || event === "INITIAL_SESSION") {
+        return;
+      }
+
+      if (session?.access_token && lastSyncedAccessTokenRef.current === session.access_token) {
+        if (!shouldRefreshForAuthEvent(event)) {
+          return;
+        }
+      }
+
+      void syncServerSession(session).finally(() => {
+        if (session?.access_token) {
+          lastSyncedAccessTokenRef.current = session.access_token;
+        } else {
+          lastSyncedAccessTokenRef.current = null;
+        }
+
+        if (shouldRefreshForAuthEvent(event)) {
           startTransition(() => {
             router.refresh();
           });
         }
-      }
-    });
-
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      void syncServerSession(session).finally(() => {
-        startTransition(() => {
-          router.refresh();
-        });
       });
     });
 
     return () => {
+      isActive = false;
       subscription.subscription.unsubscribe();
     };
-  }, [router, viewer]);
+  }, [router]);
 
   const handleMagicLink = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
