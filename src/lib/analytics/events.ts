@@ -5,6 +5,7 @@ export const ANALYTICS_EVENT_NAMES = [
   "history_view",
   "weekly_digest_view",
   "account_view",
+  "onboarding_view",
   "judgment_card_impression",
   "judgment_card_click",
   "judgment_card_expand",
@@ -33,7 +34,8 @@ export const ANALYTICS_PAGE_NAMES = [
   "/episodes",
   "/history",
   "/weekly-decisions",
-  "/account"
+  "/account",
+  "/onboarding"
 ] as const;
 
 export type AnalyticsPageName = (typeof ANALYTICS_PAGE_NAMES)[number];
@@ -41,4 +43,3 @@ export type AnalyticsPageName = (typeof ANALYTICS_PAGE_NAMES)[number];
 export const isAnalyticsEventName = (value: unknown): value is AnalyticsEventName => {
   return typeof value === "string" && ANALYTICS_EVENT_NAMES.includes(value as AnalyticsEventName);
 };
-

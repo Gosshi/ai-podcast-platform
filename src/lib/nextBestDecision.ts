@@ -1,5 +1,6 @@
 import type { DecisionProfile, DecisionProfileSegment } from "./decisionProfile";
 import type { JudgmentThresholdJson, JudgmentType } from "./judgmentCards";
+import type { UserPreferenceProfile } from "./userPreferences";
 
 export type NextBestDecisionUrgencyLevel = "critical" | "high" | "medium" | "low";
 
@@ -28,6 +29,10 @@ export type NextBestDecisionRecommendation<T extends NextBestDecisionCardInput =
   recommended_action: string;
   urgency_level: NextBestDecisionUrgencyLevel;
   deadline_label: string;
+  personalization_context: {
+    hasHistoryProfile: boolean;
+    preferenceProfile: UserPreferenceProfile | null;
+  };
 };
 
 type RankingContext = {
@@ -279,6 +284,7 @@ export const rankNextBestDecisions = <T extends NextBestDecisionCardInput>(param
   cards: T[];
   isPaid: boolean;
   profile?: DecisionProfile | null;
+  preferenceProfile?: UserPreferenceProfile | null;
   now?: Date;
   limit?: number;
 }): NextBestDecisionRecommendation<T>[] => {
@@ -321,6 +327,10 @@ export const rankNextBestDecisions = <T extends NextBestDecisionCardInput>(param
         recommended_action: resolveRecommendedAction(card),
         urgency_level: resolveUrgencyLevel(judgment.urgencyLevel, deadline.urgencyLevel),
         deadline_label: deadline.deadlineLabel,
+        personalization_context: {
+          hasHistoryProfile: Boolean(params.profile?.minimumHistoryMet),
+          preferenceProfile: params.preferenceProfile ?? null
+        },
         deadline_rank: toTimestamp(rankingDeadlineAt)
       };
     })

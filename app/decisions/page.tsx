@@ -1,9 +1,11 @@
+import { redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
 import SaveDecisionButton from "@/app/components/SaveDecisionButton";
 import TrackedLink from "@/app/components/TrackedLink";
 import { loadDecisionHistory } from "@/app/lib/decisionHistory";
+import { buildOnboardingPath } from "@/app/lib/onboarding";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { loadDecisionDashboardCards } from "@/app/lib/decisions";
 import { buildPersonalDecisionHint } from "@/src/lib/decisionProfile";
@@ -63,13 +65,18 @@ const formatDecisionDate = (value: string | null): string => {
 
 export default async function DecisionsPage() {
   const viewer = await getViewerFromCookies();
+  if (viewer?.needsOnboarding) {
+    redirect(buildOnboardingPath("/decisions"));
+  }
+
   const isPaid = viewer?.isPaid ?? false;
   const { cards, error } = await loadDecisionDashboardCards({ isPaid, userId: viewer?.userId });
   const personalProfile = viewer?.isPaid && viewer?.userId ? (await loadDecisionHistory(viewer.userId)).profile : null;
   const nextBestDecisions = rankNextBestDecisions({
     cards,
     isPaid,
-    profile: personalProfile
+    profile: personalProfile,
+    preferenceProfile: viewer?.preferenceProfile
   });
   const todayCards = pickTodayDecisionCards(cards);
   const groupedCards = groupDecisionDashboardCards(cards);

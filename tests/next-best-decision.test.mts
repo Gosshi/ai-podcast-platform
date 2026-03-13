@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildPersonalDecisionProfile } from "../src/lib/decisionProfile.ts";
 import { rankNextBestDecisions } from "../src/lib/nextBestDecision.ts";
+import { initializeUserPreferenceProfile } from "../src/lib/userPreferences.ts";
 
 const NOW = new Date("2026-03-13T00:00:00.000Z");
 
@@ -184,6 +185,43 @@ test("rankNextBestDecisions suppresses personal reasons when the profile is insu
 
   assert.equal(recommendation.reason_tags.includes("あなた向け"), false);
   assert.equal(recommendation.reason_tags.includes("今すぐ使える"), true);
+});
+
+test("rankNextBestDecisions keeps preference profile context without changing scores", () => {
+  const preferenceProfile = initializeUserPreferenceProfile({
+    interestTopics: ["games", "tech"],
+    activeSubscriptions: ["netflix", "spotify"],
+    decisionPriority: "avoid_regret",
+    dailyAvailableTime: "<30min"
+  });
+
+  const recommendation = rankNextBestDecisions({
+    isPaid: false,
+    preferenceProfile,
+    now: NOW,
+    limit: 1,
+    cards: [
+      {
+        id: "preference-context",
+        episode_id: "ep-5",
+        topic_title: "New sci-fi release",
+        judgment_type: "watch",
+        judgment_summary: "公開直後なので様子を見る。",
+        action_text: null,
+        deadline_at: null,
+        ranking_deadline_at: null,
+        threshold_json: {},
+        frame_type: "Frame B",
+        genre: "streaming",
+        created_at: "2026-03-12T12:00:00.000Z",
+        confidence_score: 0.4
+      }
+    ]
+  })[0];
+
+  assert.equal(recommendation.personalization_context.hasHistoryProfile, false);
+  assert.equal(recommendation.personalization_context.preferenceProfile?.decisionPriority, "avoid_regret");
+  assert.equal(recommendation.personalization_context.preferenceProfile?.dailyTimeBudget, "tight");
 });
 
 test("rankNextBestDecisions falls back cleanly when cards have no deadlines", () => {

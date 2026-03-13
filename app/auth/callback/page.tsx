@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { buildOnboardingPath, resolveSafeNextPath } from "@/app/lib/onboarding";
 import { createBrowserSupabaseClient } from "@/src/lib/supabase/browserClient";
 
 const syncServerSession = async (): Promise<boolean> => {
@@ -26,18 +27,38 @@ const syncServerSession = async (): Promise<boolean> => {
   return true;
 };
 
+const resolvePostAuthDestination = async (next: string): Promise<string> => {
+  try {
+    const response = await fetch("/api/user-preferences", {
+      method: "GET"
+    });
+
+    if (!response.ok) {
+      return next;
+    }
+
+    const payload = (await response.json().catch(() => ({}))) as {
+      needsOnboarding?: boolean;
+    };
+
+    return payload.needsOnboarding ? buildOnboardingPath(next) : next;
+  } catch {
+    return next;
+  }
+};
+
 export default function AuthCallbackPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const next = new URLSearchParams(window.location.search).get("next") || "/episodes";
+    const next = resolveSafeNextPath(new URLSearchParams(window.location.search).get("next"), "/episodes");
     const supabase = createBrowserSupabaseClient();
 
     const finish = async () => {
       const synced = await syncServerSession();
       if (synced) {
-        router.replace(next);
+        router.replace(await resolvePostAuthDestination(next));
         return;
       }
       setError("ログインセッションを確定できませんでした。");
@@ -59,8 +80,8 @@ export default function AuthCallbackPage() {
           accessToken: session.access_token,
           refreshToken: session.refresh_token
         })
-      }).then(() => {
-        router.replace(next);
+      }).then(async () => {
+        router.replace(await resolvePostAuthDestination(next));
       });
     });
 
