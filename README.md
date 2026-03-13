@@ -35,6 +35,112 @@
 - 購読中ユーザーは Stripe Billing Portal から支払い方法更新、解約、購読管理をセルフサービスで行います
 - `/weekly-decisions` で直近7日間の judgment digest を閲覧できます
 
+## Product Analytics Foundation
+- 保存先は Supabase の `analytics_events` テーブルです
+- UI では `src/lib/analytics/track.ts` の `track(eventName, props)` だけを呼び、保存失敗でも画面本体は壊れません
+- サーバー側の checkout / webhook などは `src/lib/analytics/server.ts` 経由で同じイベント定義に記録します
+- 匿名利用は `anonymous_id`、ログイン済みは `user_id`、課金状態は `is_paid` で切り分けます
+- 最低限の集計は `/admin/analytics` で確認できます
+
+### Analytics Table
+- `analytics_events`
+  - `id`
+  - `user_id`
+  - `anonymous_id`
+  - `event_name`
+  - `page`
+  - `source`
+  - `is_paid`
+  - `event_properties`
+  - `created_at`
+
+### Tracked Events
+- Page / surface:
+  - `page_view`
+  - `decisions_view`
+  - `episodes_view`
+  - `history_view`
+  - `weekly_digest_view`
+  - `account_view`
+- Judgment cards:
+  - `judgment_card_impression`
+  - `judgment_card_click`
+  - `judgment_card_expand`
+  - `judgment_card_locked_cta_click`
+- Calculator:
+  - `decision_calculator_open`
+  - `decision_calculator_submit`
+  - `decision_calculator_result_view`
+- Decision history:
+  - `decision_save`
+  - `decision_remove`
+  - `outcome_update`
+- Recommendations / monetization / retention:
+  - `next_best_decision_impression`
+  - `next_best_decision_click`
+  - `paywall_view`
+  - `subscribe_cta_click`
+  - `checkout_started`
+  - `checkout_completed`
+  - `billing_portal_open`
+  - `weekly_digest_open`
+  - `weekly_digest_item_click`
+
+### Analysis Use
+- conversion:
+  - `paywall_view -> subscribe_cta_click -> checkout_started -> checkout_completed`
+- engagement:
+  - `page_view`
+  - `judgment_card_click`
+  - `decision_calculator_result_view`
+  - `decision_save`
+- retention:
+  - `weekly_digest_open`
+  - `weekly_digest_item_click`
+  - `outcome_update`
+- free / paid 差分:
+  - `analytics_events.is_paid`
+  - `analytics_events.user_id`
+  - `analytics_events.event_properties.page/source`
+
+### Manual Validation
+1. `/decisions` を開き、`page_view` と `decisions_view` が増えることを確認
+2. judgment card を開き、`judgment_card_impression` / `judgment_card_click` が増えることを確認
+3. calculator を開いて再判定し、`decision_calculator_open` / `decision_calculator_submit` / `decision_calculator_result_view` を確認
+4. Save / outcome update / remove で `decision_save` / `outcome_update` / `decision_remove` を確認
+5. free で paywall を見たあと subscribe を押し、`paywall_view` / `subscribe_cta_click` / `checkout_started` を確認
+6. Stripe webhook 後に `checkout_completed` を確認
+
+### SQL Spot Checks
+```sql
+select event_name, count(*) as events
+from public.analytics_events
+where created_at >= now() - interval '7 days'
+group by 1
+order by 2 desc;
+```
+
+```sql
+select
+  event_name,
+  is_paid,
+  count(*) as events
+from public.analytics_events
+where created_at >= now() - interval '30 days'
+group by 1, 2
+order by 1, 2;
+```
+
+```sql
+select
+  count(*) filter (where event_name = 'paywall_view') as paywall_views,
+  count(*) filter (where event_name = 'subscribe_cta_click') as subscribe_clicks,
+  count(*) filter (where event_name = 'checkout_started') as checkout_started,
+  count(*) filter (where event_name = 'checkout_completed') as checkout_completed
+from public.analytics_events
+where created_at >= now() - interval '30 days';
+```
+
 ### Membership Tables
 - `profiles`
   - `user_id`
@@ -97,6 +203,7 @@
 - `.kiro/specs/jobs-orchestration/`: ジョブ実行仕様
 - `.kiro/specs/stripe-webhook/`: Stripe webhook 仕様
 - `docs/`: 補助ドキュメント
+- `src/lib/analytics/`: event definitions, client tracking, server ingestion, reporting helpers
 
 ## Rules
 - This repository is **staging only**.
@@ -273,6 +380,17 @@
 - judgment_type ごとに `use_now / watch / skip` を集計
 - `genre` と `frame_type` の breakdown を表示
 - 無料ユーザーはカテゴリごとに一部 preview を表示
+
+## Admin Analytics
+- Page: `/admin/analytics`
+- 直近30日間の `analytics_events` を読み込み、以下を簡易表示します
+  - volume: total / anonymous / free / paid
+  - funnel: `paywall_view`, `subscribe_cta_click`, `checkout_started`, `checkout_completed`
+  - engagement: `page_view`, `judgment_card_click`, `decision_calculator_result_view`, `decision_save`, `weekly_digest_open`, `outcome_update`
+  - page views / top events
+
+## Analytics Plan
+- 詳細設計と今後の拡張方針は [docs/analytics-plan.md](docs/analytics-plan.md) を参照
 
 ## Personal Decision Profile
 - Page: `/history`

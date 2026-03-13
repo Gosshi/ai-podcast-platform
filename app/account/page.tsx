@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
 import {
   formatMembershipDate,
@@ -42,6 +43,7 @@ export default async function AccountPage({
 
   return (
     <main className={styles.page}>
+      <AnalyticsPageView page="/account" pageEventName="account_view" />
       <div className={styles.shell}>
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
@@ -73,6 +75,7 @@ export default async function AccountPage({
             title="会員管理"
             copy="購読の開始、支払い方法の更新、解約確認まで、この画面を起点に迷わず進められるように整えています。"
             showBillingPortal
+            analyticsSource="/account"
           />
         </section>
 

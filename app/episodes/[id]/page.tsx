@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import DecisionCalculator from "@/app/components/DecisionCalculator";
 import MemberControls from "@/app/components/MemberControls";
 import SaveDecisionButton from "@/app/components/SaveDecisionButton";
+import TrackedLink from "@/app/components/TrackedLink";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { loadPublishedEpisodeById } from "@/app/lib/episodes";
 import { getViewerFromCookies } from "@/app/lib/viewer";
@@ -81,6 +83,7 @@ export default async function EpisodeDetailPage({
               viewer={viewer}
               title="Access Level"
               copy="無料版は judgment summary まで。有料会員になると action、deadline、watch points、threshold、full DeepDive を開放します。"
+              analyticsSource={`/episodes/${id}`}
             />
           </section>
 
@@ -96,6 +99,18 @@ export default async function EpisodeDetailPage({
               <div className={styles.cardGrid}>
                 {episode.judgment_cards.map((card) => (
                   <article key={card.id} className={styles.card}>
+                    <AnalyticsEventOnRender
+                      eventName="judgment_card_impression"
+                      properties={{
+                        page: `/episodes/${id}`,
+                        source: "episode_detail_card",
+                        episode_id: episode.id,
+                        judgment_card_id: card.id,
+                        genre: card.genre ?? undefined,
+                        frame_type: card.frame_type ?? undefined,
+                        judgment_type: card.judgment_type
+                      }}
+                    />
                     <div className={styles.cardHeader}>
                       <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`]}`.trim()}>
                         {JUDGMENT_TYPE_LABELS[card.judgment_type]}
@@ -109,9 +124,21 @@ export default async function EpisodeDetailPage({
                         judgmentCardId={card.id}
                         viewer={viewer}
                         initialSaved={card.is_saved}
+                        page={`/episodes/${id}`}
+                        source="episode_detail_card"
+                        episodeId={episode.id}
+                        genre={card.genre}
+                        frameType={card.frame_type}
+                        judgmentType={card.judgment_type}
                       />
                     </div>
-                    <DecisionCalculator card={card} isPaid={viewer?.isPaid ?? false} locale="ja" />
+                    <DecisionCalculator
+                      card={card}
+                      isPaid={viewer?.isPaid ?? false}
+                      locale="ja"
+                      analyticsPage={`/episodes/${id}`}
+                      analyticsSource="episode_detail_card"
+                    />
                     <dl className={styles.metaList}>
                       {card.action_text ? (
                         <div>
@@ -144,6 +171,21 @@ export default async function EpisodeDetailPage({
                       <div className={styles.lockedBlock}>
                         <strong>この先は有料会員向け</strong>
                         <p>次の行動、判断期限、監視ポイント、threshold の詳細を開放します。</p>
+                        <TrackedLink
+                          href="/account"
+                          eventName="judgment_card_locked_cta_click"
+                          eventProperties={{
+                            page: `/episodes/${id}`,
+                            source: "episode_detail_locked_block",
+                            episode_id: episode.id,
+                            judgment_card_id: card.id,
+                            genre: card.genre ?? undefined,
+                            frame_type: card.frame_type ?? undefined,
+                            judgment_type: card.judgment_type
+                          }}
+                        >
+                          有料で判断詳細を開放
+                        </TrackedLink>
                       </div>
                     ) : null}
                   </article>

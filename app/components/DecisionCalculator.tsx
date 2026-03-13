@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import TrackedLink from "@/app/components/TrackedLink";
 import {
   describeDecisionCalculatorThresholds,
   evaluateDecisionCalculator,
@@ -11,13 +11,19 @@ import {
   type DecisionCalculatorLocale,
   type SupportedDecisionFrame
 } from "@/app/lib/decisionCalculator";
+import { track } from "@/src/lib/analytics";
 import type { JudgmentCard } from "@/src/lib/judgmentCards";
 import styles from "./decision-calculator.module.css";
 
 type DecisionCalculatorProps = {
-  card: Pick<JudgmentCard, "frame_type" | "threshold_json" | "topic_title">;
+  card: Pick<
+    JudgmentCard,
+    "id" | "episode_id" | "genre" | "frame_type" | "judgment_type" | "threshold_json" | "topic_title"
+  >;
   isPaid: boolean;
   locale?: DecisionCalculatorLocale;
+  analyticsPage?: string;
+  analyticsSource?: string;
 };
 
 type FieldDefinition = {
@@ -38,6 +44,7 @@ const copy = {
     upgradeTitle: "有料会員で再判定",
     upgradeCopy: "この判断カードを自分の数字で再評価できます。",
     upgradeCta: "有料会員で再判定",
+    submit: "再判定する",
     thresholdLabel: "判定ルール",
     resultLabel: "再判定結果",
     reasonLabel: "理由",
@@ -52,6 +59,7 @@ const copy = {
     upgradeTitle: "Re-run with membership",
     upgradeCopy: "Unlock the calculator for this judgment card.",
     upgradeCta: "Upgrade to recalculate",
+    submit: "Run calculation",
     thresholdLabel: "Decision rule",
     resultLabel: "Result",
     reasonLabel: "Reason",
@@ -140,7 +148,9 @@ const parseInputs = (values: Partial<Record<DecisionCalculatorFieldId, string>>)
 export default function DecisionCalculator({
   card,
   isPaid,
-  locale = "ja"
+  locale = "ja",
+  analyticsPage,
+  analyticsSource = "judgment_card_calculator"
 }: DecisionCalculatorProps) {
   const availability = resolveDecisionCalculatorAvailability({
     frameType: card.frame_type,
@@ -175,14 +185,68 @@ export default function DecisionCalculator({
             <p className={styles.eyebrow}>{availability.frame}</p>
             <h5>{text.upgradeTitle}</h5>
           </div>
-          <Link href="/account" className={styles.upgradeLink}>
+          <TrackedLink
+            href="/account"
+            className={styles.upgradeLink}
+            eventName="judgment_card_locked_cta_click"
+            eventProperties={{
+              page: analyticsPage,
+              source: analyticsSource,
+              episode_id: card.episode_id,
+              judgment_card_id: card.id,
+              genre: card.genre ?? undefined,
+              frame_type: card.frame_type ?? undefined,
+              judgment_type: card.judgment_type
+            }}
+          >
             {text.upgradeCta}
-          </Link>
+          </TrackedLink>
         </div>
         <p className={styles.copy}>{text.upgradeCopy}</p>
       </section>
     );
   }
+
+  const handleToggle = () => {
+    const nextIsOpen = !isOpen;
+    setIsOpen(nextIsOpen);
+
+    if (nextIsOpen) {
+      const properties = {
+        page: analyticsPage,
+        source: analyticsSource,
+        episode_id: card.episode_id,
+        judgment_card_id: card.id,
+        genre: card.genre ?? undefined,
+        frame_type: card.frame_type ?? undefined,
+        judgment_type: card.judgment_type
+      };
+
+      track("judgment_card_expand", properties);
+      track("decision_calculator_open", properties);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!evaluation) {
+      return;
+    }
+
+    const properties = {
+      page: analyticsPage,
+      source: analyticsSource,
+      episode_id: card.episode_id,
+      judgment_card_id: card.id,
+      genre: card.genre ?? undefined,
+      frame_type: card.frame_type ?? undefined,
+      judgment_type: card.judgment_type,
+      calculator_metric: evaluation.metricDisplay,
+      calculator_result: evaluation.judgmentType
+    };
+
+    track("decision_calculator_submit", properties);
+    track("decision_calculator_result_view", properties);
+  };
 
   return (
     <section className={styles.panel}>
@@ -191,7 +255,7 @@ export default function DecisionCalculator({
           <p className={styles.eyebrow}>{availability.frame}</p>
           <h5>{text.title}</h5>
         </div>
-        <button type="button" className={styles.toggleButton} onClick={() => setIsOpen((current) => !current)}>
+        <button type="button" className={styles.toggleButton} onClick={handleToggle}>
           {isOpen ? text.collapse : text.expand}
         </button>
       </div>
@@ -231,6 +295,10 @@ export default function DecisionCalculator({
               <p>{thresholdInfo.summary}</p>
             </div>
           ) : null}
+
+          <button type="button" className={styles.toggleButton} onClick={handleSubmit} disabled={!evaluation}>
+            {text.submit}
+          </button>
 
           {evaluation ? (
             <div className={styles.resultCard}>

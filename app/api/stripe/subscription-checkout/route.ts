@@ -1,8 +1,13 @@
 import { getViewerFromCookies } from "../../../lib/viewer";
 import { createServiceRoleClient } from "../../../lib/supabaseClients";
+import { recordAnalyticsEvent } from "@/src/lib/analytics";
 import Stripe from "stripe";
 
 export const runtime = "nodejs";
+
+type SubscriptionCheckoutRequest = {
+  source?: unknown;
+};
 
 const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
   return new Response(JSON.stringify(body), {
@@ -91,6 +96,9 @@ export async function POST(request: Request): Promise<Response> {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);
   }
 
+  const body = (await request.json().catch(() => ({}))) as SubscriptionCheckoutRequest;
+  const source = typeof body.source === "string" && body.source.trim() ? body.source.trim() : null;
+
   if (viewer.isPaid) {
     return jsonResponse({ ok: false, error: "already_paid" }, 409);
   }
@@ -150,6 +158,22 @@ export async function POST(request: Request): Promise<Response> {
       checkoutSessionId: session.id,
       stripeSubscriptionId:
         typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null
+    });
+
+    await recordAnalyticsEvent({
+      eventName: "checkout_started",
+      userId: viewer.userId,
+      isPaid: viewer.isPaid,
+      page: source,
+      source: source ? `subscription_checkout:${source}` : "subscription_checkout",
+      properties: {
+        page: source,
+        source: source ? `subscription_checkout:${source}` : "subscription_checkout",
+        plan_type: "pro_monthly",
+        checkout_session_id: session.id
+      }
+    }).catch((error) => {
+      console.error("checkout_started_analytics_error", { error, userId: viewer.userId });
     });
 
     return jsonResponse({

@@ -2,11 +2,18 @@
 
 import { useState } from "react";
 import { OUTCOME_LABELS, type DecisionOutcome } from "@/app/lib/decisionHistory";
+import { track } from "@/src/lib/analytics";
 import styles from "./decision-history-controls.module.css";
 
 type DecisionOutcomeSelectProps = {
   decisionId: string;
   initialOutcome: DecisionOutcome;
+  page?: string;
+  episodeId?: string;
+  judgmentCardId?: string;
+  genre?: string | null;
+  frameType?: string | null;
+  judgmentType?: "use_now" | "watch" | "skip";
 };
 
 type UpdateDecisionResponse =
@@ -27,7 +34,13 @@ const OUTCOME_OPTIONS: DecisionOutcome[] = ["success", "neutral", "regret"];
 
 export default function DecisionOutcomeSelect({
   decisionId,
-  initialOutcome
+  initialOutcome,
+  page,
+  episodeId,
+  judgmentCardId,
+  genre,
+  frameType,
+  judgmentType
 }: DecisionOutcomeSelectProps) {
   const [value, setValue] = useState<DecisionOutcome>(initialOutcome);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,7 +67,21 @@ export default function DecisionOutcomeSelect({
       if (!response.ok || !payload || !payload.ok) {
         setValue(previousValue);
         setError("結果の更新に失敗しました。");
+        return;
       }
+
+      track("outcome_update", {
+        page,
+        source: "history_outcome_select",
+        decision_id: decisionId,
+        episode_id: episodeId,
+        judgment_card_id: judgmentCardId,
+        genre: genre ?? undefined,
+        frame_type: frameType ?? undefined,
+        judgment_type: judgmentType,
+        previous_outcome: previousValue,
+        outcome: nextValue
+      });
     } catch {
       setValue(previousValue);
       setError("結果の更新に失敗しました。");

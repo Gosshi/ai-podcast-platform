@@ -1,5 +1,7 @@
-import Link from "next/link";
+import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
+import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
+import TrackedLink from "@/app/components/TrackedLink";
 import { loadWeeklyDecisionDigest } from "@/app/lib/weeklyDecisionDigest";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./page.module.css";
@@ -54,6 +56,14 @@ export default async function WeeklyDecisionsPage() {
 
   return (
     <main className={styles.page}>
+      <AnalyticsPageView page="/weekly-decisions" pageEventName="weekly_digest_view" />
+      <AnalyticsEventOnRender
+        eventName="weekly_digest_open"
+        properties={{
+          page: "/weekly-decisions",
+          source: "weekly_decisions_page"
+        }}
+      />
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>Weekly Decision Digest</p>
@@ -82,6 +92,7 @@ export default async function WeeklyDecisionsPage() {
           viewer={viewer}
           title="Digest Access"
           copy="無料版は週次 digest の一部 preview まで。有料会員になると全件と deadline を含む判断一覧を確認できます。"
+          analyticsSource="/weekly-decisions"
         />
       </section>
 
@@ -94,9 +105,17 @@ export default async function WeeklyDecisionsPage() {
             <h2>無料版はカテゴリごとに一部だけ表示します</h2>
             <p>有料会員になると今週の全件と deadline 付きの判断一覧をまとめて確認できます。</p>
           </div>
-          <Link href="/account" className={styles.paywallLink}>
+          <TrackedLink
+            href="/account"
+            className={styles.paywallLink}
+            eventName="subscribe_cta_click"
+            eventProperties={{
+              page: "/weekly-decisions",
+              source: "weekly_digest_paywall_banner"
+            }}
+          >
             Upgrade
-          </Link>
+          </TrackedLink>
         </section>
       ) : null}
 
@@ -118,7 +137,21 @@ export default async function WeeklyDecisionsPage() {
             ) : (
               <div className={styles.grid}>
                 {items.map((item) => (
-                  <Link key={item.id} href={`/episodes/${item.episode_id}`} className={styles.card}>
+                  <TrackedLink
+                    key={item.id}
+                    href={`/episodes/${item.episode_id}`}
+                    className={styles.card}
+                    eventName="weekly_digest_item_click"
+                    eventProperties={{
+                      page: "/weekly-decisions",
+                      source: `weekly_digest_${judgmentType}`,
+                      episode_id: item.episode_id,
+                      judgment_card_id: item.id,
+                      genre: item.genre ?? undefined,
+                      frame_type: item.frame_type ?? undefined,
+                      judgment_type: item.judgment_type
+                    }}
+                  >
                     <div className={styles.cardHeader}>
                       <span className={`${styles.badge} ${styles[`badge_${item.judgment_type}`]}`.trim()}>
                         {JUDGMENT_TYPE_BADGES[item.judgment_type]}
@@ -137,7 +170,7 @@ export default async function WeeklyDecisionsPage() {
                         <dd>{item.episode_title ?? "Untitled episode"}</dd>
                       </div>
                     </dl>
-                  </Link>
+                  </TrackedLink>
                 ))}
               </div>
             )}

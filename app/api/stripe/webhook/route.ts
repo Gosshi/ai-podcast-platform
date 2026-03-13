@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { recordAnalyticsEvent } from "@/src/lib/analytics";
 
 export const runtime = "nodejs";
 
@@ -240,6 +241,21 @@ const handleCheckoutSessionCompleted = async (
     stripe_subscription_id: stripeSubscriptionId,
     checkout_session_id: session.id,
     cancel_at_period_end: false
+  });
+
+  await recordAnalyticsEvent({
+    eventName: "checkout_completed",
+    userId,
+    isPaid: true,
+    source: "stripe_webhook",
+    properties: {
+      source: "stripe_webhook",
+      checkout_session_id: session.id,
+      stripe_subscription_id: stripeSubscriptionId,
+      plan_type: parsePlanType(session.metadata)
+    }
+  }).catch((error) => {
+    console.error("checkout_completed_analytics_error", { error, userId, sessionId: session.id });
   });
 
   return jsonResponse({
