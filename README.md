@@ -29,6 +29,8 @@
 - `/episodes` は無料版では最新プレビューのみ、有料版では判断カード・DeepDive全文・アーカイブを表示します
 - 判断カードは `episode_judgment_cards` に構造化保存され、`write-script-ja` / `expand-script-ja` / `polish-script-ja` の各 step で再抽出・同期されます
 - `episode_judgment_cards` は weekly summary / 再判定ツール / 履歴分析の共通データソースです
+- `user_decisions` と `/history` を使って Personal Decision Profile を集計し、履歴保存を「次の判断に返す学習ループ」に変えます
+- paid は judgment card 上で frame / genre / threshold ベースの personal hint を返し、free は履歴保存上限つきで profile を育てます
 - 購読中ユーザーは Stripe Billing Portal から支払い方法更新、解約、購読管理をセルフサービスで行います
 - `/weekly-decisions` で直近7日間の judgment digest を閲覧できます
 
@@ -59,6 +61,14 @@
   - `threshold_json`
   - `watch_points_json`
   - `confidence_score`
+- `user_decisions`
+  - `user_id`
+  - `judgment_card_id`
+  - `episode_id`
+  - `decision_type`
+  - `outcome`
+  - `created_at`
+  - `updated_at`
 
 ### Free vs Paid Boundary
 - 無料:
@@ -72,6 +82,8 @@
   - DeepDive 完全版
   - 過去アーカイブ全体
   - `/account` で会員状態の確認
+  - Personal Decision Profile の育成
+  - judgment card 上の personal hint
 
 ## Project Layout
 - `app/`: Next.js App Router
@@ -258,6 +270,23 @@
 - judgment_type ごとに `use_now / watch / skip` を集計
 - `genre` と `frame_type` の breakdown を表示
 - 無料ユーザーはカテゴリごとに一部 preview を表示
+
+## Personal Decision Profile
+- Page: `/history`
+- source: `user_decisions` + `episode_judgment_cards`
+- 表示する最小指標:
+  - 総判断数
+  - `use_now / watch / skip` 比率
+  - `success / regret / neutral` 比率
+  - `frame_type` ごとの outcome 傾向
+  - よく使うジャンル / 後悔しやすいジャンル
+  - rules-based insight（最大3件）
+- しきい値:
+  - 総履歴が `5` 件未満なら insight を抑制
+  - `frame_type` / `genre` / `threshold` ごとの強い hint は `3` 件以上ある場合のみ出す
+- paid value:
+  - profile を履歴保存の終点ではなく、judgment card に戻る personalized hint として使う
+  - 将来的には recommendation / next best decision の入力特徴として再利用できる
 - 有料ユーザーは今週の全件と deadline 付き一覧を表示
 - 集計ロジックは `src/lib/weeklyDecisionDigest.ts` に分離し、週次メールや通知に流用できる形にしている
 
