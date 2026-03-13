@@ -1,6 +1,7 @@
 import type { JudgmentThresholdJson, JudgmentType } from "@/src/lib/judgmentCards";
 import { sortDecisionDashboardCards } from "@/src/lib/decisionDashboard";
 import { isWithinFreeAccessWindow } from "./contentAccess";
+import { loadSavedDecisions, type DecisionOutcome } from "./decisionHistory";
 import { lockJudgmentDetails } from "./judgmentAccess";
 import { createServiceRoleClient } from "./supabaseClients";
 
@@ -46,6 +47,9 @@ export type DecisionDashboardCard = {
   episode_title: string | null;
   episode_lang: "ja" | "en";
   episode_published_at: string | null;
+  is_saved: boolean;
+  saved_decision_id: string | null;
+  saved_outcome: DecisionOutcome | null;
 };
 
 const resolveJoinedEpisode = (
@@ -57,6 +61,7 @@ const resolveJoinedEpisode = (
 
 export const loadDecisionDashboardCards = async (params: {
   isPaid: boolean;
+  userId?: string | null;
 }): Promise<{ cards: DecisionDashboardCard[]; error: string | null }> => {
   const limit = 80;
 
@@ -86,7 +91,7 @@ export const loadDecisionDashboardCards = async (params: {
         const episode = resolveJoinedEpisode(row.episodes);
         if (!episode) return null;
 
-        return {
+        const card: DecisionDashboardCard = {
           id: row.id,
           episode_id: row.episode_id,
           topic_title: row.topic_title,
@@ -101,8 +106,13 @@ export const loadDecisionDashboardCards = async (params: {
           created_at: row.created_at,
           episode_title: episode.title,
           episode_lang: episode.lang,
-          episode_published_at: episode.published_at
-        } satisfies DecisionDashboardCard;
+          episode_published_at: episode.published_at,
+          is_saved: false,
+          saved_decision_id: null,
+          saved_outcome: null
+        };
+
+        return card;
       })
       .filter((card): card is DecisionDashboardCard => Boolean(card));
 
@@ -111,10 +121,23 @@ export const loadDecisionDashboardCards = async (params: {
       : cards
           .filter((card) => isWithinFreeAccessWindow(card.episode_published_at ?? card.created_at))
           .map((card) => lockJudgmentDetails(card));
+    const { savedDecisions, error: savedDecisionsError } = params.userId
+      ? await loadSavedDecisions(params.userId, visibleCards.map((card) => card.id))
+      : { savedDecisions: new Map(), error: null };
 
     return {
-      cards: sortDecisionDashboardCards(visibleCards),
-      error: null
+      cards: sortDecisionDashboardCards(
+        visibleCards.map((card) => {
+          const savedDecision = savedDecisions.get(card.id);
+          return {
+            ...card,
+            is_saved: Boolean(savedDecision),
+            saved_decision_id: savedDecision?.id ?? null,
+            saved_outcome: savedDecision?.outcome ?? null
+          };
+        })
+      ),
+      error: savedDecisionsError
     };
   } catch (error) {
     return {

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import DecisionCalculator from "@/app/components/DecisionCalculator";
 import MemberControls from "@/app/components/MemberControls";
+import SaveDecisionButton from "@/app/components/SaveDecisionButton";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { loadPublishedEpisodeById } from "@/app/lib/episodes";
 import { getViewerFromCookies } from "@/app/lib/viewer";
@@ -40,7 +41,8 @@ export default async function EpisodeDetailPage({
   const viewer = await getViewerFromCookies();
   const { episode, error } = await loadPublishedEpisodeById({
     episodeId: id,
-    isPaid: viewer?.isPaid ?? false
+    isPaid: viewer?.isPaid ?? false,
+    userId: viewer?.userId
   });
 
   if (!episode && !error) {
@@ -102,6 +104,13 @@ export default async function EpisodeDetailPage({
                     </div>
                     <h3>{card.topic_title}</h3>
                     <p className={styles.summary}>{card.judgment_summary}</p>
+                    <div className={styles.cardActions}>
+                      <SaveDecisionButton
+                        judgmentCardId={card.id}
+                        viewer={viewer}
+                        initialSaved={card.is_saved}
+                      />
+                    </div>
                     <DecisionCalculator card={card} isPaid={viewer?.isPaid ?? false} locale="ja" />
                     <dl className={styles.metaList}>
                       {card.action_text ? (

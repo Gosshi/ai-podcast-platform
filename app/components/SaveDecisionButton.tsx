@@ -1,0 +1,103 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import type { ViewerState } from "@/app/lib/viewer";
+import styles from "./decision-history-controls.module.css";
+
+type SaveDecisionButtonProps = {
+  judgmentCardId: string | undefined;
+  viewer: ViewerState | null;
+  initialSaved: boolean;
+};
+
+type SaveDecisionResponse =
+  | {
+      ok: true;
+      decision: {
+        id: string;
+        outcome: string;
+        alreadySaved: boolean;
+      };
+    }
+  | {
+      ok: false;
+      error: string;
+      limit?: number;
+    };
+
+export default function SaveDecisionButton({
+  judgmentCardId,
+  viewer,
+  initialSaved
+}: SaveDecisionButtonProps) {
+  const router = useRouter();
+  const [isSaved, setIsSaved] = useState(initialSaved);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onClick = async () => {
+    if (!judgmentCardId) {
+      setError("保存対象の判断が見つかりません。");
+      return;
+    }
+
+    if (!viewer) {
+      router.push("/account");
+      return;
+    }
+
+    if (isSaved) {
+      router.push("/history");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/decision-history", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          judgmentCardId
+        })
+      });
+
+      const payload = (await response.json().catch(() => null)) as SaveDecisionResponse | null;
+      if (!response.ok || !payload || !payload.ok) {
+        const apiError = payload && !payload.ok ? payload.error : "save_failed";
+        if (apiError === "history_limit_reached") {
+          setError(`無料版の履歴保存は10件までです。続ける場合は有料会員へ切り替えてください。`);
+        } else if (apiError === "unauthorized") {
+          setError("保存するにはログインが必要です。");
+        } else {
+          setError("判断の保存に失敗しました。時間をおいて再度お試しください。");
+        }
+        return;
+      }
+
+      setIsSaved(true);
+    } catch {
+      setError("判断の保存に失敗しました。時間をおいて再度お試しください。");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const buttonClassName = `${styles.button} ${isSaved ? styles.buttonSaved : ""} ${
+    !viewer ? styles.buttonGhost : ""
+  }`.trim();
+
+  return (
+    <div className={styles.actionRow}>
+      <button type="button" className={buttonClassName} onClick={() => void onClick()} disabled={isSubmitting}>
+        {isSubmitting ? "保存中..." : isSaved ? "保存済み" : viewer ? "この判断を使う" : "ログインして保存"}
+      </button>
+      <p className={styles.hint}>{isSaved ? "History から結果を更新できます。" : "採用した判断をあとで振り返れます。"}</p>
+      {error ? <p className={styles.error}>{error}</p> : null}
+    </div>
+  );
+}
