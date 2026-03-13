@@ -336,6 +336,8 @@
 }
 
 .cardActionRow {
+  display: grid;
+  gap: 0.75rem;
   padding-top: 0.2rem;
   border-top: 1px solid rgba(226, 232, 240, 0.9);
 }

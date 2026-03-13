@@ -1,9 +1,11 @@
 import type { JudgmentThresholdJson, JudgmentType } from "@/src/lib/judgmentCards";
+import type { WatchlistCardState } from "@/src/lib/watchlist";
 import { sortDecisionDashboardCards } from "@/src/lib/decisionDashboard";
 import { isWithinFreeAccessWindow } from "./contentAccess";
 import { loadSavedDecisions, type DecisionOutcome } from "./decisionHistory";
 import { lockJudgmentDetails } from "./judgmentAccess";
 import { createServiceRoleClient } from "./supabaseClients";
+import { attachWatchlistState, loadWatchlistRecords } from "./watchlist";
 
 type JoinedEpisodeRow = {
   id: string;
@@ -32,7 +34,7 @@ type DecisionDashboardQueryRow = {
   episodes: JoinedEpisodeRow | JoinedEpisodeRow[] | null;
 };
 
-export type DecisionDashboardCard = {
+export type DecisionDashboardCard = WatchlistCardState & {
   id: string;
   episode_id: string;
   topic_title: string;
@@ -114,7 +116,12 @@ export const loadDecisionDashboardCards = async (params: {
           episode_published_at: episode.published_at,
           is_saved: false,
           saved_decision_id: null,
-          saved_outcome: null
+          saved_outcome: null,
+          is_in_watchlist: false,
+          watchlist_item_id: null,
+          watchlist_status: null,
+          watchlist_created_at: null,
+          watchlist_updated_at: null
         };
 
         return card;
@@ -129,20 +136,26 @@ export const loadDecisionDashboardCards = async (params: {
     const { savedDecisions, error: savedDecisionsError } = params.userId
       ? await loadSavedDecisions(params.userId, visibleCards.map((card) => card.id))
       : { savedDecisions: new Map(), error: null };
+    const { watchlist, error: watchlistError } = params.userId
+      ? await loadWatchlistRecords(params.userId, visibleCards.map((card) => card.id))
+      : { watchlist: new Map(), error: null };
 
     return {
       cards: sortDecisionDashboardCards(
-        visibleCards.map((card) => {
-          const savedDecision = savedDecisions.get(card.id);
-          return {
-            ...card,
-            is_saved: Boolean(savedDecision),
-            saved_decision_id: savedDecision?.id ?? null,
-            saved_outcome: savedDecision?.outcome ?? null
-          };
-        })
+        attachWatchlistState<DecisionDashboardCard>(
+          visibleCards.map((card) => {
+            const savedDecision = savedDecisions.get(card.id);
+            return {
+              ...card,
+              is_saved: Boolean(savedDecision),
+              saved_decision_id: savedDecision?.id ?? null,
+              saved_outcome: savedDecision?.outcome ?? null
+            };
+          }),
+          watchlist
+        )
       ),
-      error: savedDecisionsError
+      error: savedDecisionsError ?? watchlistError
     };
   } catch (error) {
     return {

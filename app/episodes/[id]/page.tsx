@@ -5,6 +5,7 @@ import DecisionCalculator from "@/app/components/DecisionCalculator";
 import MemberControls from "@/app/components/MemberControls";
 import SaveDecisionButton from "@/app/components/SaveDecisionButton";
 import TrackedLink from "@/app/components/TrackedLink";
+import WatchlistControls from "@/app/components/WatchlistControls";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { loadPublishedEpisodeById } from "@/app/lib/episodes";
 import { getViewerFromCookies } from "@/app/lib/viewer";
@@ -120,6 +121,18 @@ export default async function EpisodeDetailPage({
                     <h3>{card.topic_title}</h3>
                     <p className={styles.summary}>{card.judgment_summary}</p>
                     <div className={styles.cardActions}>
+                      <WatchlistControls
+                        judgmentCardId={card.id}
+                        viewer={viewer}
+                        initialItemId={card.watchlist_item_id}
+                        initialStatus={card.watchlist_status}
+                        page={`/episodes/${id}`}
+                        source="episode_detail_card"
+                        episodeId={episode.id}
+                        genre={card.genre}
+                        frameType={card.frame_type}
+                        judgmentType={card.judgment_type}
+                      />
                       <SaveDecisionButton
                         judgmentCardId={card.id}
                         viewer={viewer}

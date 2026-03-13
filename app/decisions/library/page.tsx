@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
 import TrackedLink from "@/app/components/TrackedLink";
+import WatchlistControls from "@/app/components/WatchlistControls";
 import { buildOnboardingPath } from "@/app/lib/onboarding";
 import {
   DEFAULT_DECISION_LIBRARY_SORT,
@@ -149,6 +150,7 @@ export default async function DecisionLibraryPage({
 
   const result = await loadDecisionLibrary({
     isPaid,
+    userId: viewer?.userId,
     query,
     genre,
     frameType,
@@ -311,6 +313,19 @@ export default async function DecisionLibraryPage({
                 ) : null}
 
                 <div className={styles.cardFooter}>
+                  <WatchlistControls
+                    judgmentCardId={card.id}
+                    viewer={viewer}
+                    initialItemId={card.watchlist_item_id}
+                    initialStatus={card.watchlist_status}
+                    page="/decisions/library"
+                    source="decision_library_card"
+                    episodeId={card.episode_id}
+                    genre={card.genre}
+                    frameType={card.frame_type}
+                    judgmentType={card.judgment_type}
+                    compact
+                  />
                   <TrackedLink
                     href={`/episodes/${card.episode_id}`}
                     className={styles.cardLink}

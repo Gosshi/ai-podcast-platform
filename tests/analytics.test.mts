@@ -79,6 +79,15 @@ test("buildAnalyticsOverview summarizes funnel, engagement, and page views", () 
       {
         anonymous_id: null,
         user_id: "user-1",
+        event_name: "watchlist_add",
+        page: "/watchlist",
+        source: "watchlist_card",
+        is_paid: false,
+        created_at: "2026-03-13T00:04:30.000Z"
+      },
+      {
+        anonymous_id: null,
+        user_id: "user-1",
         event_name: "decision_replay_view",
         page: "/history/replay/decision-1",
         source: "page",
@@ -98,14 +107,15 @@ test("buildAnalyticsOverview summarizes funnel, engagement, and page views", () 
     30
   );
 
-  assert.equal(overview.totals.events, 7);
+  assert.equal(overview.totals.events, 8);
   assert.equal(overview.totals.anonymous, 1);
-  assert.equal(overview.totals.free, 4);
+  assert.equal(overview.totals.free, 5);
   assert.equal(overview.totals.paid, 3);
   assert.equal(overview.pageViews[0]?.page, "/decisions");
   assert.equal(overview.pageViews[0]?.total, 1);
   assert.equal(overview.funnel.find((item) => item.eventName === "checkout_completed")?.paid, 1);
   assert.equal(overview.engagement.find((item) => item.eventName === "decision_save")?.paid, 1);
+  assert.equal(overview.engagement.find((item) => item.eventName === "watchlist_add")?.free, 1);
   assert.equal(overview.engagement.find((item) => item.eventName === "decision_replay_view")?.paid, 1);
   assert.equal(overview.engagement.find((item) => item.eventName === "outcome_quick_submit")?.free, 1);
 });
