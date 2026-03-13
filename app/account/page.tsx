@@ -1,6 +1,9 @@
 import Link from "next/link";
+import AlertsInbox from "@/app/components/AlertsInbox";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
+import NotificationPreferencesForm from "@/app/components/NotificationPreferencesForm";
+import { syncUserAlerts } from "@/app/lib/alerts";
 import { buildOnboardingPath } from "@/app/lib/onboarding";
 import {
   formatMembershipDate,
@@ -64,6 +67,13 @@ export default async function AccountPage({
 }) {
   const viewer = await getViewerFromCookies();
   const params = await searchParams;
+  const alertState = viewer
+    ? await syncUserAlerts(viewer)
+    : {
+        alerts: [],
+        preferences: null,
+        error: null
+      };
   const subscription = readParam(params.subscription);
   const membershipBadge = resolveMembershipBadgeLabel(viewer?.isPaid ?? false);
   const planName = resolvePlanName(viewer?.planType ?? null, viewer?.isPaid ?? false);
@@ -115,6 +125,17 @@ export default async function AccountPage({
             analyticsSource="/account"
           />
         </section>
+
+        {viewer ? (
+          <AlertsInbox
+            alerts={alertState.alerts.slice(0, 4)}
+            page="/account"
+            title="Retention Alerts"
+            lead="in-app alerts の現在地を Account から確認し、free / paid 差分もここで把握できます。"
+            showViewAllLink={alertState.alerts.length > 4}
+          />
+        ) : null}
+        {alertState.error ? <p className={styles.sectionLead}>alerts の同期に失敗しました: {alertState.error}</p> : null}
 
         <section className={styles.section}>
           <div>
@@ -274,6 +295,20 @@ export default async function AccountPage({
                 Decisions を見る
               </Link>
             </div>
+          </section>
+        ) : null}
+
+        {viewer && alertState.preferences ? (
+          <section className={styles.section}>
+            <div>
+              <p className={styles.eyebrow}>Notification Preferences</p>
+              <h2>軽量な alert 設定</h2>
+              <p className={styles.sectionLead}>
+                MVP では in-app alerts の ON / OFF だけを持ちます。将来は email / push / snooze / mute に展開する前提です。
+              </p>
+            </div>
+
+            <NotificationPreferencesForm preferences={alertState.preferences} />
           </section>
         ) : null}
       </div>

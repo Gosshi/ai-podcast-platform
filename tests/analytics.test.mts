@@ -138,15 +138,42 @@ test("buildAnalyticsOverview summarizes funnel, engagement, and page views", () 
         source: "outcome_reminder_quick_submit",
         is_paid: false,
         created_at: "2026-03-13T00:06:00.000Z"
+      },
+      {
+        anonymous_id: null,
+        user_id: "user-1",
+        event_name: "alert_impression",
+        page: "/alerts",
+        source: "alerts_inbox",
+        is_paid: true,
+        created_at: "2026-03-13T00:07:00.000Z"
+      },
+      {
+        anonymous_id: null,
+        user_id: "user-1",
+        event_name: "alert_click",
+        page: "/alerts",
+        source: "alerts_inbox_link",
+        is_paid: true,
+        created_at: "2026-03-13T00:07:05.000Z"
+      },
+      {
+        anonymous_id: null,
+        user_id: "user-1",
+        event_name: "weekly_digest_alert_click",
+        page: "/alerts",
+        source: "alerts_inbox_link",
+        is_paid: true,
+        created_at: "2026-03-13T00:07:10.000Z"
       }
     ],
     30
   );
 
-  assert.equal(overview.totals.events, 12);
+  assert.equal(overview.totals.events, 15);
   assert.equal(overview.totals.anonymous, 1);
   assert.equal(overview.totals.free, 7);
-  assert.equal(overview.totals.paid, 5);
+  assert.equal(overview.totals.paid, 8);
   assert.equal(overview.pageViews[0]?.page, "/decisions");
   assert.equal(overview.pageViews[0]?.total, 1);
   assert.equal(overview.funnel.find((item) => item.eventName === "checkout_completed")?.paid, 1);
@@ -158,4 +185,7 @@ test("buildAnalyticsOverview summarizes funnel, engagement, and page views", () 
   assert.equal(overview.engagement.find((item) => item.eventName === "watchlist_add")?.free, 1);
   assert.equal(overview.engagement.find((item) => item.eventName === "decision_replay_view")?.paid, 1);
   assert.equal(overview.engagement.find((item) => item.eventName === "outcome_quick_submit")?.free, 1);
+  assert.equal(overview.engagement.find((item) => item.eventName === "alert_impression")?.paid, 1);
+  assert.equal(overview.engagement.find((item) => item.eventName === "alert_click")?.paid, 1);
+  assert.equal(overview.engagement.find((item) => item.eventName === "weekly_digest_alert_click")?.paid, 1);
 });
