@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import {
   formatMembershipDate,
   resolveMembershipBadgeLabel,
@@ -11,6 +12,7 @@ import {
   resolvePlanName
 } from "@/app/lib/membership";
 import type { ViewerState } from "@/app/lib/viewer";
+import { track } from "@/src/lib/analytics";
 import { createBrowserSupabaseClient } from "@/src/lib/supabase/browserClient";
 import styles from "./member-controls.module.css";
 
@@ -19,6 +21,7 @@ type MemberControlsProps = {
   title?: string;
   copy?: string;
   showBillingPortal?: boolean;
+  analyticsSource?: string;
 };
 
 const syncServerSession = async (session: Session | null): Promise<void> => {
@@ -49,7 +52,8 @@ export default function MemberControls({
   viewer,
   title = "会員ステータス",
   copy = "無料版は判断の入口まで。有料会員になると行動指針、期限、監視ポイント、アーカイブが開放されます。",
-  showBillingPortal = false
+  showBillingPortal = false,
+  analyticsSource
 }: MemberControlsProps) {
   const router = useRouter();
   const [email, setEmail] = useState(viewer?.email ?? "");
@@ -151,12 +155,19 @@ export default function MemberControls({
   const handleSubscribe = async () => {
     setError(null);
     setMessage(null);
+    track("subscribe_cta_click", {
+      page: analyticsSource,
+      source: analyticsSource ? `member_controls:${analyticsSource}` : "member_controls"
+    });
 
     const response = await fetch("/api/stripe/subscription-checkout", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
-      }
+      },
+      body: JSON.stringify({
+        source: analyticsSource ?? null
+      })
     });
     const payload = (await response.json().catch(() => ({}))) as {
       ok?: boolean;
@@ -180,7 +191,10 @@ export default function MemberControls({
       method: "POST",
       headers: {
         "Content-Type": "application/json"
-      }
+      },
+      body: JSON.stringify({
+        source: analyticsSource ?? null
+      })
     });
     const payload = (await response.json().catch(() => ({}))) as {
       ok?: boolean;
@@ -198,6 +212,15 @@ export default function MemberControls({
 
   return (
     <section className={styles.panel}>
+      {!viewer?.isPaid && analyticsSource ? (
+        <AnalyticsEventOnRender
+          eventName="paywall_view"
+          properties={{
+            page: analyticsSource,
+            source: `member_controls:${analyticsSource}`
+          }}
+        />
+      ) : null}
       <div className={styles.header}>
         <p className={styles.eyebrow}>Membership</p>
         <h2 className={styles.title}>{title}</h2>

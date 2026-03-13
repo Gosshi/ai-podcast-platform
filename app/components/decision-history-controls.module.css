@@ -45,6 +45,31 @@
   color: #0f172a;
 }
 
+.buttonDanger {
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  background: rgba(254, 242, 242, 0.96);
+  color: #b91c1c;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    opacity 140ms ease,
+    border-color 140ms ease;
+}
+
+.buttonDanger:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.buttonDanger:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .select {
   padding: 0 0.95rem;
   background: #ffffff;

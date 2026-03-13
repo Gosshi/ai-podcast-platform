@@ -3,12 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ViewerState } from "@/app/lib/viewer";
+import { track } from "@/src/lib/analytics";
 import styles from "./decision-history-controls.module.css";
 
 type SaveDecisionButtonProps = {
   judgmentCardId: string | undefined;
   viewer: ViewerState | null;
   initialSaved: boolean;
+  page?: string;
+  source?: string;
+  episodeId?: string;
+  genre?: string | null;
+  frameType?: string | null;
+  judgmentType?: "use_now" | "watch" | "skip";
 };
 
 type SaveDecisionResponse =
@@ -29,7 +36,13 @@ type SaveDecisionResponse =
 export default function SaveDecisionButton({
   judgmentCardId,
   viewer,
-  initialSaved
+  initialSaved,
+  page,
+  source = "save_decision_button",
+  episodeId,
+  genre,
+  frameType,
+  judgmentType
 }: SaveDecisionButtonProps) {
   const router = useRouter();
   const [isSaved, setIsSaved] = useState(initialSaved);
@@ -80,6 +93,15 @@ export default function SaveDecisionButton({
       }
 
       setIsSaved(true);
+      track("decision_save", {
+        page,
+        source,
+        episode_id: episodeId,
+        judgment_card_id: judgmentCardId,
+        genre: genre ?? undefined,
+        frame_type: frameType ?? undefined,
+        judgment_type: judgmentType
+      });
     } catch {
       setError("判断の保存に失敗しました。時間をおいて再度お試しください。");
     } finally {

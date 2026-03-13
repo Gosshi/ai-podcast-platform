@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
+import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import DecisionCalculator from "@/app/components/DecisionCalculator";
 import MemberControls from "@/app/components/MemberControls";
 import { isWithinFreeAccessWindow } from "@/app/lib/contentAccess";
@@ -471,6 +473,14 @@ export default function EpisodesView({
 
   return (
     <main className={styles.page}>
+      <AnalyticsPageView
+        page="/episodes"
+        pageEventName="episodes_view"
+        extraProperties={{
+          filter: viewLang,
+          locale
+        }}
+      />
       <header className={styles.header}>
         <div>
           <h1>{t.pageTitle}</h1>
@@ -516,7 +526,7 @@ export default function EpisodesView({
         </div>
       </header>
 
-      <MemberControls viewer={viewer} />
+      <MemberControls viewer={viewer} analyticsSource="/episodes" />
 
       {loadError ? (
         <p className={styles.errorText}>
@@ -653,6 +663,18 @@ export default function EpisodesView({
                     <div className={styles.judgmentCards}>
                       {selectedEpisode.judgment_cards.map((card, index) => (
                         <article key={`${selectedEpisode.id}-card-${index}`} className={styles.judgmentCard}>
+                          <AnalyticsEventOnRender
+                            eventName="judgment_card_impression"
+                            properties={{
+                              page: "/episodes",
+                              source: "episodes_detail_panel",
+                              episode_id: selectedEpisode.id,
+                              judgment_card_id: card.id,
+                              genre: card.genre ?? undefined,
+                              frame_type: card.frame_type ?? undefined,
+                              judgment_type: card.judgment_type
+                            }}
+                          />
                           <div className={styles.sectionHeaderRow}>
                             <strong>{card.topic_title}</strong>
                             <div className={styles.cardMetaStack}>
@@ -665,7 +687,13 @@ export default function EpisodesView({
                             </div>
                           </div>
                           <p>{card.judgment_summary}</p>
-                          <DecisionCalculator card={card} isPaid={isPaid} locale={locale} />
+                          <DecisionCalculator
+                            card={card}
+                            isPaid={isPaid}
+                            locale={locale}
+                            analyticsPage="/episodes"
+                            analyticsSource="episodes_detail_panel"
+                          />
                           {isPaid && card.action_text ? (
                             <p className={styles.metaLine}>
                               {t.actionLabel}: {card.action_text}

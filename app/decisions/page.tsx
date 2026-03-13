@@ -1,6 +1,8 @@
-import Link from "next/link";
+import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
+import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
 import SaveDecisionButton from "@/app/components/SaveDecisionButton";
+import TrackedLink from "@/app/components/TrackedLink";
 import { loadDecisionHistory } from "@/app/lib/decisionHistory";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { loadDecisionDashboardCards } from "@/app/lib/decisions";
@@ -81,7 +83,32 @@ export default async function DecisionsPage() {
 
     return (
       <article key={card.id} className={styles.card}>
-        <Link href={`/episodes/${card.episode_id}`} className={styles.cardLink}>
+        <AnalyticsEventOnRender
+          eventName="judgment_card_impression"
+          properties={{
+            page: "/decisions",
+            source: "decision_dashboard_card",
+            episode_id: card.episode_id,
+            judgment_card_id: card.id,
+            genre: card.genre ?? undefined,
+            frame_type: card.frame_type ?? undefined,
+            judgment_type: card.judgment_type
+          }}
+        />
+        <TrackedLink
+          href={`/episodes/${card.episode_id}`}
+          className={styles.cardLink}
+          eventName="judgment_card_click"
+          eventProperties={{
+            page: "/decisions",
+            source: "decision_dashboard_card",
+            episode_id: card.episode_id,
+            judgment_card_id: card.id,
+            genre: card.genre ?? undefined,
+            frame_type: card.frame_type ?? undefined,
+            judgment_type: card.judgment_type
+          }}
+        >
           <div className={styles.cardHeader}>
             <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`]}`.trim()}>
               {JUDGMENT_TYPE_LABELS[card.judgment_type]}
@@ -132,14 +159,36 @@ export default async function DecisionsPage() {
             <div className={styles.lockedPanel}>
               <strong>この先は有料会員向け</strong>
               <p>次の行動、期限、監視ポイント、判断基準を開放します。</p>
+              <TrackedLink
+                href="/account"
+                className={styles.paywallLink}
+                eventName="judgment_card_locked_cta_click"
+                eventProperties={{
+                  page: "/decisions",
+                  source: "decision_dashboard_locked_panel",
+                  episode_id: card.episode_id,
+                  judgment_card_id: card.id,
+                  genre: card.genre ?? undefined,
+                  frame_type: card.frame_type ?? undefined,
+                  judgment_type: card.judgment_type
+                }}
+              >
+                判断詳細を開放
+              </TrackedLink>
             </div>
           ) : null}
-        </Link>
+        </TrackedLink>
         <div className={styles.cardActionRow}>
           <SaveDecisionButton
             judgmentCardId={card.id}
             viewer={viewer}
             initialSaved={card.is_saved}
+            page="/decisions"
+            source="decision_dashboard_card"
+            episodeId={card.episode_id}
+            genre={card.genre}
+            frameType={card.frame_type}
+            judgmentType={card.judgment_type}
           />
         </div>
       </article>
@@ -148,6 +197,7 @@ export default async function DecisionsPage() {
 
   return (
     <main className={styles.page}>
+      <AnalyticsPageView page="/decisions" pageEventName="decisions_view" />
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>Decision Dashboard</p>
@@ -165,6 +215,7 @@ export default async function DecisionsPage() {
           viewer={viewer}
           title="Decision Access"
           copy="無料版は judgment summary まで。有料会員になると action、deadline、watch points、threshold の詳細まで確認できます。"
+          analyticsSource="/decisions"
         />
       </section>
 
@@ -181,9 +232,17 @@ export default async function DecisionsPage() {
               無料版は最新1週間の judgment summary を確認できます。action、deadline、watch points、threshold の詳細と personal hint は有料会員で開放します。
             </p>
           </div>
-          <Link href="/account" className={styles.paywallLink}>
+          <TrackedLink
+            href="/account"
+            className={styles.paywallLink}
+            eventName="subscribe_cta_click"
+            eventProperties={{
+              page: "/decisions",
+              source: "decision_dashboard_paywall_banner"
+            }}
+          >
             Upgrade
-          </Link>
+          </TrackedLink>
         </section>
       ) : null}
 
@@ -209,7 +268,32 @@ export default async function DecisionsPage() {
           <div className={styles.recommendationGrid}>
             {nextBestDecisions.map((recommendation) => (
               <article key={recommendation.card.id} className={styles.recommendationCard}>
-                <Link href={`/episodes/${recommendation.card.episode_id}`} className={styles.recommendationLink}>
+                <AnalyticsEventOnRender
+                  eventName="next_best_decision_impression"
+                  properties={{
+                    page: "/decisions",
+                    source: "next_best_decision",
+                    episode_id: recommendation.card.episode_id,
+                    judgment_card_id: recommendation.card.id,
+                    genre: recommendation.card.genre ?? undefined,
+                    frame_type: recommendation.card.frame_type ?? undefined,
+                    judgment_type: recommendation.card.judgment_type
+                  }}
+                />
+                <TrackedLink
+                  href={`/episodes/${recommendation.card.episode_id}`}
+                  className={styles.recommendationLink}
+                  eventName="next_best_decision_click"
+                  eventProperties={{
+                    page: "/decisions",
+                    source: "next_best_decision",
+                    episode_id: recommendation.card.episode_id,
+                    judgment_card_id: recommendation.card.id,
+                    genre: recommendation.card.genre ?? undefined,
+                    frame_type: recommendation.card.frame_type ?? undefined,
+                    judgment_type: recommendation.card.judgment_type
+                  }}
+                >
                   <div className={styles.recommendationTopRow}>
                     <span className={`${styles.badge} ${styles[`badge_${recommendation.card.judgment_type}`]}`.trim()}>
                       {JUDGMENT_TYPE_LABELS[recommendation.card.judgment_type]}
@@ -246,7 +330,7 @@ export default async function DecisionsPage() {
                     ))}
                   </ul>
                   <p className={styles.episodeLinkText}>エピソードを見る</p>
-                </Link>
+                </TrackedLink>
               </article>
             ))}
           </div>
@@ -259,9 +343,17 @@ export default async function DecisionsPage() {
             <p>
               締切の近さに加えて、後悔しやすい frame や満足率の高い genre を使って 3 件まで優先判断を返します。
             </p>
-            <Link href="/account" className={styles.inlineUpgradeLink}>
+            <TrackedLink
+              href="/account"
+              className={styles.inlineUpgradeLink}
+              eventName="subscribe_cta_click"
+              eventProperties={{
+                page: "/decisions",
+                source: "next_best_decision_upgrade"
+              }}
+            >
               Personal priority を開放
-            </Link>
+            </TrackedLink>
           </div>
         ) : null}
       </section>

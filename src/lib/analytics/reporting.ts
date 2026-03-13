@@ -1,0 +1,131 @@
+import type { AnalyticsEventName } from "./events";
+
+export type AnalyticsEventRow = {
+  anonymous_id: string | null;
+  user_id: string | null;
+  event_name: AnalyticsEventName;
+  page: string | null;
+  source: string | null;
+  is_paid: boolean;
+  created_at: string;
+};
+
+export type AnalyticsOverview = {
+  windowDays: number;
+  totals: {
+    events: number;
+    anonymous: number;
+    free: number;
+    paid: number;
+  };
+  funnel: Array<{
+    eventName: AnalyticsEventName;
+    label: string;
+    total: number;
+    free: number;
+    paid: number;
+  }>;
+  engagement: Array<{
+    eventName: AnalyticsEventName;
+    label: string;
+    total: number;
+    free: number;
+    paid: number;
+  }>;
+  pageViews: Array<{
+    page: string;
+    total: number;
+  }>;
+  topEvents: Array<{
+    eventName: AnalyticsEventName;
+    total: number;
+    free: number;
+    paid: number;
+  }>;
+};
+
+const FUNNEL_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: string }> = [
+  { eventName: "paywall_view", label: "Paywall Views" },
+  { eventName: "subscribe_cta_click", label: "Subscribe CTA Clicks" },
+  { eventName: "checkout_started", label: "Checkout Started" },
+  { eventName: "checkout_completed", label: "Checkout Completed" }
+];
+
+const ENGAGEMENT_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: string }> = [
+  { eventName: "page_view", label: "Page Views" },
+  { eventName: "judgment_card_click", label: "Judgment Card Clicks" },
+  { eventName: "decision_calculator_result_view", label: "Calculator Results" },
+  { eventName: "decision_save", label: "Decision Saves" },
+  { eventName: "weekly_digest_open", label: "Weekly Digest Opens" },
+  { eventName: "outcome_update", label: "Outcome Updates" }
+];
+
+const countByPlan = (rows: AnalyticsEventRow[], eventName: AnalyticsEventName) => {
+  const filtered = rows.filter((row) => row.event_name === eventName);
+  return {
+    total: filtered.length,
+    free: filtered.filter((row) => !row.is_paid).length,
+    paid: filtered.filter((row) => row.is_paid).length
+  };
+};
+
+export const buildAnalyticsOverview = (
+  rows: AnalyticsEventRow[],
+  windowDays: number
+): AnalyticsOverview => {
+  const anonymous = rows.filter((row) => !row.user_id && row.anonymous_id).length;
+  const free = rows.filter((row) => !row.is_paid).length;
+  const paid = rows.filter((row) => row.is_paid).length;
+
+  const pageViews = Array.from(
+    rows
+      .filter((row) => row.event_name === "page_view" && row.page)
+      .reduce((map, row) => {
+        const page = row.page ?? "unknown";
+        map.set(page, (map.get(page) ?? 0) + 1);
+        return map;
+      }, new Map<string, number>())
+      .entries()
+  )
+    .map(([page, total]) => ({ page, total }))
+    .sort((a, b) => b.total - a.total);
+
+  const topEvents = Array.from(
+    rows.reduce((map, row) => {
+      const current = map.get(row.event_name) ?? { total: 0, free: 0, paid: 0 };
+      current.total += 1;
+      if (row.is_paid) {
+        current.paid += 1;
+      } else {
+        current.free += 1;
+      }
+      map.set(row.event_name, current);
+      return map;
+    }, new Map<AnalyticsEventName, { total: number; free: number; paid: number }>())
+  )
+    .map(([eventName, counts]) => ({ eventName, ...counts }))
+    .sort((a, b) => b.total - a.total);
+
+  return {
+    windowDays,
+    totals: {
+      events: rows.length,
+      anonymous,
+      free,
+      paid
+    },
+    funnel: FUNNEL_DEFINITIONS.map((definition) => ({
+      eventName: definition.eventName,
+      label: definition.label,
+      ...countByPlan(rows, definition.eventName)
+    })),
+    engagement: ENGAGEMENT_DEFINITIONS.map((definition) => ({
+      eventName: definition.eventName,
+      label: definition.label,
+      ...countByPlan(rows, definition.eventName)
+    })),
+    pageViews,
+    topEvents
+  };
+};
+

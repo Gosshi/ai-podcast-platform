@@ -1,6 +1,8 @@
-import Link from "next/link";
+import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import DecisionOutcomeSelect from "@/app/components/DecisionOutcomeSelect";
 import MemberControls from "@/app/components/MemberControls";
+import RemoveDecisionButton from "@/app/components/RemoveDecisionButton";
+import TrackedLink from "@/app/components/TrackedLink";
 import {
   DECISION_TYPE_LABELS,
   formatDecisionHistoryDate,
@@ -35,6 +37,7 @@ export default async function HistoryPage() {
 
   return (
     <main className={styles.page}>
+      <AnalyticsPageView page="/history" pageEventName="history_view" />
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>Decision History</p>
@@ -73,6 +76,7 @@ export default async function HistoryPage() {
           viewer={viewer}
           title="Decision Memory"
           copy="保存した判断に outcome を残すことで、自分に合う判断の精度を継続的に上げていきます。"
+          analyticsSource="/history"
         />
       </section>
 
@@ -80,9 +84,17 @@ export default async function HistoryPage() {
         <section className={styles.noticePanel}>
           <h2>履歴を使うにはログインが必要です</h2>
           <p>判断カードで「この判断を使う」を押すと履歴に保存されます。ログイン後、この画面で結果を更新できます。</p>
-          <Link href="/account" className={styles.primaryLink}>
+          <TrackedLink
+            href="/account"
+            className={styles.primaryLink}
+            eventName="subscribe_cta_click"
+            eventProperties={{
+              page: "/history",
+              source: "history_login_notice"
+            }}
+          >
             Account でログイン
-          </Link>
+          </TrackedLink>
         </section>
       ) : null}
 
@@ -90,9 +102,17 @@ export default async function HistoryPage() {
         <section className={styles.noticePanel}>
           <h2>free は10件、paid は無制限</h2>
           <p>保存件数が上限に達すると、新しい判断は保存できません。継続的に personal learning を使う場合は paid に切り替えてください。</p>
-          <Link href="/account" className={styles.secondaryLink}>
+          <TrackedLink
+            href="/account"
+            className={styles.secondaryLink}
+            eventName="subscribe_cta_click"
+            eventProperties={{
+              page: "/history",
+              source: "history_limit_notice"
+            }}
+          >
             プランを見る
-          </Link>
+          </TrackedLink>
         </section>
       ) : null}
 
@@ -289,8 +309,26 @@ export default async function HistoryPage() {
                     <p className={styles.outcomeLabel}>結果</p>
                     <p className={styles.outcomeValue}>{OUTCOME_LABELS[entry.outcome]}</p>
                   </div>
-                  <DecisionOutcomeSelect decisionId={entry.id} initialOutcome={entry.outcome} />
+                  <DecisionOutcomeSelect
+                    decisionId={entry.id}
+                    initialOutcome={entry.outcome}
+                    page="/history"
+                    episodeId={entry.episode_id}
+                    judgmentCardId={entry.judgment_card_id}
+                    genre={entry.genre}
+                    frameType={entry.frame_type}
+                    judgmentType={entry.decision_type}
+                  />
                 </div>
+                <RemoveDecisionButton
+                  decisionId={entry.id}
+                  page="/history"
+                  episodeId={entry.episode_id}
+                  judgmentCardId={entry.judgment_card_id}
+                  genre={entry.genre}
+                  frameType={entry.frame_type}
+                  judgmentType={entry.decision_type}
+                />
               </article>
             ))}
           </div>

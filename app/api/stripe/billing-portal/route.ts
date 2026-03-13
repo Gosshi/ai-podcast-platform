@@ -1,7 +1,12 @@
 import Stripe from "stripe";
 import { getViewerFromCookies } from "../../../lib/viewer";
+import { recordAnalyticsEvent } from "@/src/lib/analytics";
 
 export const runtime = "nodejs";
+
+type BillingPortalRequest = {
+  source?: unknown;
+};
 
 const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
   return new Response(JSON.stringify(body), {
@@ -36,6 +41,9 @@ export async function POST(request: Request): Promise<Response> {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);
   }
 
+  const body = (await request.json().catch(() => ({}))) as BillingPortalRequest;
+  const source = typeof body.source === "string" && body.source.trim() ? body.source.trim() : null;
+
   if (!viewer.stripeCustomerId) {
     return jsonResponse({ ok: false, error: "billing_customer_missing" }, 400);
   }
@@ -60,6 +68,20 @@ export async function POST(request: Request): Promise<Response> {
     if (!session.url) {
       return jsonResponse({ ok: false, error: "billing_portal_url_missing" }, 500);
     }
+
+    await recordAnalyticsEvent({
+      eventName: "billing_portal_open",
+      userId: viewer.userId,
+      isPaid: viewer.isPaid,
+      page: source,
+      source: source ? `billing_portal:${source}` : "billing_portal",
+      properties: {
+        page: source,
+        source: source ? `billing_portal:${source}` : "billing_portal"
+      }
+    }).catch((error) => {
+      console.error("billing_portal_analytics_error", { error, userId: viewer.userId });
+    });
 
     return jsonResponse({
       ok: true,

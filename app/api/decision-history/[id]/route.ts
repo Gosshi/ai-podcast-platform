@@ -60,3 +60,40 @@ export async function PATCH(
     decision: data
   });
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const viewer = await getViewerFromCookies();
+  if (!viewer) {
+    return jsonResponse({ ok: false, error: "unauthorized" }, 401);
+  }
+
+  const { id } = await params;
+  if (!id.trim()) {
+    return jsonResponse({ ok: false, error: "decision_id_required" }, 400);
+  }
+
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from("user_decisions")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", viewer.userId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return jsonResponse({ ok: false, error: error.message }, 500);
+  }
+
+  if (!data) {
+    return jsonResponse({ ok: false, error: "decision_not_found" }, 404);
+  }
+
+  return jsonResponse({
+    ok: true,
+    decision: data
+  });
+}
