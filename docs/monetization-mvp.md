@@ -56,6 +56,7 @@
 - 件数制限よりも「判断の深さ」で無料 / 有料を分ける
 - 無料版:
   - 最新1週間の `/episodes` と `/decisions`
+  - `/weekly-decisions` の一部 preview
   - judgment_summary
 - 有料版:
   - action_text
@@ -64,6 +65,16 @@
   - threshold_json の表示
   - DeepDive 完全版
   - 過去アーカイブ
+
+## Weekly Decision Digest
+- `/weekly-decisions` で直近7日間の judgment cards を `use_now / watch / skip` ごとに集計する
+- free:
+  - カテゴリごとに一部 preview
+  - judgment summary 中心
+- paid:
+  - 全件表示
+  - deadline 付き一覧
+- `genre / frame_type` breakdown を保持し、週次メール / 通知 / archive への再利用を前提にする
 
 ## Stripe Flow
 1. ログイン済みユーザーが `POST /api/stripe/subscription-checkout`

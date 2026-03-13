@@ -30,6 +30,7 @@
 - 判断カードは `episode_judgment_cards` に構造化保存され、`write-script-ja` / `expand-script-ja` / `polish-script-ja` の各 step で再抽出・同期されます
 - `episode_judgment_cards` は weekly summary / 再判定ツール / 履歴分析の共通データソースです
 - 購読中ユーザーは Stripe Billing Portal から支払い方法更新、解約、購読管理をセルフサービスで行います
+- `/weekly-decisions` で直近7日間の judgment digest を閲覧できます
 
 ### Membership Tables
 - `profiles`
@@ -62,6 +63,7 @@
 ### Free vs Paid Boundary
 - 無料:
   - `/episodes` と `/decisions` の最新1週間
+  - `/weekly-decisions` の一部 preview
   - 音声再生
   - `script_polished_preview` ベースの短い preview
   - judgment summary
@@ -249,6 +251,15 @@
 - `action_text / deadline_at / watch_points_json / threshold_json / DeepDive 完全版 / 過去アーカイブ` は有料会員向け
 - 有料ユーザーは `episode_judgment_cards` の全件と `script_polished` / `script` を表示する
 - `audio_url` が `/audio/...` の場合、`public/audio` のローカル音声を `<audio>` タグで再生
+
+## Weekly Decision Digest
+- Page: `/weekly-decisions`
+- 対象: 直近7日間の `episode_judgment_cards`
+- judgment_type ごとに `use_now / watch / skip` を集計
+- `genre` と `frame_type` の breakdown を表示
+- 無料ユーザーはカテゴリごとに一部 preview を表示
+- 有料ユーザーは今週の全件と deadline 付き一覧を表示
+- 集計ロジックは `src/lib/weeklyDecisionDigest.ts` に分離し、週次メールや通知に流用できる形にしている
 
 ## TTS Provider (OpenAI + local fallback)
 - API route: `POST /api/tts`（Node runtime, `/api/tts-local` は互換エイリアス）

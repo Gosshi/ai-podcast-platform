@@ -6,6 +6,7 @@ import styles from "./app-navigation.module.css";
 
 const NAV_ITEMS = [
   { href: "/decisions", label: "Decisions" },
+  { href: "/weekly-decisions", label: "Weekly Digest" },
   { href: "/episodes", label: "Episodes" },
   { href: "/letters", label: "Letters" },
   { href: "/account", label: "Account" }
