@@ -4,7 +4,10 @@ import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
 import TrackedLink from "@/app/components/TrackedLink";
-import { DECISION_TYPE_LABELS, OUTCOME_LABELS } from "@/app/lib/decisionHistory";
+import {
+  DECISION_TYPE_LABELS,
+  formatDecisionOutcomeLabel
+} from "@/app/lib/decisionHistory";
 import {
   buildDecisionReplayPath,
   buildDecisionReplayView,
@@ -107,7 +110,7 @@ export default async function DecisionReplayPage({
                 <span className={`${styles.badge} ${styles[`badge_${replay.decision_type}`]}`.trim()}>
                   Saved: {DECISION_TYPE_LABELS[replay.decision_type]}
                 </span>
-                <span className={styles.outcomeBadge}>{OUTCOME_LABELS[replay.outcome]}</span>
+                <span className={styles.outcomeBadge}>{formatDecisionOutcomeLabel(replay.outcome)}</span>
               </div>
             </div>
 
@@ -150,7 +153,7 @@ export default async function DecisionReplayPage({
               </div>
               <div>
                 <dt>Outcome 更新日</dt>
-                <dd>{formatDecisionReplayDateTime(replay.outcome_updated_at)}</dd>
+                <dd>{replay.outcome_updated_at ? formatDecisionReplayDateTime(replay.outcome_updated_at) : "未記録"}</dd>
               </div>
             </dl>
           </section>
@@ -252,16 +255,16 @@ export default async function DecisionReplayPage({
 
               <article className={styles.compareCard}>
                 <p className={styles.cardLabel}>実際の結果</p>
-                <strong>{OUTCOME_LABELS[replay.outcome]}</strong>
+                <strong>{formatDecisionOutcomeLabel(replay.outcome)}</strong>
                 <p className={styles.bodyText}>保存した判断: {DECISION_TYPE_LABELS[replay.decision_type]}</p>
                 <dl className={styles.metaList}>
                   <div>
                     <dt>Outcome</dt>
-                    <dd>{OUTCOME_LABELS[replay.outcome]}</dd>
+                    <dd>{formatDecisionOutcomeLabel(replay.outcome)}</dd>
                   </div>
                   <div>
                     <dt>更新日時</dt>
-                    <dd>{formatDecisionReplayDateTime(replay.outcome_updated_at)}</dd>
+                    <dd>{replay.outcome_updated_at ? formatDecisionReplayDateTime(replay.outcome_updated_at) : "未記録"}</dd>
                   </div>
                 </dl>
               </article>

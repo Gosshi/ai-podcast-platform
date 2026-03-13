@@ -19,7 +19,7 @@ export type DecisionReplay = {
   threshold_highlights: string[];
   created_at: string;
   outcome: DecisionOutcome;
-  outcome_updated_at: string;
+  outcome_updated_at: string | null;
   episode_title: string | null;
   episode_published_at: string | null;
 };
@@ -66,7 +66,7 @@ type ReplayInsightCandidate = DecisionReplayInsight & {
 
 type DecisionProfileEntryLike = {
   decision_type: JudgmentType;
-  outcome: DecisionOutcome;
+  outcome: "success" | "regret" | "neutral";
   frame_type: string | null;
   genre: string | null;
   threshold_json?: JudgmentThresholdJson | null;
@@ -255,6 +255,17 @@ export const buildDecisionReplayInsights = (
   replay: DecisionReplay,
   profile: DecisionProfile
 ): DecisionReplayInsight[] => {
+  if (!replay.outcome) {
+    return [
+      {
+        key: "outcome-pending",
+        title: "まだ結果は記録されていません",
+        body: "Outcome を残すと、この replay が profile learning と next best decision の改善に返り始めます。",
+        tone: "neutral"
+      }
+    ];
+  }
+
   const candidates: ReplayInsightCandidate[] = [];
   const decisionTypeStat = profile.decisionTypeStats[replay.decision_type];
   const frameStat = replay.frame_type
@@ -492,7 +503,12 @@ export const loadDecisionReplay = async (
 
     const historyRows = ((historyResult.data as Array<Pick<UserDecisionRow, "judgment_card_id" | "decision_type" | "outcome">> | null) ??
       []) as Array<Pick<UserDecisionRow, "judgment_card_id" | "decision_type" | "outcome">>;
-    const historyCardIds = Array.from(new Set(historyRows.map((row) => row.judgment_card_id)));
+    const resolvedHistoryRows = historyRows.filter(
+      (row): row is Pick<UserDecisionRow, "judgment_card_id" | "decision_type"> & {
+        outcome: "success" | "regret" | "neutral";
+      } => row.outcome === "success" || row.outcome === "regret" || row.outcome === "neutral"
+    );
+    const historyCardIds = Array.from(new Set(resolvedHistoryRows.map((row) => row.judgment_card_id)));
 
     const { data: historyCardsData, error: historyCardsError } = historyCardIds.length
       ? await supabase
@@ -527,7 +543,7 @@ export const loadDecisionReplay = async (
 
     const { buildPersonalDecisionProfile } = await loadDecisionProfileBuilder();
     const profile = buildPersonalDecisionProfile(
-      historyRows.map((row) => {
+      resolvedHistoryRows.map((row) => {
         const card = historyCards.get(row.judgment_card_id);
 
         return {
@@ -569,7 +585,7 @@ export const loadDecisionReplay = async (
       threshold_highlights: formatThresholdHighlightsLocal(normalizeThresholdJson(card.threshold_json)),
       created_at: decision.created_at,
       outcome: decision.outcome,
-      outcome_updated_at: decision.updated_at,
+      outcome_updated_at: decision.outcome ? decision.updated_at : null,
       episode_title: episode?.title ?? null,
       episode_published_at: episode?.published_at ?? null
     };

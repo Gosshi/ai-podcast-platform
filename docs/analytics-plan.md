@@ -56,6 +56,10 @@
   - `decision_save`
   - `decision_remove`
   - `outcome_update`
+  - `outcome_reminder_impression`
+  - `outcome_reminder_click`
+  - `outcome_quick_submit`
+  - `outcome_reminder_to_replay_click`
 - Recommendation:
   - `next_best_decision_impression`
   - `next_best_decision_click`
@@ -77,7 +81,7 @@
   - watch `judgment_card_click`, `decision_calculator_result_view`, `decision_save`
   - compare `/decisions` vs `/episodes` usage
 - retention:
-  - watch `weekly_digest_open`, `weekly_digest_item_click`, `outcome_update`
+  - watch `weekly_digest_open`, `weekly_digest_item_click`, `outcome_reminder_impression`, `outcome_quick_submit`, `outcome_update`
   - use `user_id` cohorts later when event volume grows
 - monetization drivers:
   - compare which `source` values produce more `subscribe_cta_click`
@@ -87,10 +91,11 @@
 1. Open `/decisions` and confirm `page_view`, `decisions_view`
 2. Inspect a judgment card and confirm `judgment_card_impression`
 3. Open calculator and run a recalculation to confirm calculator events
-4. Save a decision, update outcome, remove a decision
-5. Open `/weekly-decisions` and click a digest item
-6. Click subscribe CTA, start checkout, complete Stripe webhook
-7. Open `/admin/analytics` and confirm counts move
+4. Save a decision, confirm reminder impression, and quick-submit an outcome
+5. Open reminder links to History / Replay and confirm click events
+6. Open `/weekly-decisions` and click a digest item
+7. Click subscribe CTA, start checkout, complete Stripe webhook
+8. Open `/admin/analytics` and confirm counts move
 
 ## Manual SQL
 ```sql

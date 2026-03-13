@@ -119,6 +119,23 @@ test("buildDecisionReplayInsights falls back to data-light insight when history 
   ]);
 });
 
+test("buildDecisionReplayInsights asks for outcome when replay is still unresolved", () => {
+  const replay = createReplay({
+    outcome: null,
+    outcome_updated_at: null
+  });
+  const profile = buildPersonalDecisionProfile([]);
+
+  assert.deepEqual(buildDecisionReplayInsights(replay, profile), [
+    {
+      key: "outcome-pending",
+      title: "まだ結果は記録されていません",
+      body: "Outcome を残すと、この replay が profile learning と next best decision の改善に返り始めます。",
+      tone: "neutral"
+    }
+  ]);
+});
+
 test("formatDecisionReplayDateTime returns localized date time", () => {
   assert.equal(formatDecisionReplayDateTime("2026-03-13T00:00:00.000Z"), "2026年3月13日 09:00");
 });

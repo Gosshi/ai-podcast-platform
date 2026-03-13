@@ -1,10 +1,12 @@
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import DecisionOutcomeSelect from "@/app/components/DecisionOutcomeSelect";
 import MemberControls from "@/app/components/MemberControls";
+import OutcomeReminderSection from "@/app/components/OutcomeReminderSection";
 import RemoveDecisionButton from "@/app/components/RemoveDecisionButton";
 import TrackedLink from "@/app/components/TrackedLink";
 import {
   DECISION_TYPE_LABELS,
+  formatDecisionOutcomeLabel,
   formatDecisionHistoryDate,
   FREE_DECISION_HISTORY_LIMIT,
   loadDecisionHistory,
@@ -12,6 +14,10 @@ import {
 } from "@/app/lib/decisionHistory";
 import { buildDecisionReplayPath } from "@/app/lib/decisionReplay";
 import { EMPTY_DECISION_PROFILE } from "@/src/lib/decisionProfile";
+import {
+  buildOutcomeReminderCandidates,
+  limitOutcomeReminderCandidates
+} from "@/src/lib/outcomeReminder";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./page.module.css";
 
@@ -25,6 +31,8 @@ export default async function HistoryPage() {
         entries: [],
         stats: {
           totalDecisions: 0,
+          resolvedCount: 0,
+          unresolvedCount: 0,
           successCount: 0,
           regretCount: 0,
           neutralCount: 0,
@@ -35,6 +43,9 @@ export default async function HistoryPage() {
       });
   const visibleEntries = viewer?.isPaid ? entries : entries.slice(0, FREE_DECISION_HISTORY_LIMIT);
   const remainingSlots = viewer?.isPaid ? null : Math.max(FREE_DECISION_HISTORY_LIMIT - stats.totalDecisions, 0);
+  const allOutcomeReminders = buildOutcomeReminderCandidates(entries);
+  const visibleOutcomeReminders = limitOutcomeReminderCandidates(allOutcomeReminders, viewer?.isPaid ?? false);
+  const hiddenOutcomeReminderCount = Math.max(allOutcomeReminders.length - visibleOutcomeReminders.length, 0);
 
   return (
     <main className={styles.page}>
@@ -63,6 +74,10 @@ export default async function HistoryPage() {
             <article className={styles.statCard}>
               <span className={styles.statLabel}>後悔</span>
               <strong className={styles.statValue}>{stats.regretCount}</strong>
+            </article>
+            <article className={styles.statCard}>
+              <span className={styles.statLabel}>未記録</span>
+              <strong className={styles.statValue}>{stats.unresolvedCount}</strong>
             </article>
           </div>
 
@@ -118,6 +133,15 @@ export default async function HistoryPage() {
       ) : null}
 
       {error ? <p className={styles.errorText}>履歴の読み込みに失敗しました: {error}</p> : null}
+
+      {viewer && visibleOutcomeReminders.length > 0 ? (
+        <OutcomeReminderSection
+          reminders={visibleOutcomeReminders}
+          hiddenCount={hiddenOutcomeReminderCount}
+          isPaid={viewer.isPaid}
+          page="/history"
+        />
+      ) : null}
 
       {viewer ? (
         <section className={styles.section}>
@@ -275,7 +299,7 @@ export default async function HistoryPage() {
         ) : (
           <div className={styles.historyList}>
             {visibleEntries.map((entry) => (
-              <article key={entry.id} className={styles.historyCard}>
+              <article key={entry.id} id={`decision-${entry.id}`} className={styles.historyCard}>
                 <div className={styles.historyHeader}>
                   <div>
                     <p className={styles.cardEyebrow}>{entry.frame_type ?? "Frame 未設定"}</p>
@@ -308,7 +332,7 @@ export default async function HistoryPage() {
                 <div className={styles.outcomeRow}>
                   <div>
                     <p className={styles.outcomeLabel}>結果</p>
-                    <p className={styles.outcomeValue}>{OUTCOME_LABELS[entry.outcome]}</p>
+                    <p className={styles.outcomeValue}>{formatDecisionOutcomeLabel(entry.outcome)}</p>
                   </div>
                   <DecisionOutcomeSelect
                     decisionId={entry.id}
