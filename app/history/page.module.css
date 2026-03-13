@@ -382,6 +382,25 @@
   border-top: 1px solid rgba(226, 232, 240, 0.95);
 }
 
+.cardFooter {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.replayLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 .emptyText,
 .errorText {
   margin: 1rem 0 0;
@@ -413,6 +432,10 @@
   .outcomeRow {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .cardFooter {
+    justify-content: flex-start;
   }
 
   .statsGrid,

@@ -59,6 +59,9 @@ const ENGAGEMENT_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: stri
   { eventName: "library_card_click", label: "Library Card Clicks" },
   { eventName: "decision_calculator_result_view", label: "Calculator Results" },
   { eventName: "decision_save", label: "Decision Saves" },
+  { eventName: "decision_replay_from_history_click", label: "Replay Clicks From History" },
+  { eventName: "decision_replay_view", label: "Replay Views" },
+  { eventName: "decision_replay_insight_impression", label: "Replay Insight Impressions" },
   { eventName: "weekly_digest_open", label: "Weekly Digest Opens" },
   { eventName: "outcome_update", label: "Outcome Updates" }
 ];
