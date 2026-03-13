@@ -6,6 +6,7 @@ import styles from "./app-navigation.module.css";
 
 const NAV_ITEMS = [
   { href: "/decisions", label: "Decisions" },
+  { href: "/decisions/library", label: "Library" },
   { href: "/history", label: "History" },
   { href: "/weekly-decisions", label: "Weekly Digest" },
   { href: "/episodes", label: "Episodes" },
@@ -16,6 +17,10 @@ const NAV_ITEMS = [
 const isActivePath = (pathname: string, href: string): boolean => {
   if (href === "/decisions" && pathname === "/") {
     return true;
+  }
+
+  if (href === "/decisions") {
+    return pathname === "/decisions";
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);

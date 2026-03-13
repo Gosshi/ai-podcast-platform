@@ -54,6 +54,9 @@ const FUNNEL_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: string }
 const ENGAGEMENT_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: string }> = [
   { eventName: "page_view", label: "Page Views" },
   { eventName: "judgment_card_click", label: "Judgment Card Clicks" },
+  { eventName: "library_view", label: "Library Views" },
+  { eventName: "library_search", label: "Library Searches" },
+  { eventName: "library_card_click", label: "Library Card Clicks" },
   { eventName: "decision_calculator_result_view", label: "Calculator Results" },
   { eventName: "decision_save", label: "Decision Saves" },
   { eventName: "weekly_digest_open", label: "Weekly Digest Opens" },
@@ -128,4 +131,3 @@ export const buildAnalyticsOverview = (
     topEvents
   };
 };
-
