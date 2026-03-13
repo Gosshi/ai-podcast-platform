@@ -2,10 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   applyDecisionLibraryFilters,
+  buildDecisionLibraryPersonalizationSummary,
   lockDecisionLibraryCardDetails,
+  personalizeDecisionLibraryCards,
   resolveDecisionLibraryUrgency,
+  resolveDecisionLibraryDefaultSort,
   sortDecisionLibraryCards
 } from "../src/lib/decisionLibrary.ts";
+import { initializeUserPreferenceProfile } from "../src/lib/userPreferences.ts";
 
 const now = new Date("2026-03-13T00:00:00.000Z");
 
@@ -113,4 +117,88 @@ test("lockDecisionLibraryCardDetails strips paid-only details while preserving u
   assert.equal(cards[0]?.action_text, "今日中にプラン変更を実行する");
   assert.equal(cards[0]?.deadline_at, "2026-03-14T00:00:00.000Z");
   assert.deepEqual(cards[0]?.watch_points, ["広告時間", "画質差"]);
+});
+
+test("resolveDecisionLibraryDefaultSort follows decision priority", () => {
+  assert.equal(resolveDecisionLibraryDefaultSort(null), "newest");
+  assert.equal(
+    resolveDecisionLibraryDefaultSort(
+      initializeUserPreferenceProfile({
+        interestTopics: ["tech"],
+        activeSubscriptions: ["chatgpt"],
+        decisionPriority: "save_money",
+        dailyAvailableTime: "30_to_60m",
+        budgetSensitivity: "high"
+      })
+    ),
+    "judgment_priority"
+  );
+  assert.equal(
+    resolveDecisionLibraryDefaultSort(
+      initializeUserPreferenceProfile({
+        interestTopics: ["movies"],
+        activeSubscriptions: ["none"],
+        decisionPriority: "avoid_regret",
+        dailyAvailableTime: "under_30m",
+        budgetSensitivity: "medium"
+      })
+    ),
+    "deadline_soon"
+  );
+});
+
+test("personalizeDecisionLibraryCards boosts genre, subscription, and decision priority signals", () => {
+  const profile = initializeUserPreferenceProfile({
+    interestTopics: ["tech", "games"],
+    activeSubscriptions: ["chatgpt", "spotify"],
+    decisionPriority: "discover_new",
+    dailyAvailableTime: "1_to_2h",
+    budgetSensitivity: "medium"
+  });
+
+  const personalized = personalizeDecisionLibraryCards(
+    [
+      {
+        ...cards[0]!,
+        id: "pref-1",
+        topic_title: "ChatGPT Plus を今月使い切るべきか",
+        judgment_summary: "OpenAI の機能追加を踏まえて今すぐ試す。",
+        genre: "tech",
+        judgment_type: "use_now"
+      },
+      {
+        ...cards[1]!,
+        id: "pref-2",
+        topic_title: "映画サブスクを比較する",
+        judgment_summary: "来月まで比較を続ける。",
+        genre: "entertainment",
+        judgment_type: "watch"
+      }
+    ],
+    profile,
+    "newest",
+    now
+  );
+
+  assert.equal(personalized[0]?.id, "pref-1");
+  assert.ok((personalized[0]?.personalization_score ?? 0) > (personalized[1]?.personalization_score ?? 0));
+  assert.ok(personalized[0]?.personalization_reasons.includes("Tech interest"));
+  assert.ok(personalized[0]?.personalization_reasons.includes("ChatGPT active"));
+});
+
+test("buildDecisionLibraryPersonalizationSummary exposes the lightweight initial view context", () => {
+  const summary = buildDecisionLibraryPersonalizationSummary(
+    initializeUserPreferenceProfile({
+      interestTopics: ["games", "tech"],
+      activeSubscriptions: ["netflix", "other"],
+      decisionPriority: "save_money",
+      dailyAvailableTime: "1_to_2h",
+      budgetSensitivity: "high"
+    })
+  );
+
+  assert.equal(summary?.defaultSort, "judgment_priority");
+  assert.deepEqual(summary?.interestTopics, ["games", "tech"]);
+  assert.deepEqual(summary?.activeSubscriptions, ["netflix", "other"]);
+  assert.equal(summary?.decisionPriority, "save_money");
 });

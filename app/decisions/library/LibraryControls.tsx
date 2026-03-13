@@ -16,6 +16,7 @@ type LibraryControlsProps = {
     urgency: DecisionLibraryUrgency | null;
     sort: DecisionLibrarySort;
   };
+  defaultSort: DecisionLibrarySort;
   options: {
     genres: string[];
     frameTypes: string[];
@@ -43,7 +44,10 @@ const SORT_LABELS: Record<DecisionLibrarySort, string> = {
   judgment_priority: "Judgment Priority"
 };
 
-const buildSearchParams = (filters: LibraryControlsProps["initialFilters"]): string => {
+const buildSearchParams = (
+  filters: LibraryControlsProps["initialFilters"],
+  defaultSort: DecisionLibrarySort
+): string => {
   const params = new URLSearchParams();
 
   if (filters.query) params.set("q", filters.query);
@@ -51,13 +55,14 @@ const buildSearchParams = (filters: LibraryControlsProps["initialFilters"]): str
   if (filters.frameType) params.set("frame", filters.frameType);
   if (filters.judgmentType) params.set("judgment", filters.judgmentType);
   if (filters.urgency) params.set("urgency", filters.urgency);
-  if (filters.sort !== "newest") params.set("sort", filters.sort);
+  if (filters.sort !== defaultSort) params.set("sort", filters.sort);
 
   return params.toString();
 };
 
 export default function LibraryControls({
   initialFilters,
+  defaultSort,
   options,
   isPaid
 }: LibraryControlsProps) {
@@ -81,7 +86,7 @@ export default function LibraryControls({
   }, [initialFilters]);
 
   const navigate = (nextFilters: LibraryControlsProps["initialFilters"]) => {
-    const searchParams = buildSearchParams(nextFilters);
+    const searchParams = buildSearchParams(nextFilters, defaultSort);
     const url = searchParams ? `${pathname}?${searchParams}` : pathname;
 
     startTransition(() => {
@@ -169,14 +174,14 @@ export default function LibraryControls({
             setFrameType(null);
             setJudgmentType(null);
             setUrgency(null);
-            setSort("newest");
+            setSort(defaultSort);
             const resetFilters = {
               query: "",
               genre: null,
               frameType: null,
               judgmentType: null,
               urgency: null,
-              sort: "newest" as const
+              sort: defaultSort
             };
             track("library_filter_change", {
               ...buildAnalyticsProperties(resetFilters),
@@ -238,7 +243,20 @@ export default function LibraryControls({
             onChange={(event) => {
               const nextValue = event.target.value as DecisionLibrarySort;
               setSort(nextValue);
-              applyFilterChange("sort", nextValue);
+              const nextFilters = {
+                query: query.trim(),
+                genre,
+                frameType,
+                judgmentType,
+                urgency,
+                sort: nextValue
+              } satisfies LibraryControlsProps["initialFilters"];
+              track("library_sort_change", {
+                ...buildAnalyticsProperties(nextFilters),
+                previous_sort: sort,
+                next_sort: nextValue
+              });
+              navigate(nextFilters);
             }}
             className={styles.select}
           >

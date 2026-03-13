@@ -256,6 +256,19 @@ export default async function DecisionsPage() {
             <span className={styles.heroBadge}>{isPaid ? "PAID" : "FREE"}</span>
             <span>{isPaid ? "判断の全文と archive を表示" : "最新1週間の judgment summary を表示"}</span>
           </div>
+          <div className={styles.heroActions}>
+            <TrackedLink
+              href="/decisions/library"
+              className={styles.heroLink}
+              eventName="library_card_click"
+              eventProperties={{
+                page: "/decisions",
+                source: "decision_dashboard_hero_library_link"
+              }}
+            >
+              Library で横断検索
+            </TrackedLink>
+          </div>
         </div>
 
         <MemberControls
