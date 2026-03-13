@@ -8,6 +8,7 @@
 - `/episodes` での無料 / 有料境界
 - 判断カード抽出と保存
 - Personal Decision Profile と personal hint
+- `/decisions` の Next Best Decision ranking
 
 ## Data Model
 - `profiles`
@@ -46,9 +47,11 @@
   - 最新1週間
   - 音声再生
   - judgment summary
+  - `/decisions` の一般優先判断 preview
   - `/account` で free 状態と upgrade 導線を確認
   - `/history` で件数上限つきの profile 集計
 - Paid:
+  - `/decisions` の personal な優先判断を複数表示
   - action_text / deadline_at / watch_points / threshold
   - DeepDive 完全版
   - 過去アーカイブ
@@ -101,6 +104,28 @@
   - recommendation ranking
   - next best decision
   - reminder / weekly digest personalization
+
+## Next Best Decision
+- source:
+  - `episode_judgment_cards`
+  - `user_decisions`
+  - Personal Decision Profile
+- default rules:
+  - `deadline_at` が近いものを優先
+  - `judgment_type='use_now'` を優先
+  - `judgment_type='watch'` かつ期限付きは次点
+  - `skip` は低優先
+- paid adjustments:
+  - regret が多い `frame_type` を引き上げて後悔防止タグを返す
+  - success が高い `genre` を引き上げて満足率タグを返す
+  - regret が多い threshold signal を含む card を注意表示する
+- output:
+  - `priority_score`
+  - `reason_tags`
+  - `recommended_action`
+  - `urgency_level`
+- future reuse:
+  - reminder / 週次おすすめ判断 / メール配信 / Next Best Action
 
 ## Stripe Flow
 1. ログイン済みユーザーが `POST /api/stripe/subscription-checkout`

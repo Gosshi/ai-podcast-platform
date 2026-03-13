@@ -7,6 +7,7 @@ import { loadDecisionDashboardCards } from "@/app/lib/decisions";
 import { buildPersonalDecisionHint } from "@/src/lib/decisionProfile";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import { groupDecisionDashboardCards, pickTodayDecisionCards } from "@/src/lib/decisionDashboard";
+import { rankNextBestDecisions } from "@/src/lib/nextBestDecision";
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,13 @@ const JUDGMENT_TYPE_DESCRIPTIONS = {
   use_now: "今日すぐ使う候補",
   watch: "条件変化を監視する候補",
   skip: "今は見送る候補"
+} as const;
+
+const URGENCY_LEVEL_LABELS = {
+  critical: "最優先",
+  high: "高優先",
+  medium: "確認",
+  low: "低優先"
 } as const;
 
 const formatDeadline = (value: string | null): string => {
@@ -56,6 +64,11 @@ export default async function DecisionsPage() {
   const isPaid = viewer?.isPaid ?? false;
   const { cards, error } = await loadDecisionDashboardCards({ isPaid, userId: viewer?.userId });
   const personalProfile = viewer?.isPaid && viewer?.userId ? (await loadDecisionHistory(viewer.userId)).profile : null;
+  const nextBestDecisions = rankNextBestDecisions({
+    cards,
+    isPaid,
+    profile: personalProfile
+  });
   const todayCards = pickTodayDecisionCards(cards);
   const groupedCards = groupDecisionDashboardCards(cards);
   const todayLabel = formatDecisionDate(todayCards[0]?.episode_published_at ?? null);
@@ -173,6 +186,85 @@ export default async function DecisionsPage() {
           </Link>
         </section>
       ) : null}
+
+      <section className={styles.recommendationSection}>
+        <div className={styles.recommendationHeader}>
+          <div>
+            <p className={styles.sectionEyebrow}>Next Best Decision</p>
+            <h2>{isPaid ? "あなたへのおすすめ判断" : "今日の最優先判断"}</h2>
+            <p className={styles.sectionCaption}>
+              {isPaid
+                ? "締切・判断タイプ・personal profile を使って、今日先に見るべき判断を並べています。"
+                : "まず見るべき判断を一般優先ルールだけで先回り表示します。個人向け理由は paid で開放します。"}
+            </p>
+          </div>
+          <div className={styles.countRow}>
+            <span>{isPaid ? `${nextBestDecisions.length}件を優先表示` : "一般優先判断を表示"}</span>
+          </div>
+        </div>
+
+        {nextBestDecisions.length === 0 ? (
+          <p className={styles.emptyText}>優先判断を作れるカードはまだありません。</p>
+        ) : (
+          <div className={styles.recommendationGrid}>
+            {nextBestDecisions.map((recommendation) => (
+              <article key={recommendation.card.id} className={styles.recommendationCard}>
+                <Link href={`/episodes/${recommendation.card.episode_id}`} className={styles.recommendationLink}>
+                  <div className={styles.recommendationTopRow}>
+                    <span className={`${styles.badge} ${styles[`badge_${recommendation.card.judgment_type}`]}`.trim()}>
+                      {JUDGMENT_TYPE_LABELS[recommendation.card.judgment_type]}
+                    </span>
+                    <span className={`${styles.urgencyBadge} ${styles[`urgencyBadge_${recommendation.urgency_level}`]}`.trim()}>
+                      {URGENCY_LEVEL_LABELS[recommendation.urgency_level]}
+                    </span>
+                  </div>
+                  <div className={styles.recommendationMetaRow}>
+                    <span className={styles.genreTag}>{recommendation.card.genre ?? "general"}</span>
+                    <span className={styles.recommendationEpisodeLabel}>
+                      {recommendation.card.episode_title ?? "Untitled episode"}
+                    </span>
+                  </div>
+                  <h3>{recommendation.card.topic_title}</h3>
+                  <p className={styles.summary}>{recommendation.card.judgment_summary}</p>
+                  <dl className={styles.metaList}>
+                    <div>
+                      <dt>おすすめ行動</dt>
+                      <dd>{recommendation.recommended_action}</dd>
+                    </div>
+                    <div>
+                      <dt>期限</dt>
+                      <dd>
+                        {isPaid && recommendation.card.deadline_at
+                          ? formatDeadline(recommendation.card.deadline_at)
+                          : recommendation.deadline_label}
+                      </dd>
+                    </div>
+                  </dl>
+                  <ul className={styles.reasonTagList}>
+                    {recommendation.reason_tags.map((tag) => (
+                      <li key={tag}>{tag}</li>
+                    ))}
+                  </ul>
+                  <p className={styles.episodeLinkText}>エピソードを見る</p>
+                </Link>
+              </article>
+            ))}
+          </div>
+        )}
+
+        {!isPaid ? (
+          <div className={styles.recommendationFootnote}>
+            <p className={styles.sectionEyebrow}>Free Preview</p>
+            <h3>paid では「なぜあなたにこれを出したか」まで表示します</h3>
+            <p>
+              締切の近さに加えて、後悔しやすい frame や満足率の高い genre を使って 3 件まで優先判断を返します。
+            </p>
+            <Link href="/account" className={styles.inlineUpgradeLink}>
+              Personal priority を開放
+            </Link>
+          </div>
+        ) : null}
+      </section>
 
       <section className={styles.section}>
         <div className={styles.sectionHeading}>

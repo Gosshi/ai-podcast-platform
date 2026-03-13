@@ -27,6 +27,7 @@ type DecisionDashboardQueryRow = {
   deadline_at: string | null;
   threshold_json: JudgmentThresholdJson | null;
   watch_points_json: string[] | null;
+  confidence_score: number | null;
   created_at: string;
   episodes: JoinedEpisodeRow | JoinedEpisodeRow[] | null;
 };
@@ -39,11 +40,13 @@ export type DecisionDashboardCard = {
   judgment_summary: string;
   action_text: string | null;
   deadline_at: string | null;
+  ranking_deadline_at: string | null;
   threshold_json: JudgmentThresholdJson;
   watch_points: string[];
   frame_type: string | null;
   genre: string | null;
   created_at: string;
+  confidence_score: number | null;
   episode_title: string | null;
   episode_lang: "ja" | "en";
   episode_published_at: string | null;
@@ -70,7 +73,7 @@ export const loadDecisionDashboardCards = async (params: {
     const { data, error } = await supabase
       .from("episode_judgment_cards")
       .select(
-        "id, episode_id, genre, topic_title, frame_type, judgment_type, judgment_summary, action_text, deadline_at, threshold_json, watch_points_json, created_at, episodes!inner(id, title, lang, genre, status, created_at, published_at)"
+        "id, episode_id, genre, topic_title, frame_type, judgment_type, judgment_summary, action_text, deadline_at, threshold_json, watch_points_json, confidence_score, created_at, episodes!inner(id, title, lang, genre, status, created_at, published_at)"
       )
       .eq("episodes.status", "published")
       .not("episodes.published_at", "is", null)
@@ -100,10 +103,12 @@ export const loadDecisionDashboardCards = async (params: {
           judgment_summary: row.judgment_summary,
           action_text: row.action_text,
           deadline_at: row.deadline_at,
+          ranking_deadline_at: row.deadline_at,
           threshold_json: row.threshold_json ?? {},
           watch_points: Array.isArray(row.watch_points_json) ? row.watch_points_json : [],
           genre: row.genre ?? episode.genre,
           created_at: row.created_at,
+          confidence_score: row.confidence_score,
           episode_title: episode.title,
           episode_lang: episode.lang,
           episode_published_at: episode.published_at,

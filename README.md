@@ -31,6 +31,7 @@
 - `episode_judgment_cards` は weekly summary / 再判定ツール / 履歴分析の共通データソースです
 - `user_decisions` と `/history` を使って Personal Decision Profile を集計し、履歴保存を「次の判断に返す学習ループ」に変えます
 - paid は judgment card 上で frame / genre / threshold ベースの personal hint を返し、free は履歴保存上限つきで profile を育てます
+- `/decisions` は Next Best Decision を最上段に表示し、締切・judgment type・personal profile を使って「今日先に見るべき判断」を返します
 - 購読中ユーザーは Stripe Billing Portal から支払い方法更新、解約、購読管理をセルフサービスで行います
 - `/weekly-decisions` で直近7日間の judgment digest を閲覧できます
 
@@ -73,11 +74,13 @@
 ### Free vs Paid Boundary
 - 無料:
   - `/episodes` と `/decisions` の最新1週間
+  - `/decisions` の一般優先判断を 1 件 preview
   - `/weekly-decisions` の一部 preview
   - 音声再生
   - `script_polished_preview` ベースの短い preview
   - judgment summary
 - 有料:
+  - `/decisions` の personal な Next Best Decision を最大 3 件
   - action_text / deadline_at / watch_points / threshold の詳細
   - DeepDive 完全版
   - 過去アーカイブ全体
