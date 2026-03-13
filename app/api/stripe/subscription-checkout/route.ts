@@ -124,7 +124,7 @@ export async function POST(request: Request): Promise<Response> {
       mode: "subscription",
       customer: stripeCustomerId,
       client_reference_id: viewer.userId,
-      success_url: `${origin}/account?subscription=success`,
+      success_url: `${origin}/account?subscription=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/account?subscription=cancel`,
       line_items: [
         {

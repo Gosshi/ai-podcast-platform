@@ -25,9 +25,11 @@
 ## Paid Membership MVP
 - 会員状態は `profiles` と `subscriptions` で管理します
 - `free` / `paid` 判定は `subscriptions.status` が `trialing | active | past_due` かどうかで決まります
+- `/account` ではプラン名、購読ステータス、次回更新日、支払い状態を見やすく表示します
 - `/episodes` は無料版では最新プレビューのみ、有料版では判断カード・DeepDive全文・アーカイブを表示します
 - 判断カードは `episode_judgment_cards` に構造化保存され、`write-script-ja` / `expand-script-ja` / `polish-script-ja` の各 step で再抽出・同期されます
 - `episode_judgment_cards` は weekly summary / 再判定ツール / 履歴分析の共通データソースです
+- 購読中ユーザーは Stripe Billing Portal から支払い方法更新、解約、購読管理をセルフサービスで行います
 
 ### Membership Tables
 - `profiles`
@@ -181,8 +183,9 @@
   - `STRIPE_SECRET_KEY`
   - `STRIPE_WEBHOOK_SECRET`
   - `STRIPE_PRICE_PRO_MONTHLY`
+  - `STRIPE_BILLING_PORTAL_CONFIGURATION_ID`（任意。Stripe Dashboard の default portal configuration を使う場合は省略可）
   - `APP_BASE_URL`
-- Checkout 成功時の戻り先: `/account?subscription=success`
+- Checkout 成功時の戻り先: `/account?subscription=success&session_id={CHECKOUT_SESSION_ID}`
 - Checkout キャンセル時の戻り先: `/account?subscription=cancel`
 - webhook では以下を処理:
   - `checkout.session.completed`
@@ -191,13 +194,20 @@
   - `customer.subscription.deleted`
 - `customer.subscription.*` を受けると `subscriptions` が upsert され、`/episodes` の paid 判定に反映されます
 
+## Stripe Billing Portal
+- Endpoint: `POST /api/stripe/billing-portal`
+- 認証済みユーザーのみ実行可能
+- `viewer.stripeCustomerId` を元に Stripe Billing Portal session を生成し、戻り先は `/account`
+- cancel / payment method update / invoice history / plan management の可否は Stripe Dashboard 側の portal configuration に従います
+
 ### Local Subscription Test
 1. Supabase Auth の Site URL / redirect URL に `http://127.0.0.1:3000/auth/callback` を追加
 2. `npm run dev`
 3. `/episodes` または `/account` から Magic Link でログイン
 4. `stripe listen --forward-to localhost:3000/api/stripe/webhook`
 5. `STRIPE_PRICE_PRO_MONTHLY` に test price id を設定し、`Subscribe` を実行
-6. webhook 後に `/account` の表示が `PAID` に変わることを確認
+6. webhook 後に `/account` で `PAID` バッジ、プラン名、ステータス、次回更新日、支払い状態が更新されることを確認
+7. paid 状態になったら `サブスクを管理` から Billing Portal が開くことを確認
 
 ## Letter Tip Checkout (MVP)
 - Page: `/letters/[id]/tip`

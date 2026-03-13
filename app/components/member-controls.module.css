@@ -38,6 +38,35 @@
   align-items: center;
 }
 
+.detailGrid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.detailItem {
+  margin: 0;
+  border-radius: 14px;
+  border: 1px solid #dbe4f0;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.8rem 0.85rem;
+}
+
+.detailItem dt {
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.detailItem dd {
+  margin: 0.25rem 0 0;
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -117,3 +146,8 @@
   color: #b91c1c;
 }
 
+@media (max-width: 560px) {
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+}
