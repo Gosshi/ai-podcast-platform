@@ -53,6 +53,7 @@ const FUNNEL_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: string }
 
 const ENGAGEMENT_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: string }> = [
   { eventName: "page_view", label: "Page Views" },
+  { eventName: "alerts_view", label: "Alerts Views" },
   { eventName: "onboarding_start", label: "Onboarding Starts" },
   { eventName: "onboarding_step_complete", label: "Onboarding Step Completions" },
   { eventName: "onboarding_complete", label: "Onboarding Completions" },
@@ -75,6 +76,12 @@ const ENGAGEMENT_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: stri
   { eventName: "outcome_reminder_click", label: "Outcome Reminder Clicks" },
   { eventName: "outcome_quick_submit", label: "Outcome Quick Submit" },
   { eventName: "outcome_reminder_to_replay_click", label: "Outcome Reminder Replay Clicks" },
+  { eventName: "alert_impression", label: "Alert Impressions" },
+  { eventName: "alert_click", label: "Alert Clicks" },
+  { eventName: "alert_mark_read", label: "Alert Mark Read" },
+  { eventName: "alert_dismiss", label: "Alert Dismiss" },
+  { eventName: "weekly_digest_alert_click", label: "Weekly Digest Alert Clicks" },
+  { eventName: "outcome_reminder_alert_click", label: "Outcome Reminder Alert Clicks" },
   { eventName: "decision_replay_from_history_click", label: "Replay Clicks From History" },
   { eventName: "decision_replay_view", label: "Replay Views" },
   { eventName: "decision_replay_insight_impression", label: "Replay Insight Impressions" },

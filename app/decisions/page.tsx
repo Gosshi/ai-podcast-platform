@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
+import AlertsInbox from "@/app/components/AlertsInbox";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
 import OutcomeReminderSection from "@/app/components/OutcomeReminderSection";
 import SaveDecisionButton from "@/app/components/SaveDecisionButton";
 import TrackedLink from "@/app/components/TrackedLink";
+import { syncUserAlerts } from "@/app/lib/alerts";
 import WatchlistControls from "@/app/components/WatchlistControls";
 import { loadDecisionHistory } from "@/app/lib/decisionHistory";
 import { buildOnboardingPath } from "@/app/lib/onboarding";
@@ -76,7 +78,7 @@ export default async function DecisionsPage() {
   }
 
   const isPaid = viewer?.isPaid ?? false;
-  const [{ cards, error }, historyState] = await Promise.all([
+  const [{ cards, error }, historyState, alertState] = await Promise.all([
     loadDecisionDashboardCards({ isPaid, userId: viewer?.userId }),
     viewer?.userId
       ? loadDecisionHistory(viewer.userId)
@@ -93,7 +95,8 @@ export default async function DecisionsPage() {
           },
           profile: null,
           error: null
-        })
+        }),
+    viewer ? syncUserAlerts(viewer) : Promise.resolve({ alerts: [], preferences: null, error: null })
   ]);
   const personalProfile = viewer?.isPaid ? historyState.profile : null;
   const allOutcomeReminders = buildOutcomeReminderCandidates(historyState.entries);
@@ -282,6 +285,7 @@ export default async function DecisionsPage() {
       {error ? (
         <p className={styles.errorText}>判断カードの読み込みに失敗しました: {error}</p>
       ) : null}
+      {alertState.error ? <p className={styles.errorText}>alerts の同期に失敗しました: {alertState.error}</p> : null}
 
       {!isPaid ? (
         <section className={styles.paywallBanner}>
@@ -304,6 +308,16 @@ export default async function DecisionsPage() {
             Upgrade
           </TrackedLink>
         </section>
+      ) : null}
+
+      {viewer ? (
+        <AlertsInbox
+          alerts={alertState.alerts.slice(0, 3)}
+          page="/decisions"
+          title="Revisit Alerts"
+          lead="deadline / watchlist / weekly digest を Decisions の最上流から再訪できます。"
+          showViewAllLink={alertState.alerts.length > 3}
+        />
       ) : null}
 
       {viewer && visibleOutcomeReminders.length > 0 ? (

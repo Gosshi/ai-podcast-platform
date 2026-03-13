@@ -1,0 +1,121 @@
+.page {
+  width: min(1120px, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 4rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.8fr);
+  gap: 1rem;
+}
+
+.heroCopy,
+.summaryCard,
+.noticePanel {
+  border-radius: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background:
+    radial-gradient(circle at top left, rgba(249, 115, 22, 0.12), transparent 28%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+  padding: 1.35rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #c2410c;
+}
+
+.heroCopy h1,
+.summaryCard h2,
+.noticePanel h2 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.heroCopy h1 {
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.03;
+}
+
+.lead,
+.summaryCard p,
+.noticePanel p,
+.errorText {
+  margin: 0.95rem 0 0;
+  color: #475569;
+  line-height: 1.7;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.statCard {
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #dbe4f0;
+  padding: 0.95rem;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.statLabel {
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.statValue {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.linkRow {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.primaryLink,
+.secondaryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  border-radius: 999px;
+  padding: 0 1rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.primaryLink {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.secondaryLink {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+@media (max-width: 860px) {
+  .hero,
+  .statGrid {
+    grid-template-columns: 1fr;
+  }
+}

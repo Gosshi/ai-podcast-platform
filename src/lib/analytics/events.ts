@@ -1,6 +1,7 @@
 export const ANALYTICS_EVENT_NAMES = [
   "page_view",
   "decisions_view",
+  "alerts_view",
   "library_view",
   "watchlist_view",
   "episodes_view",
@@ -27,6 +28,12 @@ export const ANALYTICS_EVENT_NAMES = [
   "outcome_reminder_click",
   "outcome_quick_submit",
   "outcome_reminder_to_replay_click",
+  "alert_impression",
+  "alert_click",
+  "alert_mark_read",
+  "alert_dismiss",
+  "weekly_digest_alert_click",
+  "outcome_reminder_alert_click",
   "decision_replay_insight_impression",
   "decision_replay_from_history_click",
   "library_search",
@@ -53,6 +60,7 @@ export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];
 
 export const ANALYTICS_PAGE_NAMES = [
   "/decisions",
+  "/alerts",
   "/decisions/library",
   "/watchlist",
   "/episodes",

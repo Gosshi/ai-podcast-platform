@@ -6,6 +6,7 @@ import styles from "./app-navigation.module.css";
 
 const NAV_ITEMS = [
   { href: "/decisions", label: "Decisions" },
+  { href: "/alerts", label: "Alerts" },
   { href: "/decisions/library", label: "Library" },
   { href: "/watchlist", label: "Watchlist" },
   { href: "/history", label: "History" },

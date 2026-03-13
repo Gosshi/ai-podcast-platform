@@ -39,8 +39,10 @@
 - Watchlist は Decision History の手前にある中間レイヤーで、deadline / urgency / alerts / replay 導線の土台を担当します
 - Outcome Reminder は `user_decisions` の未記録 outcome を抽出し、判断 → 結果 → 学習のループを `/decisions` と `/history` 上で閉じます
 - `/history/replay/[id]` は Decision Replay として、当時の judgment card と outcome を並べて学び直せる詳細ページです
+- Notifications / Alerts MVP は `user_alerts` と `/alerts` を使って deadline / watchlist / outcome reminder / weekly digest を in-app で再訪に返します
 - 購読中ユーザーは Stripe Billing Portal から支払い方法更新、解約、購読管理をセルフサービスで行います
 - `/weekly-decisions` で直近7日間の judgment digest を閲覧できます
+- details: [Alerts MVP](docs/alerts-mvp.md)
 
 ## User Onboarding And Preference Storage
 - purpose:
@@ -87,6 +89,7 @@
 - Page / surface:
   - `page_view`
   - `decisions_view`
+  - `alerts_view`
   - `library_view`
   - `episodes_view`
   - `history_view`
@@ -134,6 +137,12 @@
   - `billing_portal_open`
   - `weekly_digest_open`
   - `weekly_digest_item_click`
+  - `alert_impression`
+  - `alert_click`
+  - `alert_mark_read`
+  - `alert_dismiss`
+  - `weekly_digest_alert_click`
+  - `outcome_reminder_alert_click`
 
 ### Analysis Use
 - conversion:
@@ -147,6 +156,8 @@
 - retention:
   - `weekly_digest_open`
   - `weekly_digest_item_click`
+  - `alert_impression`
+  - `alert_click`
   - `outcome_reminder_impression`
   - `outcome_quick_submit`
   - `outcome_update`
@@ -174,6 +185,9 @@
 16. `/watchlist` を開いて filter / link 操作を行い、`watchlist_view` / `watchlist_filter_change` / `watchlist_card_click` を確認
 17. free で paywall を見たあと subscribe を押し、`paywall_view` / `subscribe_cta_click` / `checkout_started` を確認
 18. Stripe webhook 後に `checkout_completed` を確認
+19. `/alerts` を開き、`alert_impression` と `alerts_view` が増えることを確認
+20. alert link を押し、`alert_click` と `weekly_digest_alert_click` or `outcome_reminder_alert_click` が対象 type に応じて増えることを確認
+21. `Mark Read` / `Dismiss` で `alert_mark_read` / `alert_dismiss` が増えることを確認
 
 ### SQL Spot Checks
 ```sql
@@ -249,10 +263,34 @@ where created_at >= now() - interval '30 days';
   - `budget_sensitivity`
   - `created_at`
   - `updated_at`
+- `user_alerts`
+  - `user_id`
+  - `alert_type`
+  - `source_id`
+  - `source_kind`
+  - `episode_id`
+  - `title`
+  - `summary`
+  - `urgency`
+  - `due_at`
+  - `is_read`
+  - `is_sent`
+  - `dismissed_at`
+  - `alert_payload`
+  - `created_at`
+  - `updated_at`
+- `user_notification_preferences`
+  - `user_id`
+  - `weekly_digest_enabled`
+  - `deadline_alert_enabled`
+  - `outcome_reminder_enabled`
+  - `created_at`
+  - `updated_at`
 
 ### Free vs Paid Boundary
 - 無料:
   - `/episodes` と `/decisions` の最新1週間
+  - `/alerts` の preview alert を最大4件
   - `/decisions/library` の最近のカードを最大12件 preview
   - `/decisions` の一般優先判断を 1 件 preview
   - `/weekly-decisions` の一部 preview
@@ -262,6 +300,7 @@ where created_at >= now() - interval '30 days';
   - judgment summary
 - 有料:
   - `/decisions` の personal な Next Best Decision を最大 3 件
+  - `/alerts` の full alerts / weekly digest alert / outcome reminders
   - `/decisions/library` の全件検索 / filter / sort / pagination
   - action_text / deadline_at / watch_points / threshold の詳細
   - `/history/replay/[id]` の full replay / insight
