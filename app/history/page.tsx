@@ -10,6 +10,7 @@ import {
   loadDecisionHistory,
   OUTCOME_LABELS
 } from "@/app/lib/decisionHistory";
+import { buildDecisionReplayPath } from "@/app/lib/decisionReplay";
 import { EMPTY_DECISION_PROFILE } from "@/src/lib/decisionProfile";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./page.module.css";
@@ -319,6 +320,26 @@ export default async function HistoryPage() {
                     frameType={entry.frame_type}
                     judgmentType={entry.decision_type}
                   />
+                </div>
+                <div className={styles.cardFooter}>
+                  <TrackedLink
+                    href={buildDecisionReplayPath(entry.id)}
+                    className={styles.replayLink}
+                    eventName="decision_replay_from_history_click"
+                    eventProperties={{
+                      page: "/history",
+                      source: "history_list_card",
+                      decision_id: entry.id,
+                      episode_id: entry.episode_id,
+                      judgment_card_id: entry.judgment_card_id,
+                      genre: entry.genre ?? undefined,
+                      frame_type: entry.frame_type ?? undefined,
+                      saved_decision_type: entry.decision_type,
+                      outcome: entry.outcome
+                    }}
+                  >
+                    Replayを見る
+                  </TrackedLink>
                 </div>
                 <RemoveDecisionButton
                   decisionId={entry.id}

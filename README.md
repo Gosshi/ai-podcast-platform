@@ -34,6 +34,7 @@
 - `/decisions` は Next Best Decision を最上段に表示し、締切・judgment type・personal profile を使って「今日先に見るべき判断」を返します
 - `/decisions/library` は Decision Library として `episode_judgment_cards` を横断検索し、再訪・比較できる状態を作ります
 - Decision Library は Replay / Saved Decisions / Alerts に接続する基盤で、episode 起点ではなく judgment 起点の再利用面を担当します
+- `/history/replay/[id]` は Decision Replay として、当時の judgment card と outcome を並べて学び直せる詳細ページです
 - 購読中ユーザーは Stripe Billing Portal から支払い方法更新、解約、購読管理をセルフサービスで行います
 - `/weekly-decisions` で直近7日間の judgment digest を閲覧できます
 
@@ -78,6 +79,9 @@
   - `decision_save`
   - `decision_remove`
   - `outcome_update`
+  - `decision_replay_from_history_click`
+  - `decision_replay_view`
+  - `decision_replay_insight_impression`
 - Decision library:
   - `library_search`
   - `library_filter_change`
@@ -101,6 +105,7 @@
   - `judgment_card_click`
   - `decision_calculator_result_view`
   - `decision_save`
+  - `decision_replay_view`
 - retention:
   - `weekly_digest_open`
   - `weekly_digest_item_click`
@@ -115,8 +120,10 @@
 2. judgment card を開き、`judgment_card_impression` / `judgment_card_click` が増えることを確認
 3. calculator を開いて再判定し、`decision_calculator_open` / `decision_calculator_submit` / `decision_calculator_result_view` を確認
 4. Save / outcome update / remove で `decision_save` / `outcome_update` / `decision_remove` を確認
-5. free で paywall を見たあと subscribe を押し、`paywall_view` / `subscribe_cta_click` / `checkout_started` を確認
-6. Stripe webhook 後に `checkout_completed` を確認
+5. `/history` から replay を開き、`decision_replay_from_history_click` / `decision_replay_view` を確認
+6. paid で replay insight が表示される場合は `decision_replay_insight_impression` を確認
+7. free で paywall を見たあと subscribe を押し、`paywall_view` / `subscribe_cta_click` / `checkout_started` を確認
+8. Stripe webhook 後に `checkout_completed` を確認
 
 ### SQL Spot Checks
 ```sql
@@ -190,6 +197,7 @@ where created_at >= now() - interval '30 days';
   - `/decisions/library` の最近のカードを最大12件 preview
   - `/decisions` の一般優先判断を 1 件 preview
   - `/weekly-decisions` の一部 preview
+  - `/history/replay/[id]` の preview
   - 音声再生
   - `script_polished_preview` ベースの短い preview
   - judgment summary
@@ -197,6 +205,7 @@ where created_at >= now() - interval '30 days';
   - `/decisions` の personal な Next Best Decision を最大 3 件
   - `/decisions/library` の全件検索 / filter / sort / pagination
   - action_text / deadline_at / watch_points / threshold の詳細
+  - `/history/replay/[id]` の full replay / insight
   - DeepDive 完全版
   - 過去アーカイブ全体
   - `/account` で会員状態の確認
@@ -209,6 +218,18 @@ where created_at >= now() - interval '30 days';
 - value: `topic_title / judgment_summary` 検索、`genre / frame_type / judgment_type / urgency` filter、`newest / deadline_soon / judgment_priority` sort を提供します
 - future: Replay / Saved Decisions / Alerts はこの library の検索面と urgency 分類を土台として使います
 - details: [docs/decision-library.md](docs/decision-library.md)
+
+## Decision Replay
+- path: `/history/replay/[id]`
+- purpose: 履歴保存で終わらせず、`当時の判断` と `実際の結果` を並べて学べるようにする
+- why replay matters: history 一覧だけでは、当時の `judgment summary / action / deadline / watch points` まで再現しづらい
+- product connection:
+  - Replay で蓄積した差分は `Personal Decision Profile` の質を上げる
+  - 将来的には recommendation / Next Best Decision の feature に流用できる
+- free / paid:
+  - free は preview と outcome 比較まで
+  - paid は full replay と rules-based insight まで
+- details: [docs/decision-replay.md](docs/decision-replay.md)
 
 ## Project Layout
 - `app/`: Next.js App Router
@@ -402,7 +423,7 @@ where created_at >= now() - interval '30 days';
 - 直近30日間の `analytics_events` を読み込み、以下を簡易表示します
   - volume: total / anonymous / free / paid
   - funnel: `paywall_view`, `subscribe_cta_click`, `checkout_started`, `checkout_completed`
-  - engagement: `page_view`, `judgment_card_click`, `decision_calculator_result_view`, `decision_save`, `weekly_digest_open`, `outcome_update`
+  - engagement: `page_view`, `judgment_card_click`, `decision_calculator_result_view`, `decision_save`, `decision_replay_view`, `decision_replay_insight_impression`, `weekly_digest_open`, `outcome_update`
   - page views / top events
 
 ## Analytics Plan
@@ -423,7 +444,7 @@ where created_at >= now() - interval '30 days';
   - `frame_type` / `genre` / `threshold` ごとの強い hint は `3` 件以上ある場合のみ出す
 - paid value:
   - profile を履歴保存の終点ではなく、judgment card に戻る personalized hint として使う
-  - 将来的には recommendation / next best decision の入力特徴として再利用できる
+  - Replay で見えた per-decision の学びを recommendation / next best decision の入力特徴として再利用できる
 - 有料ユーザーは今週の全件と deadline 付き一覧を表示
 - 集計ロジックは `src/lib/weeklyDecisionDigest.ts` に分離し、週次メールや通知に流用できる形にしている
 
