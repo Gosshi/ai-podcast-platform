@@ -144,10 +144,15 @@ export default async function AccountPage({
               <h3>アーカイブと管理</h3>
               <p>過去エピソードをさかのぼりつつ、支払い方法や解約も Billing Portal で自分で管理できます。</p>
             </article>
+            <article className={styles.featureCard}>
+              <h3>Personal Decision Profile</h3>
+              <p>履歴から frame / genre / outcome の傾向を集計し、paid は judgment card に personal hint を返します。</p>
+            </article>
           </div>
 
           <ul className={styles.list}>
             <li>無料版は判断サマリーの入口まで。有料版は「どう動くか」を決める材料まで開放します。</li>
+            <li>paid は Decision History を profile 化し、次の判断に戻せる personal learning loop を持てます。</li>
             <li>Stripe Billing Portal を使うので、支払い方法変更や解約フローをアプリ内で独自実装しません。</li>
             <li>Webhook 反映中でも account 画面から状態確認を続けられます。</li>
           </ul>

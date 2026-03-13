@@ -7,6 +7,7 @@
 - Stripe Billing Portal のセルフサービス導線
 - `/episodes` での無料 / 有料境界
 - 判断カード抽出と保存
+- Personal Decision Profile と personal hint
 
 ## Data Model
 - `profiles`
@@ -46,11 +47,14 @@
   - 音声再生
   - judgment summary
   - `/account` で free 状態と upgrade 導線を確認
+  - `/history` で件数上限つきの profile 集計
 - Paid:
   - action_text / deadline_at / watch_points / threshold
   - DeepDive 完全版
   - 過去アーカイブ
   - `/account` で current_period_end / 支払い状態 / Billing Portal 導線を確認
+  - `/history` で無制限の Personal Decision Profile
+  - judgment card 上の personal hint
 
 ## Gating Direction
 - 件数制限よりも「判断の深さ」で無料 / 有料を分ける
@@ -63,6 +67,8 @@
   - deadline_at
   - watch_points
   - threshold_json の表示
+  - Personal Decision Profile の全文集計
+  - judgment card の personal hint
   - DeepDive 完全版
   - 過去アーカイブ
 
@@ -75,6 +81,26 @@
   - 全件表示
   - deadline 付き一覧
 - `genre / frame_type` breakdown を保持し、週次メール / 通知 / archive への再利用を前提にする
+
+## Personal Decision Profile
+- 目的:
+  - 履歴保存を「あとで見るだけ」で終わらせず、自分の判断傾向を次の card selection に返す
+  - paid の継続理由を「判断精度が上がるプロダクト」に寄せる
+- source:
+  - `user_decisions`
+  - `episode_judgment_cards`
+- rules-based insight 例:
+  - 特定 frame で success が高い
+  - 特定 genre / threshold 条件で regret が多い
+  - 特定 genre で `use_now` が多い
+  - `watch` の結果が regret に寄りやすい
+- guardrails:
+  - 総履歴5件未満では insight を抑制
+  - frame / genre / threshold ごと3件未満では断定しない
+- next step:
+  - recommendation ranking
+  - next best decision
+  - reminder / weekly digest personalization
 
 ## Stripe Flow
 1. ログイン済みユーザーが `POST /api/stripe/subscription-checkout`
@@ -98,3 +124,4 @@
 - trial / annual plan
 - weekly digest の会員限定配信
 - judgment card archive / search
+- profile を使った recommendation / next best decision

@@ -1,4 +1,5 @@
-import type { JudgmentCard, JudgmentType } from "@/src/lib/judgmentCards";
+import type { JudgmentCard, JudgmentThresholdJson, JudgmentType } from "../../src/lib/judgmentCards";
+import type { DecisionProfile } from "../../src/lib/decisionProfile";
 
 export type DecisionOutcome = "success" | "regret" | "neutral";
 
@@ -20,8 +21,10 @@ export type DecisionHistoryEntry = {
   episode_id: string;
   topic_title: string;
   frame_type: string | null;
+  genre: string | null;
   decision_type: JudgmentType;
   outcome: DecisionOutcome;
+  threshold_json: JudgmentThresholdJson;
   created_at: string;
   updated_at: string;
   episode_title: string | null;
@@ -50,6 +53,8 @@ type DecisionCardLookupRow = {
   id: string;
   topic_title: string;
   frame_type: string | null;
+  genre: string | null;
+  threshold_json: JudgmentThresholdJson | null;
 };
 
 type EpisodeLookupRow = {
@@ -71,6 +76,86 @@ export const OUTCOME_LABELS: Record<DecisionOutcome, string> = {
   regret: "後悔",
   neutral: "普通"
 };
+
+const createEmptyDecisionProfile = (): DecisionProfile => ({
+  totalDecisions: 0,
+  minimumHistoryMet: false,
+  decisionRatios: {
+    use_now: { count: 0, percentage: 0 },
+    watch: { count: 0, percentage: 0 },
+    skip: { count: 0, percentage: 0 }
+  },
+  outcomeRatios: {
+    success: { count: 0, percentage: 0 },
+    regret: { count: 0, percentage: 0 },
+    neutral: { count: 0, percentage: 0 }
+  },
+  decisionTypeStats: {
+    use_now: {
+      key: "use_now",
+      label: "使う",
+      count: 0,
+      successCount: 0,
+      regretCount: 0,
+      neutralCount: 0,
+      successRate: 0,
+      regretRate: 0,
+      neutralRate: 0,
+      useNowCount: 0,
+      watchCount: 0,
+      skipCount: 0,
+      useNowRate: 0,
+      watchRate: 0,
+      skipRate: 0,
+      dominantDecisionType: null
+    },
+    watch: {
+      key: "watch",
+      label: "監視",
+      count: 0,
+      successCount: 0,
+      regretCount: 0,
+      neutralCount: 0,
+      successRate: 0,
+      regretRate: 0,
+      neutralRate: 0,
+      useNowCount: 0,
+      watchCount: 0,
+      skipCount: 0,
+      useNowRate: 0,
+      watchRate: 0,
+      skipRate: 0,
+      dominantDecisionType: null
+    },
+    skip: {
+      key: "skip",
+      label: "見送り",
+      count: 0,
+      successCount: 0,
+      regretCount: 0,
+      neutralCount: 0,
+      successRate: 0,
+      regretRate: 0,
+      neutralRate: 0,
+      useNowCount: 0,
+      watchCount: 0,
+      skipCount: 0,
+      useNowRate: 0,
+      watchRate: 0,
+      skipRate: 0,
+      dominantDecisionType: null
+    }
+  },
+  frameTypeStats: [],
+  genreStats: [],
+  signalStats: [],
+  topGenres: [],
+  regretGenres: [],
+  bestFrameType: null,
+  riskyFrameType: null,
+  favoriteFrameTypes: [],
+  insights: []
+});
 
 export const isDecisionOutcome = (value: unknown): value is DecisionOutcome => {
   return value === "success" || value === "regret" || value === "neutral";
@@ -169,11 +254,12 @@ export const attachSavedDecisionState = (
 
 export const loadDecisionHistory = async (
   userId: string
-): Promise<{ entries: DecisionHistoryEntry[]; stats: DecisionHistoryStats; error: string | null }> => {
+): Promise<{ entries: DecisionHistoryEntry[]; stats: DecisionHistoryStats; profile: DecisionProfile; error: string | null }> => {
   if (!userId) {
     return {
       entries: [],
       stats: calculateDecisionHistoryStats([]),
+      profile: createEmptyDecisionProfile(),
       error: null
     };
   }
@@ -192,6 +278,7 @@ export const loadDecisionHistory = async (
       return {
         entries: [],
         stats: calculateDecisionHistoryStats([]),
+        profile: createEmptyDecisionProfile(),
         error: error.message
       };
     }
@@ -203,7 +290,10 @@ export const loadDecisionHistory = async (
     const [{ data: judgmentCardsData, error: judgmentCardsError }, { data: episodesData, error: episodesError }] =
       await Promise.all([
         judgmentCardIds.length > 0
-          ? supabase.from("episode_judgment_cards").select("id, topic_title, frame_type").in("id", judgmentCardIds)
+          ? supabase
+              .from("episode_judgment_cards")
+              .select("id, topic_title, frame_type, genre, threshold_json")
+              .in("id", judgmentCardIds)
           : Promise.resolve({ data: [], error: null }),
         episodeIds.length > 0
           ? supabase.from("episodes").select("id, title, published_at").in("id", episodeIds)
@@ -214,6 +304,7 @@ export const loadDecisionHistory = async (
       return {
         entries: [],
         stats: calculateDecisionHistoryStats([]),
+        profile: createEmptyDecisionProfile(),
         error: judgmentCardsError.message
       };
     }
@@ -222,6 +313,7 @@ export const loadDecisionHistory = async (
       return {
         entries: [],
         stats: calculateDecisionHistoryStats([]),
+        profile: createEmptyDecisionProfile(),
         error: episodesError.message
       };
     }
@@ -245,8 +337,10 @@ export const loadDecisionHistory = async (
         episode_id: decision.episode_id,
         topic_title: card?.topic_title ?? "Unknown topic",
         frame_type: card?.frame_type ?? null,
+        genre: card?.genre ?? null,
         decision_type: decision.decision_type,
         outcome: decision.outcome,
+        threshold_json: card?.threshold_json ?? {},
         created_at: decision.created_at,
         updated_at: decision.updated_at,
         episode_title: episode?.title ?? null,
@@ -257,12 +351,14 @@ export const loadDecisionHistory = async (
     return {
       entries,
       stats: calculateDecisionHistoryStats(entries),
+      profile: (await import("../../src/lib/decisionProfile")).buildPersonalDecisionProfile(entries),
       error: null
     };
   } catch (error) {
     return {
       entries: [],
       stats: calculateDecisionHistoryStats([]),
+      profile: createEmptyDecisionProfile(),
       error: error instanceof Error ? error.message : "unknown_error"
     };
   }

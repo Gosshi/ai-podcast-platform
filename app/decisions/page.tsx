@@ -1,8 +1,10 @@
 import Link from "next/link";
 import MemberControls from "@/app/components/MemberControls";
 import SaveDecisionButton from "@/app/components/SaveDecisionButton";
+import { loadDecisionHistory } from "@/app/lib/decisionHistory";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { loadDecisionDashboardCards } from "@/app/lib/decisions";
+import { buildPersonalDecisionHint } from "@/src/lib/decisionProfile";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import { groupDecisionDashboardCards, pickTodayDecisionCards } from "@/src/lib/decisionDashboard";
 import styles from "./page.module.css";
@@ -53,9 +55,83 @@ export default async function DecisionsPage() {
   const viewer = await getViewerFromCookies();
   const isPaid = viewer?.isPaid ?? false;
   const { cards, error } = await loadDecisionDashboardCards({ isPaid, userId: viewer?.userId });
+  const personalProfile = viewer?.isPaid && viewer?.userId ? (await loadDecisionHistory(viewer.userId)).profile : null;
   const todayCards = pickTodayDecisionCards(cards);
   const groupedCards = groupDecisionDashboardCards(cards);
   const todayLabel = formatDecisionDate(todayCards[0]?.episode_published_at ?? null);
+  const renderDecisionCard = (
+    card: (typeof cards)[number],
+    secondaryMetaLabel: string,
+    secondaryMetaValue: string
+  ) => {
+    const personalHint = isPaid && personalProfile ? buildPersonalDecisionHint({ card, profile: personalProfile }) : null;
+
+    return (
+      <article key={card.id} className={styles.card}>
+        <Link href={`/episodes/${card.episode_id}`} className={styles.cardLink}>
+          <div className={styles.cardHeader}>
+            <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`]}`.trim()}>
+              {JUDGMENT_TYPE_LABELS[card.judgment_type]}
+            </span>
+            <span className={styles.genreTag}>{card.genre ?? "general"}</span>
+          </div>
+          <h3>{card.topic_title}</h3>
+          <p className={styles.summary}>{card.judgment_summary}</p>
+          {personalHint ? (
+            <div className={`${styles.personalHint} ${styles[`personalHint_${personalHint.tone}`]}`.trim()}>
+              <span className={styles.personalHintLabel}>あなた向け補正</span>
+              <p>{personalHint.text}</p>
+            </div>
+          ) : null}
+          <dl className={styles.metaList}>
+            {isPaid && card.action_text ? (
+              <div>
+                <dt>次の行動</dt>
+                <dd>{card.action_text}</dd>
+              </div>
+            ) : null}
+            {isPaid && card.deadline_at ? (
+              <div>
+                <dt>期限</dt>
+                <dd>{formatDeadline(card.deadline_at)}</dd>
+              </div>
+            ) : null}
+            <div>
+              <dt>{secondaryMetaLabel}</dt>
+              <dd>{secondaryMetaValue}</dd>
+            </div>
+          </dl>
+          {isPaid && card.watch_points.length > 0 ? (
+            <ul className={styles.detailList}>
+              {card.watch_points.map((point) => (
+                <li key={point}>{point}</li>
+              ))}
+            </ul>
+          ) : null}
+          {isPaid && formatThresholdHighlights(card.threshold_json).length > 0 ? (
+            <ul className={styles.detailList}>
+              {formatThresholdHighlights(card.threshold_json).map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          ) : null}
+          {!isPaid ? (
+            <div className={styles.lockedPanel}>
+              <strong>この先は有料会員向け</strong>
+              <p>次の行動、期限、監視ポイント、判断基準を開放します。</p>
+            </div>
+          ) : null}
+        </Link>
+        <div className={styles.cardActionRow}>
+          <SaveDecisionButton
+            judgmentCardId={card.id}
+            viewer={viewer}
+            initialSaved={card.is_saved}
+          />
+        </div>
+      </article>
+    );
+  };
 
   return (
     <main className={styles.page}>
@@ -64,7 +140,7 @@ export default async function DecisionsPage() {
           <p className={styles.eyebrow}>Decision Dashboard</p>
           <h1>毎日見るべき入口を、エピソードではなく判断に切り替える。</h1>
           <p className={styles.lead}>
-            `episode_judgment_cards` を横断して、今日使うもの、監視するもの、見送るものを一画面で確認できます。
+            `episode_judgment_cards` を横断して、今日使うもの、監視するもの、見送るものを一画面で確認できます。paid は履歴を使った personal hint も card 上に返します。
           </p>
           <div className={styles.heroMeta}>
             <span className={styles.heroBadge}>{isPaid ? "PAID" : "FREE"}</span>
@@ -89,7 +165,7 @@ export default async function DecisionsPage() {
             <p className={styles.paywallEyebrow}>Free Preview</p>
             <h2>判断の深さを有料で開放します</h2>
             <p>
-              無料版は最新1週間の judgment summary を確認できます。action、deadline、watch points、threshold の詳細は有料会員で開放します。
+              無料版は最新1週間の judgment summary を確認できます。action、deadline、watch points、threshold の詳細と personal hint は有料会員で開放します。
             </p>
           </div>
           <Link href="/account" className={styles.paywallLink}>
@@ -115,67 +191,7 @@ export default async function DecisionsPage() {
         {todayCards.length === 0 ? (
           <p className={styles.emptyText}>判断カードはまだありません。</p>
         ) : (
-          <div className={styles.grid}>
-            {todayCards.map((card) => (
-              <article key={card.id} className={styles.card}>
-                <Link href={`/episodes/${card.episode_id}`} className={styles.cardLink}>
-                  <div className={styles.cardHeader}>
-                    <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`]}`.trim()}>
-                      {JUDGMENT_TYPE_LABELS[card.judgment_type]}
-                    </span>
-                    <span className={styles.genreTag}>{card.genre ?? "general"}</span>
-                  </div>
-                  <h3>{card.topic_title}</h3>
-                  <p className={styles.summary}>{card.judgment_summary}</p>
-                  <dl className={styles.metaList}>
-                    {isPaid && card.action_text ? (
-                      <div>
-                        <dt>次の行動</dt>
-                        <dd>{card.action_text}</dd>
-                      </div>
-                    ) : null}
-                    {isPaid && card.deadline_at ? (
-                      <div>
-                        <dt>期限</dt>
-                        <dd>{formatDeadline(card.deadline_at)}</dd>
-                      </div>
-                    ) : null}
-                    <div>
-                      <dt>元エピソード</dt>
-                      <dd>{card.episode_title ?? "Untitled episode"}</dd>
-                    </div>
-                  </dl>
-                  {isPaid && card.watch_points.length > 0 ? (
-                    <ul className={styles.detailList}>
-                      {card.watch_points.map((point) => (
-                        <li key={point}>{point}</li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  {isPaid && formatThresholdHighlights(card.threshold_json).length > 0 ? (
-                    <ul className={styles.detailList}>
-                      {formatThresholdHighlights(card.threshold_json).map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  {!isPaid ? (
-                    <div className={styles.lockedPanel}>
-                      <strong>この先は有料会員向け</strong>
-                      <p>次の行動、期限、監視ポイント、判断基準を開放します。</p>
-                    </div>
-                  ) : null}
-                </Link>
-                <div className={styles.cardActionRow}>
-                  <SaveDecisionButton
-                    judgmentCardId={card.id}
-                    viewer={viewer}
-                    initialSaved={card.is_saved}
-                  />
-                </div>
-              </article>
-            ))}
-          </div>
+          <div className={styles.grid}>{todayCards.map((card) => renderDecisionCard(card, "元エピソード", card.episode_title ?? "Untitled episode"))}</div>
         )}
       </section>
 
@@ -196,65 +212,9 @@ export default async function DecisionsPage() {
               <p className={styles.emptyText}>この分類の判断はまだありません。</p>
             ) : (
               <div className={styles.grid}>
-                {sectionCards.map((card) => (
-                  <article key={card.id} className={styles.card}>
-                    <Link href={`/episodes/${card.episode_id}`} className={styles.cardLink}>
-                      <div className={styles.cardHeader}>
-                        <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`]}`.trim()}>
-                          {JUDGMENT_TYPE_LABELS[card.judgment_type]}
-                        </span>
-                        <span className={styles.genreTag}>{card.genre ?? "general"}</span>
-                      </div>
-                      <h3>{card.topic_title}</h3>
-                      <p className={styles.summary}>{card.judgment_summary}</p>
-                      <dl className={styles.metaList}>
-                        {isPaid && card.action_text ? (
-                          <div>
-                            <dt>次の行動</dt>
-                            <dd>{card.action_text}</dd>
-                          </div>
-                        ) : null}
-                        {isPaid && card.deadline_at ? (
-                          <div>
-                            <dt>期限</dt>
-                            <dd>{formatDeadline(card.deadline_at)}</dd>
-                          </div>
-                        ) : null}
-                        <div>
-                          <dt>公開日</dt>
-                          <dd>{formatDecisionDate(card.episode_published_at)}</dd>
-                        </div>
-                      </dl>
-                      {isPaid && card.watch_points.length > 0 ? (
-                        <ul className={styles.detailList}>
-                          {card.watch_points.map((point) => (
-                            <li key={point}>{point}</li>
-                          ))}
-                        </ul>
-                      ) : null}
-                      {isPaid && formatThresholdHighlights(card.threshold_json).length > 0 ? (
-                        <ul className={styles.detailList}>
-                          {formatThresholdHighlights(card.threshold_json).map((item) => (
-                            <li key={item}>{item}</li>
-                          ))}
-                        </ul>
-                      ) : null}
-                      {!isPaid ? (
-                        <div className={styles.lockedPanel}>
-                          <strong>この先は有料会員向け</strong>
-                          <p>summary の先にある行動指針と判断条件を開放します。</p>
-                        </div>
-                      ) : null}
-                    </Link>
-                    <div className={styles.cardActionRow}>
-                      <SaveDecisionButton
-                        judgmentCardId={card.id}
-                        viewer={viewer}
-                        initialSaved={card.is_saved}
-                      />
-                    </div>
-                  </article>
-                ))}
+                {sectionCards.map((card) =>
+                  renderDecisionCard(card, "公開日", formatDecisionDate(card.episode_published_at))
+                )}
               </div>
             )}
           </section>
