@@ -190,9 +190,10 @@ test("rankNextBestDecisions suppresses personal reasons when the profile is insu
 test("rankNextBestDecisions keeps preference profile context without changing scores", () => {
   const preferenceProfile = initializeUserPreferenceProfile({
     interestTopics: ["games", "tech"],
-    activeSubscriptions: ["netflix", "spotify"],
+    activeSubscriptions: ["netflix", "spotify", "chatgpt"],
     decisionPriority: "avoid_regret",
-    dailyAvailableTime: "<30min"
+    dailyAvailableTime: "under_30m",
+    budgetSensitivity: "medium"
   });
 
   const recommendation = rankNextBestDecisions({

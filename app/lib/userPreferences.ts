@@ -11,12 +11,13 @@ type UserPreferencesRow = {
   active_subscriptions: unknown;
   decision_priority: unknown;
   daily_available_time: unknown;
+  budget_sensitivity: unknown;
   created_at: string;
   updated_at: string;
 };
 
 const USER_PREFERENCES_SELECT =
-  "interest_topics, active_subscriptions, decision_priority, daily_available_time, created_at, updated_at";
+  "interest_topics, active_subscriptions, decision_priority, daily_available_time, budget_sensitivity, created_at, updated_at";
 
 const normalizeRow = (row: UserPreferencesRow | null): UserPreferences | null => {
   if (!row) {
@@ -27,7 +28,8 @@ const normalizeRow = (row: UserPreferencesRow | null): UserPreferences | null =>
     interestTopics: row.interest_topics,
     activeSubscriptions: row.active_subscriptions,
     decisionPriority: row.decision_priority,
-    dailyAvailableTime: row.daily_available_time
+    dailyAvailableTime: row.daily_available_time,
+    budgetSensitivity: row.budget_sensitivity
   });
 
   if (!validation.ok) {
@@ -89,7 +91,8 @@ export const upsertUserPreferences = async (
           interest_topics: preferences.interestTopics,
           active_subscriptions: preferences.activeSubscriptions,
           decision_priority: preferences.decisionPriority,
-          daily_available_time: preferences.dailyAvailableTime
+          daily_available_time: preferences.dailyAvailableTime,
+          budget_sensitivity: preferences.budgetSensitivity
         },
         {
           onConflict: "user_id"
