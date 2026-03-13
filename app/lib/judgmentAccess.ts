@@ -9,6 +9,10 @@ type GateableJudgmentFields = {
 
 const THRESHOLD_LABELS = {
   price: "価格基準",
+  play_time: "プレイ時間",
+  watch_time: "視聴時間",
+  monthly_cost: "月額",
+  ad_time: "広告時間",
   time_limit: "時間基準",
   unit_cost: "単価基準",
   ratio: "比率基準"

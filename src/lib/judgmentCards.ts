@@ -10,6 +10,10 @@ export type JudgmentThresholdEntry = {
 
 export type JudgmentThresholdJson = {
   price?: JudgmentThresholdEntry[];
+  play_time?: JudgmentThresholdEntry[];
+  watch_time?: JudgmentThresholdEntry[];
+  monthly_cost?: JudgmentThresholdEntry[];
+  ad_time?: JudgmentThresholdEntry[];
   time_limit?: JudgmentThresholdEntry[];
   unit_cost?: JudgmentThresholdEntry[];
   ratio?: JudgmentThresholdEntry[];
