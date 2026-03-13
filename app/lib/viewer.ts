@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
 import type { User } from "@supabase/supabase-js";
+import type { UserPreferenceProfile, UserPreferences } from "@/src/lib/userPreferences";
 import { createServiceRoleClient } from "./supabaseClients";
 import { ACCESS_TOKEN_COOKIE } from "./authCookies";
+import { loadUserPreferences } from "./userPreferences";
 
 export type ViewerState = {
   userId: string;
@@ -12,6 +14,9 @@ export type ViewerState = {
   cancelAtPeriodEnd: boolean;
   stripeCustomerId: string | null;
   isPaid: boolean;
+  preferences: UserPreferences | null;
+  preferenceProfile: UserPreferenceProfile | null;
+  needsOnboarding: boolean;
 };
 
 type SubscriptionRow = {
@@ -49,30 +54,33 @@ const loadViewerState = async (user: User): Promise<ViewerState> => {
   await ensureViewerProfile(user);
 
   const supabase = createServiceRoleClient();
-  const { data: profileData, error: profileError } = await supabase
-    .from("profiles")
-    .select("stripe_customer_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const [{ data: profileData, error: profileError }, { data, error }, preferencesState] = await Promise.all([
+    supabase.from("profiles").select("stripe_customer_id").eq("user_id", user.id).maybeSingle(),
+    supabase
+      .from("subscriptions")
+      .select("plan_type, status, current_period_end, cancel_at_period_end, stripe_customer_id")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    loadUserPreferences(user.id)
+  ]);
 
   if (profileError) {
     throw profileError;
   }
 
-  const { data, error } = await supabase
-    .from("subscriptions")
-    .select("plan_type, status, current_period_end, cancel_at_period_end, stripe_customer_id")
-    .eq("user_id", user.id)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
   if (error) {
     throw error;
   }
 
+  if (preferencesState.error) {
+    throw new Error(preferencesState.error);
+  }
+
   const subscription = (data as SubscriptionRow | null) ?? null;
   const profile = (profileData as ProfileRow | null) ?? null;
+  const preferences = preferencesState.preferences;
 
   return {
     userId: user.id,
@@ -82,7 +90,10 @@ const loadViewerState = async (user: User): Promise<ViewerState> => {
     currentPeriodEnd: subscription?.current_period_end ?? null,
     cancelAtPeriodEnd: Boolean(subscription?.cancel_at_period_end),
     stripeCustomerId: subscription?.stripe_customer_id ?? profile?.stripe_customer_id ?? null,
-    isPaid: isPaidSubscriptionStatus(subscription?.status ?? null)
+    isPaid: isPaidSubscriptionStatus(subscription?.status ?? null),
+    preferences,
+    preferenceProfile: preferencesState.preferenceProfile,
+    needsOnboarding: !preferences
   };
 };
 

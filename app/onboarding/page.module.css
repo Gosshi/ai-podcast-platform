@@ -1,0 +1,247 @@
+.page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.2), transparent 28%),
+    radial-gradient(circle at 80% 0%, rgba(249, 115, 22, 0.18), transparent 24%),
+    linear-gradient(180deg, #f8fafc 0%, #fff7ed 100%);
+  color: #0f172a;
+}
+
+.shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 3rem 1.25rem 4rem;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 520px);
+  gap: 1.2rem;
+  align-items: start;
+}
+
+.copy {
+  display: grid;
+  gap: 1rem;
+}
+
+.eyebrow,
+.stepEyebrow,
+.groupLabel,
+.progressLabel {
+  margin: 0;
+  font-size: 0.76rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.copy h1,
+.stepHeader h2 {
+  margin: 0;
+}
+
+.copy h1 {
+  font-size: clamp(2.4rem, 5vw, 4.4rem);
+  line-height: 0.94;
+  letter-spacing: -0.05em;
+  max-width: 13ch;
+}
+
+.lead,
+.stepHeader p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.75;
+  max-width: 46rem;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.metaCard,
+.panel,
+.optionCard {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(14px);
+}
+
+.metaCard {
+  border-radius: 20px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.metaCard span {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.metaCard strong {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.panel {
+  border-radius: 28px;
+  padding: 1.25rem;
+  display: grid;
+  gap: 1rem;
+  box-shadow: 0 22px 55px rgba(15, 23, 42, 0.08);
+}
+
+.progressRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.progressItem {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.progressDot {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 999px;
+  background: #cbd5e1;
+  transition: transform 180ms ease, background-color 180ms ease;
+}
+
+.progressDotActive {
+  background: #ea580c;
+  transform: scale(1.1);
+}
+
+.stepHeader {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.savedBadge {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  background: #e0f2fe;
+  color: #0f4c81;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.optionGrid,
+.formGrid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.optionGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.group {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.optionCard {
+  border-radius: 22px;
+  padding: 1rem;
+  text-align: left;
+  cursor: pointer;
+  display: grid;
+  gap: 0.35rem;
+  color: #0f172a;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.optionCard:hover {
+  transform: translateY(-1px);
+  border-color: rgba(234, 88, 12, 0.36);
+}
+
+.optionCard strong {
+  font-size: 1rem;
+}
+
+.optionCard span {
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.optionCardActive {
+  border-color: #ea580c;
+  box-shadow: 0 0 0 1px rgba(234, 88, 12, 0.14);
+  background: linear-gradient(180deg, rgba(255, 247, 237, 0.98), rgba(255, 255, 255, 0.96));
+}
+
+.errorMessage {
+  margin: 0;
+  border-radius: 16px;
+  padding: 0.95rem 1rem;
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: 700;
+}
+
+.actionRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.primaryButton,
+.secondaryButton {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.85rem 1.2rem;
+  font-weight: 700;
+  font: inherit;
+  cursor: pointer;
+}
+
+.primaryButton {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.secondaryButton {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 960px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .metaGrid,
+  .optionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .actionRow {
+    flex-direction: column-reverse;
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    width: 100%;
+  }
+}

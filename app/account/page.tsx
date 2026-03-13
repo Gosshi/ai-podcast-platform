@@ -1,6 +1,7 @@
 import Link from "next/link";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
+import { buildOnboardingPath } from "@/app/lib/onboarding";
 import {
   formatMembershipDate,
   resolveMembershipBadgeLabel,
@@ -172,6 +173,48 @@ export default async function AccountPage({
             </Link>
           </div>
         </section>
+
+        {viewer ? (
+          <section className={styles.section}>
+            <div>
+              <p className={styles.eyebrow}>Preference Setup</p>
+              <h2>Onboarding と判断嗜好の設定</h2>
+              <p className={styles.sectionLead}>
+                初回に取得した preference は cold start の補助に使います。あとから更新しても既存の decision history は壊しません。
+              </p>
+            </div>
+
+            <div className={styles.statsGrid}>
+              <article className={styles.statCard}>
+                <span className={styles.statLabel}>Onboarding</span>
+                <strong className={styles.statValue}>{viewer.needsOnboarding ? "未完了" : "完了済み"}</strong>
+              </article>
+              <article className={styles.statCard}>
+                <span className={styles.statLabel}>興味ジャンル</span>
+                <strong className={styles.statValue}>
+                  {viewer.preferences?.interestTopics.length ? viewer.preferences.interestTopics.join(", ") : "未設定"}
+                </strong>
+              </article>
+              <article className={styles.statCard}>
+                <span className={styles.statLabel}>判断優先</span>
+                <strong className={styles.statValue}>{viewer.preferences?.decisionPriority ?? "未設定"}</strong>
+              </article>
+              <article className={styles.statCard}>
+                <span className={styles.statLabel}>使える時間</span>
+                <strong className={styles.statValue}>{viewer.preferences?.dailyAvailableTime ?? "未設定"}</strong>
+              </article>
+            </div>
+
+            <div className={styles.ctaRow}>
+              <Link href={buildOnboardingPath("/account")} className={styles.primaryLink}>
+                Preferences を設定
+              </Link>
+              <Link href="/decisions" className={styles.secondaryLink}>
+                Decisions を見る
+              </Link>
+            </div>
+          </section>
+        ) : null}
       </div>
     </main>
   );
