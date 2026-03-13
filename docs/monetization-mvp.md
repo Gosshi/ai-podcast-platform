@@ -42,15 +42,28 @@
 
 ## UI Boundary
 - Free:
-  - 最新プレビュー
+  - 最新1週間
   - 音声再生
-  - 一覧導線
+  - judgment summary
   - `/account` で free 状態と upgrade 導線を確認
 - Paid:
-  - 判断カード
+  - action_text / deadline_at / watch_points / threshold
   - DeepDive 完全版
   - 過去アーカイブ
   - `/account` で current_period_end / 支払い状態 / Billing Portal 導線を確認
+
+## Gating Direction
+- 件数制限よりも「判断の深さ」で無料 / 有料を分ける
+- 無料版:
+  - 最新1週間の `/episodes` と `/decisions`
+  - judgment_summary
+- 有料版:
+  - action_text
+  - deadline_at
+  - watch_points
+  - threshold_json の表示
+  - DeepDive 完全版
+  - 過去アーカイブ
 
 ## Stripe Flow
 1. ログイン済みユーザーが `POST /api/stripe/subscription-checkout`

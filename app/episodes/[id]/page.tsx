@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import MemberControls from "@/app/components/MemberControls";
+import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { loadPublishedEpisodeById } from "@/app/lib/episodes";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./page.module.css";
@@ -76,7 +77,7 @@ export default async function EpisodeDetailPage({
             <MemberControls
               viewer={viewer}
               title="Access Level"
-              copy="無料版は判断カードのプレビューと preview script まで。有料会員になると全文と archive を開放します。"
+              copy="無料版は judgment summary まで。有料会員になると action、deadline、watch points、threshold、full DeepDive を開放します。"
             />
           </section>
 
@@ -101,17 +102,39 @@ export default async function EpisodeDetailPage({
                     <h3>{card.topic_title}</h3>
                     <p className={styles.summary}>{card.judgment_summary}</p>
                     <dl className={styles.metaList}>
-                      <div>
-                        <dt>期限</dt>
-                        <dd>{formatDateTime(card.deadline_at)}</dd>
-                      </div>
                       {card.action_text ? (
                         <div>
                           <dt>次の行動</dt>
                           <dd>{card.action_text}</dd>
                         </div>
                       ) : null}
+                      {card.deadline_at ? (
+                        <div>
+                          <dt>期限</dt>
+                          <dd>{formatDateTime(card.deadline_at)}</dd>
+                        </div>
+                      ) : null}
                     </dl>
+                    {card.watch_points.length > 0 ? (
+                      <ul className={styles.detailList}>
+                        {card.watch_points.map((point) => (
+                          <li key={point}>{point}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {formatThresholdHighlights(card.threshold_json).length > 0 ? (
+                      <ul className={styles.detailList}>
+                        {formatThresholdHighlights(card.threshold_json).map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {!viewer?.isPaid ? (
+                      <div className={styles.lockedBlock}>
+                        <strong>この先は有料会員向け</strong>
+                        <p>次の行動、判断期限、監視ポイント、threshold の詳細を開放します。</p>
+                      </div>
+                    ) : null}
                   </article>
                 ))}
               </div>
@@ -119,7 +142,13 @@ export default async function EpisodeDetailPage({
 
             {episode.judgment_cards_preview_limited ? (
               <p className={styles.lockedText}>
-                無料版では判断カードの詳細を一部制限しています。全文は有料会員で表示されます。
+                無料版では judgment summary まで表示し、action / deadline / watch points / threshold は有料会員向けに制限しています。
+              </p>
+            ) : null}
+
+            {episode.archive_locked ? (
+              <p className={styles.lockedText}>
+                このエピソードは無料版の公開期間を過ぎています。最新1週間は無料で確認でき、過去アーカイブは有料会員で開放します。
               </p>
             ) : null}
           </section>

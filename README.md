@@ -61,12 +61,12 @@
 
 ### Free vs Paid Boundary
 - 無料:
-  - `/episodes` の一覧
+  - `/episodes` と `/decisions` の最新1週間
   - 音声再生
-  - `script_polished_preview` ベースの短いプレビュー
-  - 判断カードの先頭1件サマリーのみ
+  - `script_polished_preview` ベースの短い preview
+  - judgment summary
 - 有料:
-  - 判断カード全文
+  - action_text / deadline_at / watch_points / threshold の詳細
   - DeepDive 完全版
   - 過去アーカイブ全体
   - `/account` で会員状態の確認
@@ -245,7 +245,8 @@
 - Page: `/episodes`
 - Displays: `title`, `lang`, `published_at`, preview
 - Reads published rows from Supabase (`episodes.status='published'` and `published_at is not null`)
-- 無料ユーザーは `episode_judgment_cards` の先頭1件サマリーのみ表示し、`action_text / deadline_at / watch_points_json` はロックする
+- 無料ユーザーは最新1週間の episode を表示し、判断カードは summary のみ表示する
+- `action_text / deadline_at / watch_points_json / threshold_json / DeepDive 完全版 / 過去アーカイブ` は有料会員向け
 - 有料ユーザーは `episode_judgment_cards` の全件と `script_polished` / `script` を表示する
 - `audio_url` が `/audio/...` の場合、`public/audio` のローカル音声を `<audio>` タグで再生
 

@@ -1,4 +1,6 @@
 import type { JudgmentCard, JudgmentThresholdJson, JudgmentType } from "@/src/lib/judgmentCards";
+import { isWithinFreeAccessWindow } from "./contentAccess";
+import { lockJudgmentDetails } from "./judgmentAccess";
 import { createServiceRoleClient } from "./supabaseClients";
 
 export type PublishedEpisodeRow = {
@@ -14,6 +16,7 @@ export type PublishedEpisodeRow = {
   judgment_cards: JudgmentCard[];
   judgment_card_count: number;
   judgment_cards_preview_limited: boolean;
+  archive_locked: boolean;
   audio_url: string | null;
   published_at: string | null;
   created_at: string;
@@ -68,8 +71,14 @@ const buildPreviewText = (episode: EpisodeQueryRow): string | null => {
   return script ? script.slice(0, 240).trimEnd() : null;
 };
 
-const resolveFullScript = (episode: EpisodeQueryRow, isPaid: boolean): string | null => {
-  if (!isPaid) return null;
+const resolveFreeAccessKey = (episode: EpisodeQueryRow): string => episode.published_at ?? episode.created_at;
+
+const resolveFullScript = (
+  episode: EpisodeQueryRow,
+  isPaid: boolean,
+  archiveLocked: boolean
+): string | null => {
+  if (!isPaid || archiveLocked) return null;
 
   const polished = episode.script_polished?.trim();
   if (polished) return polished;
@@ -106,17 +115,7 @@ const mapJudgmentCardRow = (card: EpisodeJudgmentCardRow): JudgmentCard => {
 };
 
 const buildFreeJudgmentPreview = (cards: JudgmentCard[]): JudgmentCard[] => {
-  const firstCard = cards[0];
-  if (!firstCard) return [];
-
-  return [
-    {
-      ...firstCard,
-      action_text: null,
-      deadline_at: null,
-      watch_points: []
-    }
-  ];
+  return cards.map((card) => lockJudgmentDetails(card));
 };
 
 const mapEpisodeRow = (
@@ -124,7 +123,12 @@ const mapEpisodeRow = (
   judgmentCards: JudgmentCard[],
   isPaid: boolean
 ): PublishedEpisodeRow => {
-  const visibleJudgmentCards = isPaid ? judgmentCards : buildFreeJudgmentPreview(judgmentCards);
+  const archiveLocked = !isPaid && !isWithinFreeAccessWindow(resolveFreeAccessKey(episode));
+  const visibleJudgmentCards = archiveLocked
+    ? []
+    : isPaid
+      ? judgmentCards
+      : buildFreeJudgmentPreview(judgmentCards);
 
   return {
     id: episode.id,
@@ -134,11 +138,12 @@ const mapEpisodeRow = (
     status: episode.status,
     title: episode.title,
     description: episode.description,
-    preview_text: buildPreviewText(episode),
-    full_script: resolveFullScript(episode, isPaid),
+    preview_text: archiveLocked ? null : buildPreviewText(episode),
+    full_script: resolveFullScript(episode, isPaid, archiveLocked),
     judgment_cards: visibleJudgmentCards,
     judgment_card_count: judgmentCards.length,
-    judgment_cards_preview_limited: !isPaid && judgmentCards.length > 0,
+    judgment_cards_preview_limited: !isPaid && !archiveLocked && judgmentCards.length > 0,
+    archive_locked: archiveLocked,
     audio_url: episode.audio_url,
     published_at: episode.published_at,
     created_at: episode.created_at

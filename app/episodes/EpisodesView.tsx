@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import MemberControls from "@/app/components/MemberControls";
+import { isWithinFreeAccessWindow } from "@/app/lib/contentAccess";
+import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { getMessages } from "@/src/lib/i18n/messages";
 import type { Locale } from "@/src/lib/i18n/locale";
 import { useLocale } from "@/src/lib/i18n/useLocale";
@@ -65,6 +67,9 @@ const formatDeadline = (value: string | null, locale: Locale): string | null => 
   if (!value) return null;
   return formatDateTime(value, locale);
 };
+
+const hasFreeArchiveAccess = (episode: EpisodeRow): boolean =>
+  isWithinFreeAccessWindow(episode.published_at ?? episode.created_at);
 
 const resolveJudgmentTypeLabel = (
   value: "use_now" | "watch" | "skip",
@@ -269,12 +274,16 @@ export default function EpisodesView({
   const viewLang = resolveViewLang(searchParams.get("filter"), initialViewLang);
   const groups = useMemo(() => buildEpisodeGroups(episodes), [episodes]);
   const isPaid = viewer?.isPaid ?? false;
-  const archiveLockedCount = isPaid ? 0 : Math.max(0, groups.length - 3);
+  const archiveLockedCount = isPaid
+    ? 0
+    : groups.filter((group) => !pickEpisodesByViewLang(group, "all").some(hasFreeArchiveAccess)).length;
   const episodesById = useMemo(() => new Map(episodes.map((episode) => [episode.id, episode])), [episodes]);
 
   const visibleGroups = useMemo(() => {
     const filtered = groups.filter((group) => pickEpisodesByViewLang(group, viewLang).length > 0);
-    return isPaid ? filtered : filtered.slice(0, 3);
+    return isPaid
+      ? filtered
+      : filtered.filter((group) => pickEpisodesByViewLang(group, "all").some(hasFreeArchiveAccess));
   }, [groups, isPaid, viewLang]);
 
   const visibleEpisodes = useMemo(
@@ -675,6 +684,22 @@ export default function EpisodesView({
                               </ul>
                             </>
                           ) : null}
+                          {isPaid && formatThresholdHighlights(card.threshold_json).length > 0 ? (
+                            <>
+                              <p className={styles.metaLine}>{t.thresholdLabel}</p>
+                              <ul className={styles.watchList}>
+                                {formatThresholdHighlights(card.threshold_json).map((item) => (
+                                  <li key={item}>{item}</li>
+                                ))}
+                              </ul>
+                            </>
+                          ) : null}
+                          {!isPaid ? (
+                            <div className={styles.lockedCard}>
+                              <strong>{t.depthLockedTitle}</strong>
+                              <p>{t.depthLockedCopy}</p>
+                            </div>
+                          ) : null}
                         </article>
                       ))}
                     </div>
@@ -686,6 +711,13 @@ export default function EpisodesView({
                     <div className={styles.lockedCard}>
                       <strong>{t.cardsLockedTitle}</strong>
                       <p>{t.cardsLockedCopy}</p>
+                    </div>
+                  ) : null}
+
+                  {selectedEpisode.archive_locked ? (
+                    <div className={styles.lockedCard}>
+                      <strong>{t.archiveLockedTitle}</strong>
+                      <p>{t.archiveLockedCopy}</p>
                     </div>
                   ) : null}
                 </section>
