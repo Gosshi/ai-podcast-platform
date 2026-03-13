@@ -1,9 +1,5 @@
-import {
-  buildPersonalDecisionProfile,
-  EMPTY_DECISION_PROFILE,
-  type DecisionProfile
-} from "../../src/lib/decisionProfile.ts";
-import type { JudgmentCard, JudgmentThresholdJson, JudgmentType } from "../../src/lib/judgmentCards.ts";
+import type { JudgmentCard, JudgmentThresholdJson, JudgmentType } from "../../src/lib/judgmentCards";
+import type { DecisionProfile } from "../../src/lib/decisionProfile";
 
 export type DecisionOutcome = "success" | "regret" | "neutral";
 
@@ -80,6 +76,86 @@ export const OUTCOME_LABELS: Record<DecisionOutcome, string> = {
   regret: "後悔",
   neutral: "普通"
 };
+
+const createEmptyDecisionProfile = (): DecisionProfile => ({
+  totalDecisions: 0,
+  minimumHistoryMet: false,
+  decisionRatios: {
+    use_now: { count: 0, percentage: 0 },
+    watch: { count: 0, percentage: 0 },
+    skip: { count: 0, percentage: 0 }
+  },
+  outcomeRatios: {
+    success: { count: 0, percentage: 0 },
+    regret: { count: 0, percentage: 0 },
+    neutral: { count: 0, percentage: 0 }
+  },
+  decisionTypeStats: {
+    use_now: {
+      key: "use_now",
+      label: "使う",
+      count: 0,
+      successCount: 0,
+      regretCount: 0,
+      neutralCount: 0,
+      successRate: 0,
+      regretRate: 0,
+      neutralRate: 0,
+      useNowCount: 0,
+      watchCount: 0,
+      skipCount: 0,
+      useNowRate: 0,
+      watchRate: 0,
+      skipRate: 0,
+      dominantDecisionType: null
+    },
+    watch: {
+      key: "watch",
+      label: "監視",
+      count: 0,
+      successCount: 0,
+      regretCount: 0,
+      neutralCount: 0,
+      successRate: 0,
+      regretRate: 0,
+      neutralRate: 0,
+      useNowCount: 0,
+      watchCount: 0,
+      skipCount: 0,
+      useNowRate: 0,
+      watchRate: 0,
+      skipRate: 0,
+      dominantDecisionType: null
+    },
+    skip: {
+      key: "skip",
+      label: "見送り",
+      count: 0,
+      successCount: 0,
+      regretCount: 0,
+      neutralCount: 0,
+      successRate: 0,
+      regretRate: 0,
+      neutralRate: 0,
+      useNowCount: 0,
+      watchCount: 0,
+      skipCount: 0,
+      useNowRate: 0,
+      watchRate: 0,
+      skipRate: 0,
+      dominantDecisionType: null
+    }
+  },
+  frameTypeStats: [],
+  genreStats: [],
+  signalStats: [],
+  topGenres: [],
+  regretGenres: [],
+  bestFrameType: null,
+  riskyFrameType: null,
+  favoriteFrameTypes: [],
+  insights: []
+});
 
 export const isDecisionOutcome = (value: unknown): value is DecisionOutcome => {
   return value === "success" || value === "regret" || value === "neutral";
@@ -183,7 +259,7 @@ export const loadDecisionHistory = async (
     return {
       entries: [],
       stats: calculateDecisionHistoryStats([]),
-      profile: EMPTY_DECISION_PROFILE,
+      profile: createEmptyDecisionProfile(),
       error: null
     };
   }
@@ -202,7 +278,7 @@ export const loadDecisionHistory = async (
       return {
         entries: [],
         stats: calculateDecisionHistoryStats([]),
-        profile: EMPTY_DECISION_PROFILE,
+        profile: createEmptyDecisionProfile(),
         error: error.message
       };
     }
@@ -228,7 +304,7 @@ export const loadDecisionHistory = async (
       return {
         entries: [],
         stats: calculateDecisionHistoryStats([]),
-        profile: EMPTY_DECISION_PROFILE,
+        profile: createEmptyDecisionProfile(),
         error: judgmentCardsError.message
       };
     }
@@ -237,7 +313,7 @@ export const loadDecisionHistory = async (
       return {
         entries: [],
         stats: calculateDecisionHistoryStats([]),
-        profile: EMPTY_DECISION_PROFILE,
+        profile: createEmptyDecisionProfile(),
         error: episodesError.message
       };
     }
@@ -275,14 +351,14 @@ export const loadDecisionHistory = async (
     return {
       entries,
       stats: calculateDecisionHistoryStats(entries),
-      profile: buildPersonalDecisionProfile(entries),
+      profile: (await import("../../src/lib/decisionProfile")).buildPersonalDecisionProfile(entries),
       error: null
     };
   } catch (error) {
     return {
       entries: [],
       stats: calculateDecisionHistoryStats([]),
-      profile: EMPTY_DECISION_PROFILE,
+      profile: createEmptyDecisionProfile(),
       error: error instanceof Error ? error.message : "unknown_error"
     };
   }
