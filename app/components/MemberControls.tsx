@@ -354,7 +354,7 @@ export default function MemberControls({
                   メールでログイン
                 </button>
               </div>
-              <p className={styles.hint}>ログインすると、プラン確認と購読管理ができます。</p>
+              <p className={styles.hint}>ログインすると、プラン確認とプラン管理ができます。</p>
             </form>
           )}
 

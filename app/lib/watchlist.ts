@@ -188,19 +188,40 @@ export const loadUserWatchlist = async (params: {
     const judgmentCardIds = Array.from(new Set(watchlistRows.map((item) => item.judgment_card_id)));
     const episodeIds = Array.from(new Set(watchlistRows.map((item) => item.episode_id)));
 
-    const [{ data: cardsData, error: cardsError }, { data: episodesData, error: episodesError }, { data: decisionsData, error: decisionsError }] =
-      await Promise.all([
-        supabase
-          .from("episode_judgment_cards")
-          .select("id, topic_title, judgment_type, frame_type, genre, deadline_at")
-          .in("id", judgmentCardIds),
-        supabase.from("episodes").select("id, title, published_at").in("id", episodeIds),
-        supabase
-          .from("user_decisions")
-          .select("id, judgment_card_id")
-          .eq("user_id", params.userId)
-          .in("judgment_card_id", judgmentCardIds)
-      ]);
+    // Batch .in() queries to avoid "URI too long" errors with large ID sets
+    const BATCH_SIZE = 80;
+    const batchIn = async <T>(
+      queryFn: (ids: string[]) => PromiseLike<{ data: unknown; error: { message: string } | null }>,
+      ids: string[]
+    ): Promise<{ data: T[]; error: { message: string } | null }> => {
+      if (ids.length === 0) return { data: [], error: null };
+      const batches: Array<PromiseLike<{ data: unknown; error: { message: string } | null }>> = [];
+      for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+        batches.push(queryFn(ids.slice(i, i + BATCH_SIZE)));
+      }
+      const results = await Promise.all(batches);
+      const firstError = results.find((r) => r.error);
+      if (firstError?.error) return { data: [], error: firstError.error };
+      return { data: results.flatMap((r) => (r.data ?? []) as T[]), error: null };
+    };
+
+    const [
+      { data: cardsData, error: cardsError },
+      { data: episodesData, error: episodesError },
+      { data: decisionsData, error: decisionsError }
+    ] = await Promise.all([
+      batchIn(
+        (ids) =>
+          supabase.from("episode_judgment_cards").select("id, topic_title, judgment_type, frame_type, genre, deadline_at").in("id", ids),
+        judgmentCardIds
+      ),
+      batchIn((ids) => supabase.from("episodes").select("id, title, published_at").in("id", ids), episodeIds),
+      batchIn(
+        (ids) =>
+          supabase.from("user_decisions").select("id, judgment_card_id").eq("user_id", params.userId).in("judgment_card_id", ids),
+        judgmentCardIds
+      )
+    ]);
 
     if (cardsError) {
       return {

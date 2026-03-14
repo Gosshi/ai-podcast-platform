@@ -94,7 +94,7 @@ export default function WatchlistFilters({
     nextFilters: WatchlistFiltersProps["initialFilters"]
   ) => {
     track("watchlist_filter_change", {
-      page: "/watchlist",
+      page: "/saved",
       source: "watchlist_filters",
       filter_name: filterName,
       filter_value: filterValue,
@@ -169,7 +169,7 @@ export default function WatchlistFilters({
         </label>
 
         <label className={styles.selectLabel}>
-          <span>比較のしかた</span>
+          <span>判断の切り口</span>
           <select
             value={frameType ?? ""}
             className={styles.select}
@@ -180,7 +180,7 @@ export default function WatchlistFilters({
               updateFilters("frameType", nextValue);
             }}
           >
-            <option value="">すべての比較のしかた</option>
+            <option value="">すべての判断の切り口</option>
             {options.frameTypes.map((item) => (
               <option key={item} value={item}>
                 {formatFrameTypeLabel(item, item)}

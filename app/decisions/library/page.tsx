@@ -413,7 +413,7 @@ export default async function DecisionLibraryPage({
                   </div>
                   <div className={styles.linkRow}>
                     <TrackedLink
-                      href={`/episodes/${card.episode_id}`}
+                      href={`/decisions/${card.episode_id}`}
                       className={styles.cardLink}
                       eventName="library_card_click"
                       eventProperties={{

@@ -61,10 +61,10 @@ export default async function EpisodeDetailPage({
     <main className={styles.page}>
       <div className={styles.backRow}>
         <Link href="/decisions">今日のおすすめ</Link>
-        <Link href="/episodes">詳細一覧</Link>
+        <Link href="/decisions/library">詳細一覧</Link>
       </div>
 
-      {error ? <p className={styles.errorText}>エピソードの読み込みに失敗しました: {error}</p> : null}
+      {error ? <p className={styles.errorText}>読み込みに失敗しました。再読み込みしてください。</p> : null}
 
       {episode ? (
         <>
@@ -89,7 +89,7 @@ export default async function EpisodeDetailPage({
               viewer={viewer}
               title="プラン"
               copy="無料版は要点まで、有料版は理由や見直しタイミングまで見られます。"
-              analyticsSource={`/episodes/${id}`}
+              analyticsSource={`/decisions/${id}`}
               variant="compact"
             />
           </section>
@@ -109,7 +109,7 @@ export default async function EpisodeDetailPage({
                     <AnalyticsEventOnRender
                       eventName="judgment_card_impression"
                       properties={{
-                        page: `/episodes/${id}`,
+                        page: `/decisions/${id}`,
                         source: "episode_detail_card",
                         episode_id: episode.id,
                         judgment_card_id: card.id,
@@ -132,7 +132,7 @@ export default async function EpisodeDetailPage({
                         viewer={viewer}
                         initialItemId={card.watchlist_item_id}
                         initialStatus={card.watchlist_status}
-                        page={`/episodes/${id}`}
+                        page={`/decisions/${id}`}
                         source="episode_detail_card"
                         episodeId={episode.id}
                         genre={card.genre}
@@ -145,14 +145,14 @@ export default async function EpisodeDetailPage({
                       card={card}
                       isPaid={viewer?.isPaid ?? false}
                       locale="ja"
-                      analyticsPage={`/episodes/${id}`}
+                      analyticsPage={`/decisions/${id}`}
                       analyticsSource="episode_detail_card"
                     />
                     <SaveDecisionButton
                       judgmentCardId={card.id}
                       viewer={viewer}
                       initialSaved={card.is_saved}
-                      page={`/episodes/${id}`}
+                      page={`/decisions/${id}`}
                       source="episode_detail_card"
                       episodeId={episode.id}
                       genre={card.genre}
@@ -199,7 +199,7 @@ export default async function EpisodeDetailPage({
                           href="/account"
                           eventName="judgment_card_locked_cta_click"
                           eventProperties={{
-                            page: `/episodes/${id}`,
+                            page: `/decisions/${id}`,
                             source: "episode_detail_locked_block",
                             episode_id: episode.id,
                             judgment_card_id: card.id,
