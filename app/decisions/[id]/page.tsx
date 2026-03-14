@@ -2,10 +2,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import DecisionCalculator from "@/app/components/DecisionCalculator";
+import JudgmentCardActions from "@/app/components/JudgmentCardActions";
 import MemberControls from "@/app/components/MemberControls";
-import SaveDecisionButton from "@/app/components/SaveDecisionButton";
 import TrackedLink from "@/app/components/TrackedLink";
-import WatchlistControls from "@/app/components/WatchlistControls";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { buildLoginPath } from "@/app/lib/onboarding";
 import { loadPublishedEpisodeById } from "@/app/lib/episodes";
@@ -66,7 +65,7 @@ export default async function EpisodeDetailPage({
     <main className={styles.page}>
       <div className={styles.backRow}>
         <Link href="/decisions">今日のおすすめ</Link>
-        <Link href="/decisions/library">詳細一覧</Link>
+        <Link href="/decisions/all">すべての判断</Link>
       </div>
 
       {error ? <p className={styles.errorText}>読み込みに失敗しました。再読み込みしてください。</p> : null}
@@ -132,18 +131,19 @@ export default async function EpisodeDetailPage({
                     <h3>{formatTopicTitle(card.topic_title)}</h3>
                     <p className={styles.summary}>{card.judgment_summary}</p>
                     <div className={styles.cardActions}>
-                      <WatchlistControls
+                      <JudgmentCardActions
                         judgmentCardId={card.id}
                         viewer={viewer}
                         initialItemId={card.watchlist_item_id}
                         initialStatus={card.watchlist_status}
+                        savedDecisionId={card.saved_decision_id}
+                        savedOutcome={card.saved_outcome}
                         page={`/decisions/${id}`}
                         source="episode_detail_card"
                         episodeId={episode.id}
                         genre={card.genre}
                         frameType={card.frame_type}
                         judgmentType={card.judgment_type}
-                        compact
                       />
                     </div>
                     <DecisionCalculator
@@ -152,17 +152,6 @@ export default async function EpisodeDetailPage({
                       locale="ja"
                       analyticsPage={`/decisions/${id}`}
                       analyticsSource="episode_detail_card"
-                    />
-                    <SaveDecisionButton
-                      judgmentCardId={card.id}
-                      viewer={viewer}
-                      initialSaved={card.is_saved}
-                      page={`/decisions/${id}`}
-                      source="episode_detail_card"
-                      episodeId={episode.id}
-                      genre={card.genre}
-                      frameType={card.frame_type}
-                      judgmentType={card.judgment_type}
                     />
                     {viewer.isPaid ? (
                       <>

@@ -2,12 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
+import JudgmentCardActions from "@/app/components/JudgmentCardActions";
 import MemberControls from "@/app/components/MemberControls";
-import SaveDecisionButton from "@/app/components/SaveDecisionButton";
 import TrackedLink from "@/app/components/TrackedLink";
-import WatchlistControls from "@/app/components/WatchlistControls";
 import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
-import { buildDecisionReplayPath } from "@/app/lib/decisionReplay";
+import { resolveJudgmentCardActionState } from "@/app/lib/judgmentCardState";
 import {
   DEFAULT_DECISION_LIBRARY_SORT,
   FREE_LIBRARY_CARD_LIMIT,
@@ -33,6 +32,17 @@ import type { JudgmentType } from "@/src/lib/judgmentCards";
 import { ACTIVE_SUBSCRIPTION_LABELS, DECISION_PRIORITY_LABELS, INTEREST_TOPIC_LABELS } from "@/src/lib/userPreferences";
 import LibraryControls from "./LibraryControls";
 import styles from "./page.module.css";
+
+const buildDecisionStateTag = (savedDecisionId: string | null, savedOutcome: "success" | "neutral" | "regret" | null): string | null => {
+  const actionState = resolveJudgmentCardActionState({
+    savedDecisionId,
+    savedOutcome
+  });
+
+  if (actionState === "recorded") return "結果記録済み";
+  if (actionState === "adopted") return "採用済み";
+  return null;
+};
 
 export const dynamic = "force-dynamic";
 
@@ -318,156 +328,109 @@ export default async function DecisionLibraryPage({
           <p className={styles.emptyText}>条件に一致する判断メモはありません。</p>
         ) : (
           <div className={styles.grid}>
-            {result.cards.map((card) => (
-              <article key={card.id} className={styles.card}>
-                <div className={styles.cardHeader}>
-              <div className={styles.badgeRow}>
-                <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`]}`.trim()}>
-                      {JUDGMENT_TYPE_LABELS[card.judgment_type]}
-                    </span>
-                    <span className={`${styles.badge} ${styles[`urgency_${card.urgency}`]}`.trim()}>
-                      {URGENCY_LABELS[card.urgency]}
-                    </span>
-                  </div>
-                  <div className={styles.tagRow}>
-                    <span className={styles.tag}>{formatGenreLabel(card.genre)}</span>
-                    {card.is_saved ? <span className={styles.tag}>採用済み</span> : null}
-                    {card.watchlist_status ? <span className={styles.tag}>{WATCHLIST_STATUS_LABELS[card.watchlist_status]}</span> : null}
-                  </div>
-                </div>
+            {result.cards.map((card) => {
+              const decisionStateTag = buildDecisionStateTag(card.saved_decision_id, card.saved_outcome);
 
-                <h3>{formatTopicTitle(card.topic_title)}</h3>
-                <p className={styles.summary}>{card.judgment_summary}</p>
-
-                {card.personalization_reasons.length > 0 && result.personalization ? (
-                  <div className={styles.personalReasonRow}>
-                    {card.personalization_reasons.map((reason) => (
-                      <span key={`${card.id}:${reason}`} className={styles.personalReasonChip}>
-                        {reason}
+              return (
+                <article key={card.id} className={styles.card}>
+                  <div className={styles.cardHeader}>
+                    <div className={styles.badgeRow}>
+                      <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`]}`.trim()}>
+                        {JUDGMENT_TYPE_LABELS[card.judgment_type]}
                       </span>
-                    ))}
+                      <span className={`${styles.badge} ${styles[`urgency_${card.urgency}`]}`.trim()}>
+                        {URGENCY_LABELS[card.urgency]}
+                      </span>
+                    </div>
+                    <div className={styles.tagRow}>
+                      <span className={styles.tag}>{formatGenreLabel(card.genre)}</span>
+                      {decisionStateTag ? <span className={styles.tag}>{decisionStateTag}</span> : null}
+                      {card.watchlist_status ? <span className={styles.tag}>{WATCHLIST_STATUS_LABELS[card.watchlist_status]}</span> : null}
+                    </div>
                   </div>
-                ) : null}
 
-                <dl className={styles.metaList}>
-                  <div>
-                    <dt>公開日</dt>
-                    <dd>{formatDate(card.episode_published_at ?? card.created_at)}</dd>
-                  </div>
-                  {isPaid ? (
-                    <div>
-                      <dt>見直しタイミング</dt>
-                      <dd>{formatDeadline(card.deadline_at)}</dd>
+                  <h3>{formatTopicTitle(card.topic_title)}</h3>
+                  <p className={styles.summary}>{card.judgment_summary}</p>
+
+                  {card.personalization_reasons.length > 0 && result.personalization ? (
+                    <div className={styles.personalReasonRow}>
+                      {card.personalization_reasons.map((reason) => (
+                        <span key={`${card.id}:${reason}`} className={styles.personalReasonChip}>
+                          {reason}
+                        </span>
+                      ))}
                     </div>
                   ) : null}
-                  <div>
-                    <dt>詳細</dt>
-                    <dd>{formatEpisodeTitle(card.episode_title)}</dd>
-                  </div>
-                </dl>
 
-                {isPaid && card.action_text ? (
-                  <div className={styles.detailBlock}>
-                    <span className={styles.detailLabel}>次にすると良いこと</span>
-                    <p>{card.action_text}</p>
-                  </div>
-                ) : null}
+                  <dl className={styles.metaList}>
+                    <div>
+                      <dt>公開日</dt>
+                      <dd>{formatDate(card.episode_published_at ?? card.created_at)}</dd>
+                    </div>
+                    {isPaid ? (
+                      <div>
+                        <dt>見直しタイミング</dt>
+                        <dd>{formatDeadline(card.deadline_at)}</dd>
+                      </div>
+                    ) : null}
+                    <div>
+                      <dt>詳細</dt>
+                      <dd>{formatEpisodeTitle(card.episode_title)}</dd>
+                    </div>
+                  </dl>
 
-                {isPaid && card.watch_points.length > 0 ? (
-                  <div className={styles.detailBlock}>
-                    <span className={styles.detailLabel}>見直しポイント</span>
-                    <ul className={styles.detailList}>
-                      {card.watch_points.map((point) => (
-                        <li key={point}>{point}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
+                  {isPaid && card.action_text ? (
+                    <div className={styles.detailBlock}>
+                      <span className={styles.detailLabel}>次にすると良いこと</span>
+                      <p>{card.action_text}</p>
+                    </div>
+                  ) : null}
 
-                {!isPaid ? (
-                  <div className={styles.lockedPanel}>
-                    <strong>無料版はタイトルとかんたんな説明までです</strong>
-                    <p>有料版で判断理由、次の行動、見直しタイミング、履歴分析を確認できます。</p>
-                  </div>
-                ) : null}
+                  {isPaid && card.watch_points.length > 0 ? (
+                    <div className={styles.detailBlock}>
+                      <span className={styles.detailLabel}>見直しポイント</span>
+                      <ul className={styles.detailList}>
+                        {card.watch_points.map((point) => (
+                          <li key={point}>{point}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
 
-                <div className={styles.cardFooter}>
-                  <div className={styles.cardActionStack}>
-                    <WatchlistControls
-                      judgmentCardId={card.id}
-                      viewer={viewer}
-                      initialItemId={card.watchlist_item_id}
-                      initialStatus={card.watchlist_status}
-                      page="/decisions/library"
-                      source="decision_library_card"
-                      episodeId={card.episode_id}
-                      genre={card.genre}
-                      frameType={card.frame_type}
-                      judgmentType={card.judgment_type}
-                      compact
-                    />
-                    <SaveDecisionButton
-                      judgmentCardId={card.id}
-                      viewer={viewer}
-                      initialSaved={card.is_saved}
-                      page="/decisions/library"
-                      source="decision_library_card"
-                      episodeId={card.episode_id}
-                      genre={card.genre}
-                      frameType={card.frame_type}
-                      judgmentType={card.judgment_type}
-                    />
-                  </div>
-                  <div className={styles.linkRow}>
-                    <TrackedLink
-                      href={`/decisions/${card.episode_id}`}
-                      className={styles.cardLink}
-                      eventName="library_card_click"
-                      eventProperties={{
-                        page: "/decisions/library",
-                        source: "decision_library_episode_link",
-                        episode_id: card.episode_id,
-                        judgment_card_id: card.id,
-                        genre: card.genre ?? undefined,
-                        frame_type: card.frame_type ?? undefined,
-                        judgment_type: card.judgment_type,
-                        urgency: card.urgency,
-                        query: activeFilters.query || undefined,
-                        sort: activeFilters.sort
-                      }}
-                    >
-                      詳細
-                    </TrackedLink>
-                    <TrackedLink
-                      href={card.saved_decision_id ? "/history" : `/decisions/${card.episode_id}`}
-                      className={styles.secondaryLink}
-                      eventName="library_card_click"
-                      eventProperties={{
-                        page: "/decisions/library",
-                        source: "decision_library_history_link",
-                        episode_id: card.episode_id,
-                        judgment_card_id: card.id,
-                        genre: card.genre ?? undefined,
-                        frame_type: card.frame_type ?? undefined,
-                        judgment_type: card.judgment_type,
-                        urgency: card.urgency,
-                        query: activeFilters.query || undefined,
-                        sort: activeFilters.sort
-                      }}
-                    >
-                      {card.saved_decision_id ? "履歴" : "詳細"}
-                    </TrackedLink>
-                    {card.saved_decision_id ? (
+                  {!isPaid ? (
+                    <div className={styles.lockedPanel}>
+                      <strong>無料版はタイトルとかんたんな説明までです</strong>
+                      <p>有料版で判断理由、次の行動、見直しタイミング、履歴分析を確認できます。</p>
+                    </div>
+                  ) : null}
+
+                  <div className={styles.cardFooter}>
+                    <div className={styles.cardActionStack}>
+                      <JudgmentCardActions
+                        judgmentCardId={card.id}
+                        viewer={viewer}
+                        initialItemId={card.watchlist_item_id}
+                        initialStatus={card.watchlist_status}
+                        savedDecisionId={card.saved_decision_id}
+                        savedOutcome={card.saved_outcome}
+                        page="/decisions/library"
+                        source="decision_library_card"
+                        episodeId={card.episode_id}
+                        genre={card.genre}
+                        frameType={card.frame_type}
+                        judgmentType={card.judgment_type}
+                      />
+                    </div>
+                    <div className={styles.linkRow}>
                       <TrackedLink
-                        href={buildDecisionReplayPath(card.saved_decision_id)}
-                        className={styles.secondaryLink}
+                        href={`/decisions/${card.episode_id}`}
+                        className={styles.cardLink}
                         eventName="library_card_click"
                         eventProperties={{
                           page: "/decisions/library",
-                          source: "decision_library_replay_link",
+                          source: "decision_library_episode_link",
                           episode_id: card.episode_id,
                           judgment_card_id: card.id,
-                          decision_id: card.saved_decision_id,
                           genre: card.genre ?? undefined,
                           frame_type: card.frame_type ?? undefined,
                           judgment_type: card.judgment_type,
@@ -476,13 +439,13 @@ export default async function DecisionLibraryPage({
                           sort: activeFilters.sort
                         }}
                       >
-                        学びを見る
+                        詳細
                       </TrackedLink>
-                    ) : null}
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         )}
 

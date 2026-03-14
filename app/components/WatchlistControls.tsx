@@ -21,6 +21,9 @@ type WatchlistControlsProps = {
   frameType?: string | null;
   judgmentType?: JudgmentType;
   compact?: boolean;
+  savedLabel?: string;
+  archivedLabel?: string;
+  showHint?: boolean;
 };
 
 type WatchlistApiSuccess = {
@@ -55,7 +58,7 @@ const buildErrorMessage = (error: string, limit?: number): string => {
   }
 
   if (error === "unauthorized") {
-    return "保存するにはログインが必要です。";
+    return "判断を更新するにはログインが必要です。";
   }
 
   return "保存状態の更新に失敗しました。時間をおいて再度お試しください。";
@@ -72,7 +75,10 @@ export default function WatchlistControls({
   genre,
   frameType,
   judgmentType,
-  compact = false
+  compact = false,
+  savedLabel = "保存",
+  archivedLabel = "見送る",
+  showHint = true
 }: WatchlistControlsProps) {
   const router = useRouter();
   const [itemId, setItemId] = useState(initialItemId);
@@ -165,69 +171,32 @@ export default function WatchlistControls({
     }
   };
 
-  if (!viewer) {
-    return (
-      <div className={`${styles.shell} ${compact ? styles.shellCompact : ""}`.trim()}>
-        <button
-          type="button"
-          className={`${styles.button} ${styles.buttonGhost}`.trim()}
-          onClick={() => router.push(buildLoginPath(page))}
-        >
-          ログインして保存
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className={`${styles.shell} ${compact ? styles.shellCompact : ""}`.trim()}>
       <div className={styles.row}>
-        {compact ? (
-          <>
-            <button
-              type="button"
-              className={`${styles.button} ${
-                status === "saved" || status === "watching" ? styles.buttonActive : ""
-              }`.trim()}
-              onClick={() => void upsertStatus("saved")}
-              disabled={isSubmitting}
-            >
-              保存
-            </button>
-            <button
-              type="button"
-              className={`${styles.button} ${status === "archived" ? styles.buttonMutedActive : styles.buttonMuted}`.trim()}
-              onClick={() => void upsertStatus(status === "archived" ? "saved" : "archived")}
-              disabled={isSubmitting}
-            >
-              {status === "archived" ? "保存に戻す" : "見送る"}
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              className={`${styles.button} ${
-                status === "saved" || status === "watching" ? styles.buttonActive : ""
-              }`.trim()}
-              onClick={() => void upsertStatus("saved")}
-              disabled={isSubmitting}
-            >
-              保存
-            </button>
-            <button
-              type="button"
-              className={`${styles.button} ${status === "archived" ? styles.buttonMutedActive : styles.buttonMuted}`.trim()}
-              onClick={() => void upsertStatus(status === "archived" ? "saved" : "archived")}
-              disabled={isSubmitting}
-            >
-              {status === "archived" ? "保存に戻す" : "見送る"}
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          className={`${styles.button} ${
+            status === "saved" || status === "watching" ? styles.buttonActive : !viewer ? styles.buttonGhost : ""
+          }`.trim()}
+          onClick={() => void (viewer ? upsertStatus("saved") : router.push(buildLoginPath(page)))}
+          disabled={isSubmitting}
+        >
+          {viewer ? savedLabel : `ログインして${savedLabel}`}
+        </button>
+        <button
+          type="button"
+          className={`${styles.button} ${
+            status === "archived" ? styles.buttonMutedActive : styles.buttonMuted
+          } ${!viewer ? styles.buttonGhost : ""}`.trim()}
+          onClick={() => void (viewer ? upsertStatus("archived") : router.push(buildLoginPath(page)))}
+          disabled={isSubmitting}
+        >
+          {viewer ? archivedLabel : `ログインして${archivedLabel}`}
+        </button>
       </div>
 
-      {!compact ? (
+      {!compact && showHint ? (
         <p className={styles.hint}>
           {status === "archived"
             ? STATUS_HINTS.archived
