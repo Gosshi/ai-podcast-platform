@@ -82,9 +82,10 @@ export default async function EpisodeDetailPage({
 
             <MemberControls
               viewer={viewer}
-              title="Access Level"
-              copy="無料版は judgment summary まで。有料会員になると action、deadline、watch points、threshold、full DeepDive を開放します。"
+              title="プラン"
+              copy="無料版は要点まで、有料版は詳しい判断メモと解説まで見られます。"
               analyticsSource={`/episodes/${id}`}
+              variant="compact"
             />
           </section>
 

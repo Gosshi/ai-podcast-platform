@@ -38,21 +38,20 @@ export default async function OnboardingPage({
       <div className={styles.shell}>
         <section className={styles.hero}>
           <div className={styles.copy}>
-            <p className={styles.eyebrow}>User Onboarding</p>
-            <h1>最初の数問で、Decision Engine の personalisation 基盤を作る。</h1>
+            <p className={styles.eyebrow}>Getting Started</p>
+            <h1>よく見る作品や使っているサービスを先に教えてください。</h1>
             <p className={styles.lead}>
-              興味ジャンル、利用中のサービス、判断で優先したいこと、使える時間、任意の予算感度を取得して
-              user_preferences を初期化します。ここで集めた explicit preference は cold start の補助として
-              ranking / hints / alerts / paywall に渡せる形で保存します。
+              最初に好みを入れておくと、今日のおすすめや見直しタイミングがあなた向けに整います。数問で終わるので、
+              先に済ませておくとこのあと迷いにくくなります。
             </p>
             <div className={styles.metaGrid}>
               <article className={styles.metaCard}>
-                <span>収集する情報</span>
-                <strong>topics / subscriptions / priorities / time / budget</strong>
+                <span>設定する内容</span>
+                <strong>ジャンル / 利用中サービス / 重視したいこと / 使える時間</strong>
               </article>
               <article className={styles.metaCard}>
-                <span>保存先</span>
-                <strong>Supabase user_preferences</strong>
+                <span>所要時間</span>
+                <strong>約1分</strong>
               </article>
               <article className={styles.metaCard}>
                 <span>完了後の遷移</span>

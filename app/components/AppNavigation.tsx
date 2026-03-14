@@ -1,28 +1,20 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import TrackedLink from "@/app/components/TrackedLink";
 import styles from "./app-navigation.module.css";
 
 const NAV_ITEMS = [
+  { href: "/", label: "Home" },
   { href: "/decisions", label: "Decisions" },
-  { href: "/alerts", label: "Alerts" },
   { href: "/decisions/library", label: "Library" },
-  { href: "/watchlist", label: "Watchlist" },
   { href: "/history", label: "History" },
-  { href: "/weekly-decisions", label: "Weekly Digest" },
-  { href: "/episodes", label: "Episodes" },
-  { href: "/letters", label: "Letters" },
   { href: "/account", label: "Account" }
 ];
 
 const isActivePath = (pathname: string, href: string): boolean => {
-  if (href === "/decisions" && pathname === "/") {
-    return true;
-  }
-
-  if (href === "/decisions") {
-    return pathname === "/decisions";
+  if (href === "/") {
+    return pathname === "/";
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -38,19 +30,35 @@ export default function AppNavigation() {
   return (
     <header className={styles.header}>
       <div className={styles.shell}>
-        <Link href="/decisions" className={styles.brand}>
-          AI Podcast Platform
-        </Link>
+        <TrackedLink
+          href="/"
+          className={styles.brand}
+          eventName="nav_click"
+          eventProperties={{
+            page: pathname,
+            source: "header_brand",
+            destination: "/"
+          }}
+        >
+          視聴判断ガイド
+        </TrackedLink>
 
         <nav className={styles.nav} aria-label="Primary">
           {NAV_ITEMS.map((item) => (
-            <Link
+            <TrackedLink
               key={item.href}
               href={item.href}
               className={`${styles.link} ${isActivePath(pathname, item.href) ? styles.linkActive : ""}`.trim()}
+              eventName="nav_click"
+              eventProperties={{
+                page: pathname,
+                source: "header_nav",
+                destination: item.href,
+                label: item.label
+              }}
             >
               {item.label}
-            </Link>
+            </TrackedLink>
           ))}
         </nav>
       </div>

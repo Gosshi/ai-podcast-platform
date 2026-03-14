@@ -90,9 +90,10 @@ export default async function HistoryPage() {
 
         <MemberControls
           viewer={viewer}
-          title="Decision Memory"
+          title="プラン"
           copy="保存した判断に outcome を残すことで、自分に合う判断の精度を継続的に上げていきます。"
           analyticsSource="/history"
+          variant="compact"
         />
       </section>
 
@@ -116,8 +117,8 @@ export default async function HistoryPage() {
 
       {!viewer?.isPaid ? (
         <section className={styles.noticePanel}>
-          <h2>free は10件、paid は無制限</h2>
-          <p>保存件数が上限に達すると、新しい判断は保存できません。継続的に personal learning を使う場合は paid に切り替えてください。</p>
+          <h2>無料版は10件まで、有料版は上限なしです</h2>
+          <p>保存件数が上限に達すると、新しい判断は保存できません。継続して振り返りたい場合は有料版に切り替えてください。</p>
           <TrackedLink
             href="/account"
             className={styles.secondaryLink}

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
@@ -22,6 +23,7 @@ type MemberControlsProps = {
   copy?: string;
   showBillingPortal?: boolean;
   analyticsSource?: string;
+  variant?: "full" | "compact";
 };
 
 const syncServerSession = async (session: Session | null): Promise<void> => {
@@ -53,7 +55,8 @@ export default function MemberControls({
   title = "会員ステータス",
   copy = "無料版は判断の入口まで。有料会員になると行動指針、期限、監視ポイント、アーカイブが開放されます。",
   showBillingPortal = false,
-  analyticsSource
+  analyticsSource,
+  variant = "full"
 }: MemberControlsProps) {
   const router = useRouter();
   const [email, setEmail] = useState(viewer?.email ?? "");
@@ -62,6 +65,7 @@ export default function MemberControls({
   const [isPending, startTransition] = useTransition();
   const latestViewerRef = useRef(viewer);
   const lastSyncedAccessTokenRef = useRef<string | null>(null);
+  const isCompact = variant === "compact";
 
   latestViewerRef.current = viewer;
 
@@ -221,110 +225,139 @@ export default function MemberControls({
           }}
         />
       ) : null}
-      <div className={styles.header}>
-        <p className={styles.eyebrow}>Membership</p>
-        <h2 className={styles.title}>{title}</h2>
-        <p className={styles.copy}>{copy}</p>
-      </div>
 
-      <div className={styles.statusRow}>
-        <span className={`${styles.badge} ${viewer?.isPaid ? styles.badgePaid : styles.badgeFree}`}>
-          {resolveMembershipBadgeLabel(viewer?.isPaid ?? false)}
-        </span>
-        <span className={styles.meta}>
-          {viewer?.email ? viewer.email : "未ログイン"}
-        </span>
-      </div>
-
-      {viewer ? (
-        <dl className={styles.detailGrid}>
-          <div className={styles.detailItem}>
-            <dt>プラン</dt>
-            <dd>{resolvePlanName(viewer.planType, viewer.isPaid)}</dd>
+      {isCompact ? (
+        <>
+          <div className={styles.compactHeader}>
+            <p className={styles.eyebrow}>Plan</p>
+            <span className={`${styles.badge} ${viewer?.isPaid ? styles.badgePaid : styles.badgeFree}`}>
+              {resolveMembershipBadgeLabel(viewer?.isPaid ?? false)}
+            </span>
           </div>
-          <div className={styles.detailItem}>
-            <dt>ステータス</dt>
-            <dd>{resolveMembershipStatusLabel(viewer.subscriptionStatus, viewer.cancelAtPeriodEnd)}</dd>
+          <div className={styles.compactBody}>
+            <div className={styles.header}>
+              <h2 className={styles.title}>{title}</h2>
+              <p className={styles.copy}>
+                {viewer
+                  ? viewer.isPaid
+                    ? "すべての判断メモと振り返りを利用できます。"
+                    : "無料版では要点まで確認できます。詳細なプラン管理は Account に集約しています。"
+                  : "ログインすると好みの設定、履歴、プラン管理が使えます。"}
+              </p>
+            </div>
+            <Link href="/account" className={styles.compactLink}>
+              {viewer ? "Accountを見る" : "ログイン / プランを見る"}
+            </Link>
           </div>
-          <div className={styles.detailItem}>
-            <dt>支払い状態</dt>
-            <dd>{resolvePaymentStateLabel(viewer.subscriptionStatus)}</dd>
-          </div>
-          <div className={styles.detailItem}>
-            <dt>次回更新日</dt>
-            <dd>
-              {formatMembershipDate(viewer.currentPeriodEnd, "ja-JP", {
-                year: "numeric",
-                month: "short",
-                day: "numeric"
-              })}
-            </dd>
-          </div>
-        </dl>
-      ) : null}
-
-      {viewer?.cancelAtPeriodEnd ? (
-        <p className={styles.hint}>現在の期間が終わるまでは有料機能を利用できます。</p>
-      ) : null}
-
-      {viewer?.isPaid ? (
-        <p className={styles.hint}>行動指針、判断期限、監視ポイント、アーカイブ全文を利用できます。</p>
+        </>
       ) : (
-        <p className={styles.hint}>無料版では判断サマリーのプレビューまで。有料会員になると詳細判断を自分で管理できます。</p>
-      )}
-
-      {viewer ? (
-        <div className={styles.actions}>
-          {!viewer.isPaid ? (
-            <button
-              type="button"
-              className={styles.primaryButton}
-              onClick={() => void handleSubscribe()}
-              disabled={isPending}
-            >
-              有料会員になる
-            </button>
-          ) : null}
-          {showBillingPortal && viewer.stripeCustomerId ? (
-            <button
-              type="button"
-              className={styles.secondaryButton}
-              onClick={() => void handleBillingPortal()}
-              disabled={isPending}
-            >
-              サブスクを管理
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className={styles.secondaryButton}
-            onClick={() => void handleSignOut()}
-            disabled={isPending}
-          >
-            ログアウト
-          </button>
-        </div>
-      ) : (
-        <form className={styles.form} onSubmit={(event) => void handleMagicLink(event)}>
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className={styles.input}
-            placeholder="you@example.com"
-            required
-          />
-          <div className={styles.actions}>
-            <button type="submit" className={styles.primaryButton} disabled={isPending}>
-              Magic Linkでログイン
-            </button>
+        <>
+          <div className={styles.header}>
+            <p className={styles.eyebrow}>Membership</p>
+            <h2 className={styles.title}>{title}</h2>
+            <p className={styles.copy}>{copy}</p>
           </div>
-          <p className={styles.hint}>ログインすると、プラン確認と購読管理ができます。</p>
-        </form>
-      )}
 
-      {message ? <p className={styles.message}>{message}</p> : null}
-      {error ? <p className={`${styles.message} ${styles.error}`}>{error}</p> : null}
+          <div className={styles.statusRow}>
+            <span className={`${styles.badge} ${viewer?.isPaid ? styles.badgePaid : styles.badgeFree}`}>
+              {resolveMembershipBadgeLabel(viewer?.isPaid ?? false)}
+            </span>
+            <span className={styles.meta}>
+              {viewer?.email ? viewer.email : "未ログイン"}
+            </span>
+          </div>
+
+          {viewer ? (
+            <dl className={styles.detailGrid}>
+              <div className={styles.detailItem}>
+                <dt>プラン</dt>
+                <dd>{resolvePlanName(viewer.planType, viewer.isPaid)}</dd>
+              </div>
+              <div className={styles.detailItem}>
+                <dt>ステータス</dt>
+                <dd>{resolveMembershipStatusLabel(viewer.subscriptionStatus, viewer.cancelAtPeriodEnd)}</dd>
+              </div>
+              <div className={styles.detailItem}>
+                <dt>支払い状態</dt>
+                <dd>{resolvePaymentStateLabel(viewer.subscriptionStatus)}</dd>
+              </div>
+              <div className={styles.detailItem}>
+                <dt>次回更新日</dt>
+                <dd>
+                  {formatMembershipDate(viewer.currentPeriodEnd, "ja-JP", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric"
+                  })}
+                </dd>
+              </div>
+            </dl>
+          ) : null}
+
+          {viewer?.cancelAtPeriodEnd ? (
+            <p className={styles.hint}>現在の期間が終わるまでは有料機能を利用できます。</p>
+          ) : null}
+
+          {viewer?.isPaid ? (
+            <p className={styles.hint}>行動指針、判断期限、監視ポイント、アーカイブ全文を利用できます。</p>
+          ) : (
+            <p className={styles.hint}>無料版では判断サマリーのプレビューまで。有料会員になると詳細判断を自分で管理できます。</p>
+          )}
+
+          {viewer ? (
+            <div className={styles.actions}>
+              {!viewer.isPaid ? (
+                <button
+                  type="button"
+                  className={styles.primaryButton}
+                  onClick={() => void handleSubscribe()}
+                  disabled={isPending}
+                >
+                  有料会員になる
+                </button>
+              ) : null}
+              {showBillingPortal && viewer.stripeCustomerId ? (
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => void handleBillingPortal()}
+                  disabled={isPending}
+                >
+                  サブスクを管理
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => void handleSignOut()}
+                disabled={isPending}
+              >
+                ログアウト
+              </button>
+            </div>
+          ) : (
+            <form className={styles.form} onSubmit={(event) => void handleMagicLink(event)}>
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className={styles.input}
+                placeholder="you@example.com"
+                required
+              />
+              <div className={styles.actions}>
+                <button type="submit" className={styles.primaryButton} disabled={isPending}>
+                  Magic Linkでログイン
+                </button>
+              </div>
+              <p className={styles.hint}>ログインすると、プラン確認と購読管理ができます。</p>
+            </form>
+          )}
+
+          {message ? <p className={styles.message}>{message}</p> : null}
+          {error ? <p className={`${styles.message} ${styles.error}`}>{error}</p> : null}
+        </>
+      )}
     </section>
   );
 }
