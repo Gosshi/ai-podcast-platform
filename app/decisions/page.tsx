@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import AlertsInbox from "@/app/components/AlertsInbox";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
@@ -5,10 +6,10 @@ import OutcomeReminderSection from "@/app/components/OutcomeReminderSection";
 import SaveDecisionButton from "@/app/components/SaveDecisionButton";
 import TrackedLink from "@/app/components/TrackedLink";
 import WatchlistControls from "@/app/components/WatchlistControls";
-import { syncUserAlerts } from "@/app/lib/alerts";
+import { resolveAlertsErrorMessage, syncUserAlerts } from "@/app/lib/alerts";
 import { loadDecisionDashboardCards } from "@/app/lib/decisions";
 import { loadDecisionHistory } from "@/app/lib/decisionHistory";
-import { buildOnboardingPath } from "@/app/lib/onboarding";
+import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
 import { formatEpisodeTitle, formatGenreLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import { pickTodayDecisionCards } from "@/src/lib/decisionDashboard";
@@ -56,29 +57,18 @@ const formatDecisionDate = (value: string | null): string => {
 
 export default async function DecisionsPage() {
   const viewer = await getViewerFromCookies();
+  if (!viewer) {
+    redirect(buildLoginPath("/decisions"));
+  }
+
   const isPaid = viewer?.isPaid ?? false;
   const onboardingPath = buildOnboardingPath("/decisions");
   const onboardingEntryHref = onboardingPath;
 
   const [{ cards, error }, historyState, alertState] = await Promise.all([
     loadDecisionDashboardCards({ isPaid, userId: viewer?.userId }),
-    viewer?.userId
-      ? loadDecisionHistory(viewer.userId)
-      : Promise.resolve({
-          entries: [],
-          stats: {
-            totalDecisions: 0,
-            resolvedCount: 0,
-            unresolvedCount: 0,
-            successCount: 0,
-            regretCount: 0,
-            neutralCount: 0,
-            successRate: 0
-          },
-          profile: null,
-          error: null
-        }),
-    viewer ? syncUserAlerts(viewer) : Promise.resolve({ alerts: [], preferences: null, error: null })
+    loadDecisionHistory(viewer.userId),
+    syncUserAlerts(viewer)
   ]);
 
   const personalProfile = viewer?.isPaid ? historyState.profile : null;
@@ -135,25 +125,27 @@ export default async function DecisionsPage() {
           </div>
           <h3>{formatTopicTitle(card.topic_title)}</h3>
           <p className={styles.summary}>{card.judgment_summary}</p>
-          <dl className={styles.metaList}>
-            <div>
-              <dt>理由</dt>
-              <dd>{card.judgment_summary}</dd>
-            </div>
-            <div>
-              <dt>次の行動</dt>
-              <dd>{card.action_text ?? "気になったら詳細を開いて確認する"}</dd>
-            </div>
-            <div>
-              <dt>見直しタイミング</dt>
-              <dd>{card.deadline_at ? formatDeadline(card.deadline_at) : "今週中に見直す"}</dd>
-            </div>
-            <div>
-              <dt>あなた向け補足</dt>
-              <dd>{personalHint?.text ?? "気分や使える時間に合うかを先に確認すると迷いにくくなります。"}</dd>
-            </div>
-          </dl>
-          {personalHint ? (
+          {isPaid ? (
+            <dl className={styles.metaList}>
+              <div>
+                <dt>判断理由</dt>
+                <dd>{card.judgment_summary}</dd>
+              </div>
+              <div>
+                <dt>次の行動</dt>
+                <dd>{card.action_text ?? "詳細を開いて確認する"}</dd>
+              </div>
+              <div>
+                <dt>見直しタイミング</dt>
+                <dd>{card.deadline_at ? formatDeadline(card.deadline_at) : "今週中に見直す"}</dd>
+              </div>
+              <div>
+                <dt>履歴からの補足</dt>
+                <dd>{personalHint?.text ?? "履歴が増えるほど、あなた向けの補足が表示されます。"}</dd>
+              </div>
+            </dl>
+          ) : null}
+          {isPaid && personalHint ? (
             <div className={`${styles.personalHint} ${styles[`personalHint_${personalHint.tone}`]}`.trim()}>
               <span className={styles.personalHintLabel}>あなた向けの補足</span>
               <p>{personalHint.text}</p>
@@ -163,8 +155,8 @@ export default async function DecisionsPage() {
         </TrackedLink>
         {!isPaid ? (
           <div className={styles.lockedPanel}>
-            <strong>有料版では判断の背景まで確認できます</strong>
-            <p>理由、次の行動、見直しタイミングを、より詳しく確認できます。</p>
+            <strong>無料版はタイトルとかんたんな説明までです</strong>
+            <p>有料版で判断理由、次の行動、見直しタイミング、履歴からの補足を確認できます。</p>
             <TrackedLink
               href="/account"
               className={styles.paywallLink}
@@ -232,7 +224,7 @@ export default async function DecisionsPage() {
           <h1>今日のおすすめ</h1>
           <p className={styles.lead}>今日の判断を、好みや履歴をもとに短いカードでまとめています。</p>
           <div className={styles.heroActions}>
-            {viewer?.needsOnboarding || !viewer ? (
+            {viewer.needsOnboarding ? (
               <TrackedLink
                 href={onboardingEntryHref}
                 className={styles.secondaryHeroLink}
@@ -243,7 +235,7 @@ export default async function DecisionsPage() {
                   destination: onboardingPath
                 }}
               >
-                {viewer ? "好みを設定する" : "はじめる"}
+                好みを設定する
               </TrackedLink>
             ) : null}
             <TrackedLink
@@ -320,25 +312,29 @@ export default async function DecisionsPage() {
                   </div>
                   <h3>{formatTopicTitle(recommendation.card.topic_title)}</h3>
                   <p className={styles.summary}>{recommendation.card.judgment_summary}</p>
-                  <dl className={styles.metaList}>
-                    <div>
-                      <dt>次の行動</dt>
-                      <dd>{recommendation.recommended_action}</dd>
-                    </div>
-                    <div>
-                      <dt>見直しタイミング</dt>
-                      <dd>
-                        {isPaid && recommendation.card.deadline_at
-                          ? formatDeadline(recommendation.card.deadline_at)
-                          : recommendation.deadline_label}
-                      </dd>
-                    </div>
-                  </dl>
-                  <ul className={styles.reasonTagList} aria-label="おすすめ理由">
-                    {recommendation.reason_tags.map((tag) => (
-                      <li key={tag}>{tag}</li>
-                    ))}
-                  </ul>
+                  {isPaid ? (
+                    <>
+                      <dl className={styles.metaList}>
+                        <div>
+                          <dt>次の行動</dt>
+                          <dd>{recommendation.recommended_action}</dd>
+                        </div>
+                        <div>
+                          <dt>見直しタイミング</dt>
+                          <dd>
+                            {recommendation.card.deadline_at
+                              ? formatDeadline(recommendation.card.deadline_at)
+                              : recommendation.deadline_label}
+                          </dd>
+                        </div>
+                      </dl>
+                      <ul className={styles.reasonTagList} aria-label="おすすめ理由">
+                        {recommendation.reason_tags.map((tag) => (
+                          <li key={tag}>{tag}</li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : null}
                   <p className={styles.episodeLinkText}>詳細を見る</p>
                 </TrackedLink>
               </article>
@@ -369,8 +365,8 @@ export default async function DecisionsPage() {
         {!isPaid ? (
           <div className={styles.recommendationFootnote}>
             <p className={styles.sectionEyebrow}>プラン</p>
-            <h3>有料版では「なぜこの判断か」まで見えます</h3>
-            <p>見直しタイミングやあなたの傾向まで含めて、より納得しやすいおすすめに広がります。</p>
+            <h3>有料版では判断理由と次の行動まで見えます</h3>
+            <p>無料版はタイトルとかんたんな説明まで。有料版で見直しタイミングと履歴分析も確認できます。</p>
             <TrackedLink
               href="/account"
               className={styles.inlineUpgradeLink}
@@ -386,16 +382,16 @@ export default async function DecisionsPage() {
         ) : null}
       </section>
 
-      {error ? <p className={styles.errorText}>判断カードの読み込みに失敗しました: {error}</p> : null}
-      {alertState.error ? <p className={styles.errorText}>お知らせの読み込みに失敗しました。再読み込みしてください。</p> : null}
+      {error ? <p className={styles.errorText}>判断カードの読み込みに失敗しました。時間をおいて再度お試しください。</p> : null}
+      {alertState.error ? <p className={styles.errorText}>{resolveAlertsErrorMessage(alertState.error)}</p> : null}
 
       {!isPaid ? (
         <section className={styles.paywallBanner}>
           <div>
             <p className={styles.paywallEyebrow}>無料版</p>
-            <h2>詳しい判断カードはアカウントから切り替えできます</h2>
+            <h2>無料版はタイトルとかんたんな説明までです</h2>
             <p>
-              無料版はまず要点を確認するための入口です。有料版にすると、次の一手や見直しタイミングまでまとめて見られます。
+              有料版にすると、判断理由、次の行動、見直しタイミング、履歴分析までまとめて確認できます。
             </p>
           </div>
           <TrackedLink
@@ -412,17 +408,15 @@ export default async function DecisionsPage() {
         </section>
       ) : null}
 
-      {viewer ? (
-        <AlertsInbox
-          alerts={alertState.alerts.slice(0, 3)}
-          page="/decisions"
-          title="お知らせ"
-          lead="見直し時期が来たものだけを、必要な分だけまとめています。"
-          showViewAllLink={alertState.alerts.length > 3}
-        />
-      ) : null}
+      <AlertsInbox
+        alerts={alertState.alerts.slice(0, 3)}
+        page="/decisions"
+        title="通知"
+        lead="見直し時期が来たものだけを、必要な分だけまとめています。"
+        showViewAllLink={alertState.alerts.length > 3}
+      />
 
-      {viewer && visibleOutcomeReminders.length > 0 ? (
+      {visibleOutcomeReminders.length > 0 ? (
         <OutcomeReminderSection
           reminders={visibleOutcomeReminders}
           hiddenCount={hiddenOutcomeReminderCount}

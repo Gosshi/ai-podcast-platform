@@ -1,7 +1,7 @@
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import TrackedLink from "@/app/components/TrackedLink";
 import { loadDecisionDashboardCards } from "@/app/lib/decisions";
-import { buildAccountEntryPath, buildOnboardingPath } from "@/app/lib/onboarding";
+import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
 import { formatGenreLabel, formatTopicTitle } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./home.module.css";
@@ -106,7 +106,7 @@ export default async function HomePage() {
 
   const onboardingHref = buildOnboardingPath("/decisions");
   const onboardingEntryHref = onboardingHref;
-  const loginHref = buildAccountEntryPath(onboardingHref);
+  const loginHref = buildLoginPath("/decisions");
   const startHref = viewer ? onboardingHref : loginHref;
   const onboardingSource = viewer?.needsOnboarding ? "landing_first_run" : "landing_preferences";
 
@@ -173,13 +173,13 @@ export default async function HomePage() {
                 はじめる
               </TrackedLink>
               <TrackedLink
-                href="/decisions"
+                href={viewer ? "/decisions" : loginHref}
                 className={styles.secondaryLink}
                 eventName="landing_cta_click"
                 eventProperties={{
                   page: "/",
                   source: "landing_decisions",
-                  destination: "/decisions"
+                  destination: viewer ? "/decisions" : loginHref
                 }}
               >
                 今日のおすすめを見る

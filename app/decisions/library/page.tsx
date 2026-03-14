@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
 import SaveDecisionButton from "@/app/components/SaveDecisionButton";
 import TrackedLink from "@/app/components/TrackedLink";
 import WatchlistControls from "@/app/components/WatchlistControls";
-import { buildOnboardingPath } from "@/app/lib/onboarding";
+import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
 import { buildDecisionReplayPath } from "@/app/lib/decisionReplay";
 import {
   DEFAULT_DECISION_LIBRARY_SORT,
@@ -121,6 +122,10 @@ export default async function DecisionLibraryPage({
 }) {
   const resolvedSearchParams = (await searchParams) ?? {};
   const viewer = await getViewerFromCookies();
+  if (!viewer) {
+    redirect(buildLoginPath("/decisions/library"));
+  }
+
   const onboardingPath = buildOnboardingPath("/decisions/library");
 
   const query = toSingleValue(resolvedSearchParams.q).trim().replace(/\s+/g, " ");
@@ -137,7 +142,7 @@ export default async function DecisionLibraryPage({
   const defaultSort = resolveDecisionLibraryDefaultSort(viewer?.preferenceProfile);
   const sort = explicitSort ?? defaultSort;
   const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
-  const isPaid = viewer?.isPaid ?? false;
+  const isPaid = viewer.isPaid;
   const isInitialView = !query && !genre && !frameType && !judgmentType && !urgency && page === 1;
 
   const activeFilters = {
@@ -151,8 +156,8 @@ export default async function DecisionLibraryPage({
 
   const result = await loadDecisionLibrary({
     isPaid,
-    userId: viewer?.userId,
-    preferenceProfile: !hasExplicitSort && isInitialView ? viewer?.preferenceProfile : null,
+    userId: viewer.userId,
+    preferenceProfile: !hasExplicitSort && isInitialView ? viewer.preferenceProfile : null,
     query,
     genre,
     frameType,
@@ -201,7 +206,7 @@ export default async function DecisionLibraryPage({
             <span>{query ? `「${query}」に近い判断を表示中` : "気になる判断を探して保存できます"}</span>
           </div>
 
-          {viewer?.needsOnboarding ? (
+          {viewer.needsOnboarding ? (
             <div className={styles.personalizationPanel}>
               <p className={styles.sectionEyebrow}>初回設定</p>
               <h2>好みを入れておくと、最初の並び順が分かりやすくなります。</h2>
@@ -326,7 +331,7 @@ export default async function DecisionLibraryPage({
                   </div>
                   <div className={styles.tagRow}>
                     <span className={styles.tag}>{formatGenreLabel(card.genre)}</span>
-                    {card.is_saved ? <span className={styles.tag}>履歴あり</span> : null}
+                    {card.is_saved ? <span className={styles.tag}>採用済み</span> : null}
                     {card.watchlist_status ? <span className={styles.tag}>{WATCHLIST_STATUS_LABELS[card.watchlist_status]}</span> : null}
                   </div>
                 </div>
@@ -349,10 +354,12 @@ export default async function DecisionLibraryPage({
                     <dt>公開日</dt>
                     <dd>{formatDate(card.episode_published_at ?? card.created_at)}</dd>
                   </div>
-                  <div>
-                    <dt>見直しタイミング</dt>
-                    <dd>{isPaid ? formatDeadline(card.deadline_at) : "有料会員で表示"}</dd>
-                  </div>
+                  {isPaid ? (
+                    <div>
+                      <dt>見直しタイミング</dt>
+                      <dd>{formatDeadline(card.deadline_at)}</dd>
+                    </div>
+                  ) : null}
                   <div>
                     <dt>詳細</dt>
                     <dd>{formatEpisodeTitle(card.episode_title)}</dd>
@@ -379,8 +386,8 @@ export default async function DecisionLibraryPage({
 
                 {!isPaid ? (
                   <div className={styles.lockedPanel}>
-                    <strong>詳しい見直し情報は有料会員向けです</strong>
-                    <p>無料版は要点まで、有料版では次にすると良いことや期限も確認できます。</p>
+                    <strong>無料版はタイトルとかんたんな説明までです</strong>
+                    <p>有料版で判断理由、次の行動、見直しタイミング、履歴分析を確認できます。</p>
                   </div>
                 ) : null}
 
@@ -432,7 +439,7 @@ export default async function DecisionLibraryPage({
                       詳細
                     </TrackedLink>
                     <TrackedLink
-                      href="/history"
+                      href={card.saved_decision_id ? "/history" : `/decisions/${card.episode_id}`}
                       className={styles.secondaryLink}
                       eventName="library_card_click"
                       eventProperties={{
@@ -448,7 +455,7 @@ export default async function DecisionLibraryPage({
                         sort: activeFilters.sort
                       }}
                     >
-                      履歴
+                      {card.saved_decision_id ? "履歴" : "詳細"}
                     </TrackedLink>
                     {card.saved_decision_id ? (
                       <TrackedLink

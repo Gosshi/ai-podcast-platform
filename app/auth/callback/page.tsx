@@ -27,28 +27,8 @@ const syncServerSession = async (): Promise<boolean> => {
   return true;
 };
 
-const resolvePostAuthDestination = async (next: string): Promise<string> => {
-  try {
-    const response = await fetch("/api/user-preferences", {
-      method: "GET"
-    });
-
-    if (!response.ok) {
-      return next;
-    }
-
-    const payload = (await response.json().catch(() => ({}))) as {
-      needsOnboarding?: boolean;
-    };
-
-    if (!payload.needsOnboarding) {
-      return next;
-    }
-
-    return next.startsWith("/onboarding") ? next : buildOnboardingPath(next);
-  } catch {
-    return next;
-  }
+const resolvePostAuthDestination = (next: string): string => {
+  return next.startsWith("/onboarding") ? next : buildOnboardingPath(next);
 };
 
 export default function AuthCallbackPage() {
@@ -62,7 +42,7 @@ export default function AuthCallbackPage() {
     const finish = async () => {
       const synced = await syncServerSession();
       if (synced) {
-        router.replace(await resolvePostAuthDestination(next));
+        router.replace(resolvePostAuthDestination(next));
         return;
       }
       setError("ログインセッションを確定できませんでした。");
@@ -84,8 +64,8 @@ export default function AuthCallbackPage() {
           accessToken: session.access_token,
           refreshToken: session.refresh_token
         })
-      }).then(async () => {
-        router.replace(await resolvePostAuthDestination(next));
+      }).then(() => {
+        router.replace(resolvePostAuthDestination(next));
       });
     });
 

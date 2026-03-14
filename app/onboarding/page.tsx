@@ -1,6 +1,6 @@
+import { redirect } from "next/navigation";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
-import TrackedLink from "@/app/components/TrackedLink";
-import { buildAccountEntryPath, resolveSafeNextPath } from "@/app/lib/onboarding";
+import { buildLoginPath, resolveSafeNextPath } from "@/app/lib/onboarding";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import OnboardingFlow from "./OnboardingFlow";
 import styles from "./page.module.css";
@@ -28,7 +28,10 @@ export default async function OnboardingPage({
   const params = await searchParams;
   const nextPath = resolveSafeNextPath(readParam(params.next));
   const nextPathLabel = nextPath === "/decisions" ? "今日のおすすめ" : "次の画面";
-  const accountEntryPath = buildAccountEntryPath(`/onboarding?next=${encodeURIComponent(nextPath)}`);
+
+  if (!viewer) {
+    redirect(buildLoginPath(nextPath));
+  }
 
   return (
     <main className={styles.page}>
@@ -58,31 +61,7 @@ export default async function OnboardingPage({
             </div>
           </div>
 
-          {viewer ? (
-            <OnboardingFlow initialPreferences={viewer.preferences} nextPath={nextPath} isFirstRun={viewer.needsOnboarding} />
-          ) : (
-            <section className={styles.panel}>
-              <div className={styles.stepHeader}>
-                <p className={styles.stepEyebrow}>ログイン</p>
-                <h2>続ける前にログインしてください</h2>
-                <p>ログインすると設定内容を保存し、そのまま {nextPathLabel} へ進めます。</p>
-              </div>
-              <div className={styles.actionRow}>
-                <TrackedLink
-                  href={accountEntryPath}
-                  className={styles.primaryButton}
-                  eventName="onboarding_entry_click"
-                  eventProperties={{
-                    page: "/onboarding",
-                    source: "onboarding_login_gate",
-                    destination: accountEntryPath
-                  }}
-                >
-                  ログインして続ける
-                </TrackedLink>
-              </div>
-            </section>
-          )}
+          <OnboardingFlow initialPreferences={viewer.preferences} nextPath={nextPath} isFirstRun={viewer.needsOnboarding} />
         </section>
       </div>
     </main>

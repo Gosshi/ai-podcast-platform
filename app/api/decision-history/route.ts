@@ -95,6 +95,10 @@ export async function POST(request: Request) {
     return jsonResponse({ ok: false, error: "judgment_card_not_found" }, 404);
   }
 
+  if (judgmentCard.judgment_type !== "use_now") {
+    return jsonResponse({ ok: false, error: "decision_history_use_now_only" }, 409);
+  }
+
   const { data: insertedDecision, error: insertError } = await supabase
     .from("user_decisions")
     .insert({

@@ -1,24 +1,18 @@
+import { redirect } from "next/navigation";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
 import TrackedLink from "@/app/components/TrackedLink";
 import WatchlistControls from "@/app/components/WatchlistControls";
-import { buildDecisionReplayPath } from "@/app/lib/decisionReplay";
 import {
   formatEpisodeTitle,
   formatGenreLabel,
   formatTopicTitle,
-  JUDGMENT_TYPE_LABELS,
-  URGENCY_LABELS,
-  WATCHLIST_STATUS_LABELS
+  JUDGMENT_TYPE_LABELS
 } from "@/app/lib/uiText";
+import { buildLoginPath } from "@/app/lib/onboarding";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import { loadUserWatchlist } from "@/app/lib/watchlist";
-import {
-  FREE_WATCHLIST_LIMIT,
-  isWatchlistSort,
-  isWatchlistStatus,
-  isWatchlistUrgency
-} from "@/src/lib/watchlist";
+import { FREE_WATCHLIST_LIMIT, isWatchlistSort, isWatchlistUrgency } from "@/src/lib/watchlist";
 import WatchlistFilters from "./WatchlistFilters";
 import styles from "./page.module.css";
 
@@ -63,13 +57,15 @@ export default async function WatchlistPage({
 }) {
   const resolvedSearchParams = (await searchParams) ?? {};
   const viewer = await getViewerFromCookies();
+  if (!viewer) {
+    redirect(buildLoginPath("/saved"));
+  }
+
   const isPaid = viewer?.isPaid ?? false;
-  const statusParam = toSingleValue(resolvedSearchParams.status).trim();
   const genre = toSingleValue(resolvedSearchParams.genre).trim() || null;
   const frameType = toSingleValue(resolvedSearchParams.frame).trim() || null;
   const urgencyParam = toSingleValue(resolvedSearchParams.urgency).trim();
   const sortParam = toSingleValue(resolvedSearchParams.sort).trim();
-  const status = isWatchlistStatus(statusParam) ? statusParam : null;
   const urgency = isPaid && isWatchlistUrgency(urgencyParam) ? urgencyParam : null;
   const sort = isWatchlistSort(sortParam)
     ? isPaid || sortParam !== "deadline_soon"
@@ -77,25 +73,17 @@ export default async function WatchlistPage({
       : "newest"
     : "newest";
 
-  const result = viewer
-    ? await loadUserWatchlist({
-        userId: viewer.userId,
-        filters: {
-          status,
-          genre,
-          frameType,
-          urgency,
-          sort
-        }
-      })
-    : {
-        items: [],
-        options: {
-          genres: [],
-          frameTypes: []
-        },
-        error: null
-      };
+  const result = await loadUserWatchlist({
+    userId: viewer.userId,
+    filters: {
+      status: "saved",
+      genre,
+      frameType,
+      urgency,
+      sort
+    }
+  });
+  const visibleItems = result.items.filter((item) => item.status === "saved" && item.history_decision_id === null);
 
   return (
     <main className={styles.page}>
@@ -111,11 +99,9 @@ export default async function WatchlistPage({
           </p>
 
           <p className={styles.limitText}>
-            {viewer
-              ? isPaid
-                ? "有料版では保存件数の上限なく、見直しタイミングつきで整理できます。"
-                : `無料版では保存できる候補は最大${FREE_WATCHLIST_LIMIT}件までです。`
-              : "ログインすると判断カードを保存して、ここで一覧管理できます。"}
+            {isPaid
+              ? "有料版では保存件数の上限なく、見直しタイミングつきで整理できます。"
+              : `無料版では保存できる候補は最大${FREE_WATCHLIST_LIMIT}件までです。`}
           </p>
         </div>
 
@@ -128,39 +114,19 @@ export default async function WatchlistPage({
         />
       </section>
 
-      {!viewer ? (
-        <section className={styles.noticePanel}>
-          <h2>保存を使うにはログインが必要です</h2>
-          <p>判断カードを保存すると、この画面であとから見直せます。</p>
-          <TrackedLink
-            href="/account"
-            className={styles.primaryLink}
-            eventName="subscribe_cta_click"
-            eventProperties={{
-              page: "/saved",
-              source: "watchlist_login_notice"
-            }}
-          >
-            アカウントでログイン
-          </TrackedLink>
-        </section>
-      ) : null}
+      <WatchlistFilters
+        initialFilters={{
+          status: "saved",
+          genre,
+          frameType,
+          urgency,
+          sort
+        }}
+        options={result.options}
+        isPaid={isPaid}
+      />
 
-      {viewer ? (
-        <WatchlistFilters
-          initialFilters={{
-            status,
-            genre,
-            frameType,
-            urgency,
-            sort
-          }}
-          options={result.options}
-          isPaid={isPaid}
-        />
-      ) : null}
-
-      {!isPaid && viewer ? (
+      {!isPaid ? (
         <section className={styles.noticePanel}>
           <h2>無料版は件数制限つきです</h2>
           <p>有料版にすると、より多くの候補を保存しながら見直しタイミングつきで整理できます。</p>
@@ -178,7 +144,7 @@ export default async function WatchlistPage({
         </section>
       ) : null}
 
-      {result.error ? <p className={styles.errorText}>保存一覧の読み込みに失敗しました: {result.error}</p> : null}
+      {result.error ? <p className={styles.errorText}>保存一覧の読み込みに失敗しました。時間をおいて再度お試しください。</p> : null}
 
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
@@ -189,7 +155,7 @@ export default async function WatchlistPage({
           </div>
         </div>
 
-        {viewer && result.items.length === 0 ? (
+        {visibleItems.length === 0 ? (
           <div className={styles.emptyPanel}>
             <h3>まだ保存した判断はありません</h3>
             <p>今日の判断や詳細画面で「保存」を押すと、ここに追加されます。</p>
@@ -197,19 +163,13 @@ export default async function WatchlistPage({
         ) : null}
 
         <div className={styles.grid}>
-          {result.items.map((item) => (
+          {visibleItems.map((item) => (
             <article key={item.id} className={styles.card}>
               <div className={styles.cardHeader}>
                 <div className={styles.badgeRow}>
-                  <span className={`${styles.badge} ${styles[`status_${item.status}`]}`.trim()}>{WATCHLIST_STATUS_LABELS[item.status]}</span>
                   <span className={`${styles.badge} ${styles[`judgment_${item.judgment_type}`]}`.trim()}>
                     {JUDGMENT_TYPE_LABELS[item.judgment_type]}
                   </span>
-                  {isPaid ? (
-                    <span className={`${styles.badge} ${styles[`urgency_${item.urgency}`]}`.trim()}>
-                      {URGENCY_LABELS[item.urgency]}
-                    </span>
-                  ) : null}
                 </div>
                 <div className={styles.tagRow}>
                   <span className={styles.tag}>{formatGenreLabel(item.genre)}</span>
@@ -276,38 +236,6 @@ export default async function WatchlistPage({
                 >
                   詳細
                 </TrackedLink>
-                <TrackedLink
-                  href="/history"
-                  className={styles.inlineLink}
-                  eventName="watchlist_card_click"
-                  eventProperties={{
-                    page: "/saved",
-                    source: "watchlist_history_link",
-                    judgment_card_id: item.judgment_card_id,
-                    episode_id: item.episode_id,
-                    watchlist_status: item.status,
-                    urgency: item.urgency
-                  }}
-                >
-                  実行した判断
-                </TrackedLink>
-                {item.history_decision_id ? (
-                  <TrackedLink
-                    href={buildDecisionReplayPath(item.history_decision_id)}
-                    className={styles.inlineLink}
-                    eventName="watchlist_card_click"
-                    eventProperties={{
-                      page: "/saved",
-                      source: "watchlist_replay_link",
-                      judgment_card_id: item.judgment_card_id,
-                      episode_id: item.episode_id,
-                      watchlist_status: item.status,
-                      urgency: item.urgency
-                    }}
-                  >
-                    結果を見る
-                  </TrackedLink>
-                ) : null}
               </div>
             </article>
           ))}

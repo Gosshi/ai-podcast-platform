@@ -55,6 +55,8 @@ type UpsertableUserAlertRow = {
 
 const USER_ALERTS_SELECT =
   "id, user_id, alert_type, source_id, source_kind, episode_id, title, summary, urgency, due_at, is_read, is_sent, dismissed_at, created_at, updated_at, alert_payload";
+const ALERTS_ERROR_MESSAGE = "通知の読み込みに失敗しました。少し時間をおいてから再度お試しください。";
+const SUPABASE_BATCH_SIZE = 80;
 
 const buildAlertKey = (row: Pick<UserAlertRow, "alert_type" | "source_kind" | "source_id">): string => {
   return `${row.alert_type}::${row.source_kind}::${row.source_id}`;
@@ -111,6 +113,36 @@ const toStoredAlert = (row: UserAlertRow) => {
 };
 
 export type StoredUserAlert = ReturnType<typeof toStoredAlert>;
+
+const deleteUserAlertsInBatches = async (
+  userId: string,
+  alertIds: string[]
+): Promise<{ error: string | null }> => {
+  if (alertIds.length === 0) {
+    return { error: null };
+  }
+
+  const supabase = createServiceRoleClient();
+
+  for (let index = 0; index < alertIds.length; index += SUPABASE_BATCH_SIZE) {
+    const batch = alertIds.slice(index, index + SUPABASE_BATCH_SIZE);
+    const { error } = await supabase
+      .from("user_alerts")
+      .delete()
+      .eq("user_id", userId)
+      .in("id", batch);
+
+    if (error) {
+      return { error: error.message };
+    }
+  }
+
+  return { error: null };
+};
+
+export const resolveAlertsErrorMessage = (_error: string | null): string => {
+  return ALERTS_ERROR_MESSAGE;
+};
 
 export const loadUserAlerts = async (
   userId: string
@@ -222,8 +254,9 @@ export const syncUserAlerts = async (
       .eq("user_id", viewer.userId);
 
     if (existingError) {
+      const fallback = await loadUserAlerts(viewer.userId);
       return {
-        alerts: [],
+        alerts: fallback.alerts,
         preferences,
         error: existingError.message
       };
@@ -241,12 +274,13 @@ export const syncUserAlerts = async (
       .map((row) => row.id);
 
     if (staleIds.length > 0) {
-      const { error: deleteError } = await supabase.from("user_alerts").delete().in("id", staleIds);
+      const { error: deleteError } = await deleteUserAlertsInBatches(viewer.userId, staleIds);
       if (deleteError) {
+        const fallback = await loadUserAlerts(viewer.userId);
         return {
-          alerts: [],
+          alerts: fallback.alerts,
           preferences,
-          error: deleteError.message
+          error: deleteError
         };
       }
     }
@@ -280,8 +314,9 @@ export const syncUserAlerts = async (
       });
 
       if (upsertError) {
+        const fallback = await loadUserAlerts(viewer.userId);
         return {
-          alerts: [],
+          alerts: fallback.alerts,
           preferences,
           error: upsertError.message
         };
@@ -301,8 +336,9 @@ export const syncUserAlerts = async (
         notificationPreferencesState.error
     };
   } catch (error) {
+    const fallback = await loadUserAlerts(viewer.userId);
     return {
-      alerts: [],
+      alerts: fallback.alerts,
       preferences,
       error: error instanceof Error ? error.message : "user_alerts_sync_failed"
     };

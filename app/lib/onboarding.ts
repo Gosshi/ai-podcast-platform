@@ -11,7 +11,7 @@ export const buildOnboardingPath = (nextPath: string): string => {
   return `/onboarding?next=${encodeURIComponent(safeNextPath)}`;
 };
 
-export const buildAccountEntryPath = (nextPath: string): string => {
+export const buildLoginPath = (nextPath: string): string => {
   const safeNextPath = resolveSafeNextPath(nextPath);
-  return `/account?next=${encodeURIComponent(safeNextPath)}`;
+  return `/login?next=${encodeURIComponent(safeNextPath)}`;
 };
