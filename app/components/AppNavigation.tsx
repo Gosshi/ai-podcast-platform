@@ -5,20 +5,15 @@ import TrackedLink from "@/app/components/TrackedLink";
 import styles from "./app-navigation.module.css";
 
 const NAV_ITEMS = [
-  { href: "/", label: "ホーム" },
   { href: "/decisions", label: "今日の判断" },
-  { href: "/watchlist", label: "保存" },
+  { href: "/saved", label: "保存" },
   { href: "/history", label: "履歴" },
   { href: "/account", label: "アカウント" }
 ];
 
 const isActivePath = (pathname: string, href: string): boolean => {
-  if (href === "/") {
-    return pathname === "/";
-  }
-
-  if (href === "/watchlist") {
-    return pathname === "/watchlist" || pathname.startsWith("/watchlist/") || pathname.startsWith("/decisions/library");
+  if (href === "/saved") {
+    return pathname === "/saved" || pathname.startsWith("/saved/") || pathname.startsWith("/decisions/library");
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);

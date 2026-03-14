@@ -67,7 +67,7 @@ export default async function DecisionReplayPage({
 
       <div className={styles.backRow}>
         <Link href="/history">履歴</Link>
-        {replay?.episode_id ? <Link href={`/episodes/${replay.episode_id}`}>詳細</Link> : null}
+        {replay?.episode_id ? <Link href={`/decisions/${replay.episode_id}`}>詳細</Link> : null}
       </div>
 
       {!viewer ? (

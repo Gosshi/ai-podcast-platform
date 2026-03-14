@@ -99,7 +99,7 @@ export default async function AccountPage({
             <p className={styles.eyebrow}>アカウント</p>
             <h1>プランと請求を、迷わず確認して管理する。</h1>
             <p className={styles.lead}>
-              現在のプラン、購読ステータス、次回更新日、支払い状態を一画面で確認できます。購読中は
+              現在のプラン、利用状態、次回更新日、支払い状態を一画面で確認できます。利用中は
               支払い設定 から更新や解約も進められます。
             </p>
             {subscription === "success" && viewer?.isPaid ? (
@@ -138,7 +138,7 @@ export default async function AccountPage({
             showViewAllLink={alertState.alerts.length > 4}
           />
         ) : null}
-        {alertState.error ? <p className={styles.sectionLead}>お知らせの同期に失敗しました: {alertState.error}</p> : null}
+        {alertState.error ? <p className={styles.sectionLead}>お知らせの読み込みに失敗しました。再読み込みしてください。</p> : null}
 
         <section className={styles.section}>
           <div>
@@ -172,7 +172,7 @@ export default async function AccountPage({
               <strong className={styles.statValue}>{currentPeriodEnd}</strong>
             </article>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>購読管理</span>
+              <span className={styles.statLabel}>プラン管理</span>
               <strong className={styles.statValue}>{viewer?.stripeCustomerId ? "支払い設定から変更可能" : "ログイン後に表示"}</strong>
             </article>
             <article className={styles.statCard}>

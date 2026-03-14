@@ -70,7 +70,10 @@ const INTEREST_TOPIC_GENRE_ALIASES: Record<InterestTopic, string[]> = {
   streaming: ["streaming", "entertainment"],
   anime: ["anime", "entertainment"],
   movies: ["movies", "movie", "entertainment"],
-  tech: ["tech", "technology"]
+  tech: ["tech", "technology"],
+  lifestyle: ["lifestyle", "daily", "habit"],
+  work: ["work", "productivity", "business"],
+  shopping: ["shopping", "purchase", "consumer"]
 };
 
 const INTEREST_TOPIC_REASON_LABELS: Record<InterestTopic, string> = {
@@ -78,7 +81,10 @@ const INTEREST_TOPIC_REASON_LABELS: Record<InterestTopic, string> = {
   streaming: "サブスクの興味に一致",
   anime: "アニメの興味に一致",
   movies: "映画の興味に一致",
-  tech: "テックの興味に一致"
+  tech: "テックの興味に一致",
+  lifestyle: "ライフスタイルの興味に一致",
+  work: "仕事・タスクの興味に一致",
+  shopping: "買い物の興味に一致"
 };
 
 const ACTIVE_SUBSCRIPTION_KEYWORDS: Record<Exclude<ActiveSubscription, "none" | "other">, string[]> = {
@@ -87,7 +93,9 @@ const ACTIVE_SUBSCRIPTION_KEYWORDS: Record<Exclude<ActiveSubscription, "none" | 
   disney: ["disney", "disney+"],
   spotify: ["spotify"],
   youtube: ["youtube", "youtube premium"],
-  chatgpt: ["chatgpt", "openai", "gpt"]
+  chatgpt: ["chatgpt", "openai", "gpt"],
+  notion: ["notion"],
+  github: ["github", "copilot"]
 };
 
 const ACTIVE_SUBSCRIPTION_REASON_LABELS: Record<Exclude<ActiveSubscription, "none" | "other">, string> = {
@@ -96,7 +104,9 @@ const ACTIVE_SUBSCRIPTION_REASON_LABELS: Record<Exclude<ActiveSubscription, "non
   disney: "Disney+を利用中",
   spotify: "Spotifyを利用中",
   youtube: "YouTubeを利用中",
-  chatgpt: "ChatGPTを利用中"
+  chatgpt: "ChatGPTを利用中",
+  notion: "Notionを利用中",
+  github: "GitHubを利用中"
 };
 
 const DECISION_PRIORITY_REASON_LABELS: Record<DecisionPriority, string> = {

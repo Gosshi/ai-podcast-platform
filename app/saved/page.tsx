@@ -99,7 +99,7 @@ export default async function WatchlistPage({
 
   return (
     <main className={styles.page}>
-      <AnalyticsPageView page="/watchlist" pageEventName="watchlist_view" />
+      <AnalyticsPageView page="/saved" pageEventName="watchlist_view" />
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
@@ -123,7 +123,7 @@ export default async function WatchlistPage({
           viewer={viewer}
           title="プラン"
           copy="迷った候補を残して、あとで見返しやすくします。"
-          analyticsSource="/watchlist"
+          analyticsSource="/saved"
           variant="compact"
         />
       </section>
@@ -137,7 +137,7 @@ export default async function WatchlistPage({
             className={styles.primaryLink}
             eventName="subscribe_cta_click"
             eventProperties={{
-              page: "/watchlist",
+              page: "/saved",
               source: "watchlist_login_notice"
             }}
           >
@@ -169,7 +169,7 @@ export default async function WatchlistPage({
             className={styles.secondaryLink}
             eventName="subscribe_cta_click"
             eventProperties={{
-              page: "/watchlist",
+              page: "/saved",
               source: "watchlist_limit_notice"
             }}
           >
@@ -217,11 +217,11 @@ export default async function WatchlistPage({
               </div>
 
               <TrackedLink
-                href={`/episodes/${item.episode_id}`}
+                href={`/decisions/${item.episode_id}`}
                 className={styles.topicLink}
                 eventName="watchlist_card_click"
                 eventProperties={{
-                  page: "/watchlist",
+                  page: "/saved",
                   source: "watchlist_topic_link",
                   judgment_card_id: item.judgment_card_id,
                   episode_id: item.episode_id,
@@ -252,7 +252,7 @@ export default async function WatchlistPage({
                 viewer={viewer}
                 initialItemId={item.id}
                 initialStatus={item.status}
-                page="/watchlist"
+                page="/saved"
                 source="watchlist_item_card"
                 episodeId={item.episode_id}
                 genre={item.genre}
@@ -262,11 +262,11 @@ export default async function WatchlistPage({
 
               <div className={styles.linkRow}>
                 <TrackedLink
-                  href={`/episodes/${item.episode_id}`}
+                  href={`/decisions/${item.episode_id}`}
                   className={styles.inlineLink}
                   eventName="watchlist_card_click"
                   eventProperties={{
-                    page: "/watchlist",
+                    page: "/saved",
                     source: "watchlist_episode_link",
                     judgment_card_id: item.judgment_card_id,
                     episode_id: item.episode_id,
@@ -281,7 +281,7 @@ export default async function WatchlistPage({
                   className={styles.inlineLink}
                   eventName="watchlist_card_click"
                   eventProperties={{
-                    page: "/watchlist",
+                    page: "/saved",
                     source: "watchlist_history_link",
                     judgment_card_id: item.judgment_card_id,
                     episode_id: item.episode_id,
@@ -297,7 +297,7 @@ export default async function WatchlistPage({
                     className={styles.inlineLink}
                     eventName="watchlist_card_click"
                     eventProperties={{
-                      page: "/watchlist",
+                      page: "/saved",
                       source: "watchlist_replay_link",
                       judgment_card_id: item.judgment_card_id,
                       episode_id: item.episode_id,

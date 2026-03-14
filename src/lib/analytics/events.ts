@@ -71,7 +71,7 @@ export const ANALYTICS_PAGE_NAMES = [
   "/decisions",
   "/alerts",
   "/decisions/library",
-  "/watchlist",
+  "/saved",
   "/episodes",
   "/history",
   "/history/replay",

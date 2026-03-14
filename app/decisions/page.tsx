@@ -114,7 +114,7 @@ export default async function DecisionsPage() {
           }}
         />
         <TrackedLink
-          href={`/episodes/${card.episode_id}`}
+          href={`/decisions/${card.episode_id}`}
           className={styles.cardLink}
           eventName="judgment_card_click"
           eventProperties={{
@@ -231,10 +231,6 @@ export default async function DecisionsPage() {
           <p className={styles.eyebrow}>今日のおすすめ</p>
           <h1>今日のおすすめ</h1>
           <p className={styles.lead}>今日の判断を、好みや履歴をもとに短いカードでまとめています。</p>
-          <div className={styles.heroMeta}>
-            <span className={styles.heroBadge}>{isPaid ? "有料プラン" : "無料プラン"}</span>
-            <span>{isPaid ? "理由や見直しタイミングまで含めて確認できます" : "まずは要点から軽く確認できます"}</span>
-          </div>
           <div className={styles.heroActions}>
             {viewer?.needsOnboarding || !viewer ? (
               <TrackedLink
@@ -251,7 +247,7 @@ export default async function DecisionsPage() {
               </TrackedLink>
             ) : null}
             <TrackedLink
-              href="/watchlist"
+              href="/saved"
               className={styles.heroLink}
               eventName="watchlist_card_click"
               eventProperties={{
@@ -295,7 +291,7 @@ export default async function DecisionsPage() {
                   }}
                 />
                 <TrackedLink
-                  href={`/episodes/${recommendation.card.episode_id}`}
+                  href={`/decisions/${recommendation.card.episode_id}`}
                   className={styles.recommendationLink}
                   eventName="next_best_decision_click"
                   eventProperties={{
@@ -391,7 +387,7 @@ export default async function DecisionsPage() {
       </section>
 
       {error ? <p className={styles.errorText}>判断カードの読み込みに失敗しました: {error}</p> : null}
-      {alertState.error ? <p className={styles.errorText}>お知らせの同期に失敗しました: {alertState.error}</p> : null}
+      {alertState.error ? <p className={styles.errorText}>お知らせの読み込みに失敗しました。再読み込みしてください。</p> : null}
 
       {!isPaid ? (
         <section className={styles.paywallBanner}>

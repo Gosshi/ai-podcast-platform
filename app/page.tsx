@@ -135,7 +135,7 @@ export default async function HomePage() {
             <h1>日々の判断をAIと履歴で整理する。</h1>
             <p className={styles.subcopy}>AI Decision Assistant</p>
             <p className={styles.lead}>
-              今日何を見るか、サブスクを続けるか、ツールを試すか、何を先にやるか。
+              今日何を選ぶか、サブスクを続けるか、ツールを試すか、何を先にやるか。
               AIが短い判断カードで整理し、行動、結果、学習のループを支えます。
             </p>
 
@@ -173,30 +173,8 @@ export default async function HomePage() {
                 はじめる
               </TrackedLink>
               <TrackedLink
-                href={onboardingEntryHref}
-                className={styles.secondaryLink}
-                eventName="landing_cta_click"
-                eventProperties={{
-                  page: "/",
-                  source: "landing_preferences",
-                  destination: onboardingEntryHref
-                }}
-                additionalEvents={[
-                  {
-                    eventName: "onboarding_entry_click",
-                    eventProperties: {
-                      page: "/",
-                      source: onboardingSource,
-                      destination: onboardingHref
-                    }
-                  }
-                ]}
-              >
-                {viewer ? "好みを設定する" : "ログインして続ける"}
-              </TrackedLink>
-              <TrackedLink
                 href="/decisions"
-                className={styles.ghostLink}
+                className={styles.secondaryLink}
                 eventName="landing_cta_click"
                 eventProperties={{
                   page: "/",

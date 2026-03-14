@@ -141,7 +141,7 @@ export default async function WeeklyDecisionsPage() {
                 {items.map((item) => (
                   <TrackedLink
                     key={item.id}
-                    href={`/episodes/${item.episode_id}`}
+                    href={`/decisions/${item.episode_id}`}
                     className={styles.card}
                     eventName="weekly_digest_item_click"
                     eventProperties={{

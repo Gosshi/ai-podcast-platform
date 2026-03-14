@@ -72,7 +72,10 @@ const INTEREST_TOPIC_HELPERS: Record<InterestTopic, string> = {
   streaming: "サブスクや継続判断",
   anime: "作品選びや視聴判断",
   movies: "長めのコンテンツ判断",
-  tech: "ガジェットや新サービス"
+  tech: "ガジェットや新サービス",
+  lifestyle: "日常の段取りや習慣",
+  work: "タスク優先順位や作業判断",
+  shopping: "買うか迷うものの整理"
 };
 
 const ACTIVE_SUBSCRIPTION_HELPERS: Record<ActiveSubscription, string> = {
@@ -82,6 +85,8 @@ const ACTIVE_SUBSCRIPTION_HELPERS: Record<ActiveSubscription, string> = {
   spotify: "Spotifyを使っている",
   youtube: "YouTubeを使っている",
   chatgpt: "ChatGPTを使っている",
+  notion: "Notionを使っている",
+  github: "GitHubを使っている",
   other: "その他のサービスを使っている",
   none: "今は使っていない"
 };
@@ -90,7 +95,7 @@ const DECISION_PRIORITY_HELPERS: Record<DecisionPriority, string> = {
   save_money: "追加課金を抑えたい",
   save_time: "短時間で迷いを減らしたい",
   discover_new: "新しいものを試したい",
-  avoid_regret: "見て後悔する確率を下げたい"
+  avoid_regret: "選んで後悔する確率を下げたい"
 };
 
 const DAILY_AVAILABLE_TIME_HELPERS: Record<DailyAvailableTime, string> = {

@@ -1,4 +1,4 @@
-export const INTEREST_TOPIC_OPTIONS = ["games", "streaming", "anime", "movies", "tech"] as const;
+export const INTEREST_TOPIC_OPTIONS = ["games", "streaming", "anime", "movies", "tech", "lifestyle", "work", "shopping"] as const;
 export const ACTIVE_SUBSCRIPTION_OPTIONS = [
   "netflix",
   "prime",
@@ -6,6 +6,8 @@ export const ACTIVE_SUBSCRIPTION_OPTIONS = [
   "spotify",
   "youtube",
   "chatgpt",
+  "notion",
+  "github",
   "other",
   "none"
 ] as const;
@@ -88,7 +90,10 @@ export const INTEREST_TOPIC_LABELS: Record<InterestTopic, string> = {
   streaming: "サブスク",
   anime: "アニメ",
   movies: "映画",
-  tech: "テック"
+  tech: "テック",
+  lifestyle: "生活",
+  work: "仕事・タスク",
+  shopping: "買い物"
 };
 
 export const ACTIVE_SUBSCRIPTION_LABELS: Record<ActiveSubscription, string> = {
@@ -98,6 +103,8 @@ export const ACTIVE_SUBSCRIPTION_LABELS: Record<ActiveSubscription, string> = {
   spotify: "Spotify",
   youtube: "YouTube",
   chatgpt: "ChatGPT",
+  notion: "Notion",
+  github: "GitHub",
   other: "その他",
   none: "使っていない"
 };
