@@ -54,7 +54,7 @@ const shouldRefreshForAuthEvent = (event: AuthChangeEvent): boolean => {
 export default function MemberControls({
   viewer,
   title = "会員ステータス",
-  copy = "無料版は判断の入口まで。有料会員になると行動指針、期限、見直しポイント、アーカイブが開放されます。",
+  copy = "無料版は判断の入口まで。有料会員になると迷いが減り、判断が早くなり、締切を逃しにくくなります。",
   showBillingPortal = false,
   analyticsSource,
   variant = "full",
@@ -69,7 +69,9 @@ export default function MemberControls({
   const lastSyncedAccessTokenRef = useRef<string | null>(null);
   const isCompact = variant === "compact";
 
-  latestViewerRef.current = viewer;
+  useEffect(() => {
+    latestViewerRef.current = viewer;
+  }, [viewer]);
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient();
@@ -242,7 +244,7 @@ export default function MemberControls({
               <p className={styles.copy}>
                 {viewer
                   ? viewer.isPaid
-                  ? "すべての判断メモと振り返りを利用できます。"
+                  ? "結果まで残しながら、自分向けの判断精度を育てられます。"
                     : "無料版では要点まで確認できます。詳しい設定はアカウントから管理できます。"
                   : "ログインすると好みの設定、履歴、プラン管理が使えます。"}
               </p>
@@ -301,9 +303,9 @@ export default function MemberControls({
           ) : null}
 
           {viewer?.isPaid ? (
-            <p className={styles.hint}>行動指針、判断期限、見直しポイント、アーカイブ全文を利用できます。</p>
+            <p className={styles.hint}>締切を逃しにくくなり、迷いを減らしながら判断を早く進められます。</p>
           ) : (
-            <p className={styles.hint}>無料版では判断サマリーのプレビューまで。有料会員になると詳細判断を自分で管理できます。</p>
+            <p className={styles.hint}>無料版では要点まで。有料会員になると結果まで含めて判断の精度を育てられます。</p>
           )}
 
           {viewer ? (

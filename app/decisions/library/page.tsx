@@ -189,9 +189,9 @@ export default async function DecisionLibraryPage({
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>保存から探す</p>
-          <h1>保存の候補になりそうな判断を、まとめて探せます。</h1>
+          <h1>後で考える判断の候補を、まとめて探せます。</h1>
           <p className={styles.lead}>
-            ジャンルや見直しタイミングごとに、過去の判断メモを探せます。気になった候補を見つけて、保存する前の比較に
+            カテゴリや見直しタイミングごとに、過去の判断メモを探せます。気になった候補を見つけて、保存する前の比較に
             使う画面です。
           </p>
 
@@ -206,7 +206,7 @@ export default async function DecisionLibraryPage({
               <p className={styles.sectionEyebrow}>初回設定</p>
               <h2>好みを入れておくと、最初の並び順が分かりやすくなります。</h2>
               <p className={styles.personalizationLead}>
-                よく見るジャンルや使っているサービスを入れると、最初に見たい候補が上に出やすくなります。
+                よく触れるカテゴリや使っているサービスを入れると、最初に見たい候補が上に出やすくなります。
               </p>
               <TrackedLink
                 href={onboardingPath}
@@ -325,7 +325,7 @@ export default async function DecisionLibraryPage({
                     </span>
                   </div>
                   <div className={styles.tagRow}>
-                    <span className={styles.tag}>{formatGenreLabel(card.genre, "配信作品")}</span>
+                    <span className={styles.tag}>{formatGenreLabel(card.genre)}</span>
                     {card.is_saved ? <span className={styles.tag}>履歴あり</span> : null}
                     {card.watchlist_status ? <span className={styles.tag}>{WATCHLIST_STATUS_LABELS[card.watchlist_status]}</span> : null}
                   </div>
@@ -350,7 +350,7 @@ export default async function DecisionLibraryPage({
                     <dd>{formatDate(card.episode_published_at ?? card.created_at)}</dd>
                   </div>
                   <div>
-                    <dt>期限</dt>
+                    <dt>見直しタイミング</dt>
                     <dd>{isPaid ? formatDeadline(card.deadline_at) : "有料会員で表示"}</dd>
                   </div>
                   <div>
@@ -469,7 +469,7 @@ export default async function DecisionLibraryPage({
                           sort: activeFilters.sort
                         }}
                       >
-                        振り返り
+                        学びを見る
                       </TrackedLink>
                     ) : null}
                   </div>

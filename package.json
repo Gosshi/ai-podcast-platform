@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "seed:demo": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/seed-demo-data.mts",
-    "lint": "next lint",
+    "lint": "eslint app src --ext .ts,.tsx",
     "test": "node --experimental-strip-types --experimental-specifier-resolution=node --test tests/**/*.test.mts",
     "quality:check": "node --experimental-strip-types scripts/scriptQualityCheck.mts",
     "test:stripe-fixtures": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/test-stripe-webhook-fixtures.mts"

@@ -27,8 +27,8 @@ type LibraryControlsProps = {
 
 const JUDGMENT_TYPE_LABELS: Array<{ value: JudgmentType | null; label: string }> = [
   { value: null, label: "すべて" },
-  { value: "use_now", label: "今すぐ見る" },
-  { value: "watch", label: "あとで判断" },
+  { value: "use_now", label: "採用" },
+  { value: "watch", label: "後で考える" },
   { value: "skip", label: "見送る" }
 ];
 
@@ -290,7 +290,7 @@ export default function LibraryControls({
       </div>
 
       <div className={styles.chipGroup}>
-        <span className={styles.chipLabel}>期限</span>
+        <span className={styles.chipLabel}>見直しタイミング</span>
         <div className={styles.chipRow}>
           {URGENCY_LABELS.map((item) => (
             <button

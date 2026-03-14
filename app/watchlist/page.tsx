@@ -104,16 +104,16 @@ export default async function WatchlistPage({
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>保存</p>
-          <h1>迷った判断を保存して、見直す順番を整える。</h1>
+          <h1>後で考える判断を保存して、見直す順番を整える。</h1>
           <p className={styles.lead}>
-            履歴が「採用した判断」を残すのに対して、この画面は「まだ決めきらない判断」を保存しておく場所です。
-            あとから迷わず見直せるよう、保存中の候補だけをまとめています。
+            履歴が「実行した判断」を残すのに対して、この画面は「まだ決めきらない判断」を保存しておく場所です。
+            あとから迷わず見直せるよう、後で考える候補だけをまとめています。
           </p>
 
           <p className={styles.limitText}>
             {viewer
               ? isPaid
-                ? "有料版では保存件数の上限なく、期限つきで見直せます。"
+                ? "有料版では保存件数の上限なく、見直しタイミングつきで整理できます。"
                 : `無料版では保存できる候補は最大${FREE_WATCHLIST_LIMIT}件までです。`
               : "ログインすると判断カードを保存して、ここで一覧管理できます。"}
           </p>
@@ -163,7 +163,7 @@ export default async function WatchlistPage({
       {!isPaid && viewer ? (
         <section className={styles.noticePanel}>
           <h2>無料版は件数制限つきです</h2>
-          <p>有料版にすると、より多くの候補を保存しながら期限つきで見直せます。</p>
+          <p>有料版にすると、より多くの候補を保存しながら見直しタイミングつきで整理できます。</p>
           <TrackedLink
             href="/account"
             className={styles.secondaryLink}
@@ -184,7 +184,7 @@ export default async function WatchlistPage({
         <div className={styles.sectionHeading}>
           <div>
             <p className={styles.sectionEyebrow}>保存一覧</p>
-            <h2>保存した判断</h2>
+            <h2>後で考える判断</h2>
             <p className={styles.sectionLead}>詳細や履歴に戻りながら、見直したい候補だけを整理できます。</p>
           </div>
         </div>
@@ -212,7 +212,7 @@ export default async function WatchlistPage({
                   ) : null}
                 </div>
                 <div className={styles.tagRow}>
-                  <span className={styles.tag}>{formatGenreLabel(item.genre, "配信作品")}</span>
+                  <span className={styles.tag}>{formatGenreLabel(item.genre)}</span>
                 </div>
               </div>
 
@@ -242,7 +242,7 @@ export default async function WatchlistPage({
                   <dd>{formatEpisodeTitle(item.episode_title)}</dd>
                 </div>
                 <div>
-                  <dt>期限</dt>
+                  <dt>見直しタイミング</dt>
                   <dd>{isPaid ? formatDate(item.deadline_at, true) : "有料版で表示"}</dd>
                 </div>
               </dl>
@@ -289,7 +289,7 @@ export default async function WatchlistPage({
                     urgency: item.urgency
                   }}
                 >
-                  履歴
+                  実行した判断
                 </TrackedLink>
                 {item.history_decision_id ? (
                   <TrackedLink
@@ -305,7 +305,7 @@ export default async function WatchlistPage({
                       urgency: item.urgency
                     }}
                   >
-                    振り返り
+                    結果を見る
                   </TrackedLink>
                 ) : null}
               </div>

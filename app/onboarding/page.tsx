@@ -27,7 +27,7 @@ export default async function OnboardingPage({
   const viewer = await getViewerFromCookies();
   const params = await searchParams;
   const nextPath = resolveSafeNextPath(readParam(params.next));
-  const nextPathLabel = nextPath === "/decisions" ? "今日の判断" : "次の画面";
+  const nextPathLabel = nextPath === "/decisions" ? "今日のおすすめ" : "次の画面";
   const accountEntryPath = buildAccountEntryPath(`/onboarding?next=${encodeURIComponent(nextPath)}`);
 
   return (
@@ -37,15 +37,15 @@ export default async function OnboardingPage({
         <section className={styles.hero}>
           <div className={styles.copy}>
             <p className={styles.eyebrow}>はじめに</p>
-            <h1>よく見る作品や使っているサービスを先に教えてください。</h1>
+            <h1>判断の傾向を先に教えてください。</h1>
             <p className={styles.lead}>
-              最初に好みを入れておくと、今日のおすすめや見直しタイミングがあなた向けに整います。数問で終わるので、
-              先に済ませておくとこのあと迷いにくくなります。
+              最初に好みや使っているサービスを入れておくと、今日のおすすめや見直しタイミングがあなた向けに整います。
+              数問で終わるので、先に済ませておくとこのあと迷いにくくなります。
             </p>
             <div className={styles.metaGrid}>
               <article className={styles.metaCard}>
                 <span>設定する内容</span>
-                <strong>ジャンル / 利用中サービス / 重視したいこと / 使える時間</strong>
+                <strong>気になる領域 / 利用中サービス / 重視したいこと / 使える時間</strong>
               </article>
               <article className={styles.metaCard}>
                 <span>所要時間</span>

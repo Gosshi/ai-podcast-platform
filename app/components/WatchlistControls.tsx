@@ -43,9 +43,9 @@ type WatchlistApiFailure = {
 type WatchlistApiResponse = WatchlistApiSuccess | WatchlistApiFailure;
 
 const STATUS_HINTS: Record<WatchlistStatus, string> = {
-  saved: "迷った候補として保存し、あとで見直せるようにします。",
-  watching: "迷った候補として保存し、あとで見直せるようにします。",
-  archived: "今回は見送りとして整理します。"
+  saved: "後で考える判断として保存します。",
+  watching: "後で考える判断として保存します。",
+  archived: "今回は見送る判断として整理します。"
 };
 
 const buildErrorMessage = (error: string, limit?: number): string => {

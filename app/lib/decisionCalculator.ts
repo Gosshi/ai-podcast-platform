@@ -116,9 +116,9 @@ const resolveJudgmentLabel = (judgmentType: JudgmentType, locale: DecisionCalcul
     return "Skip";
   }
 
-  if (judgmentType === "use_now") return "今使う";
-  if (judgmentType === "watch") return "あとで判断";
-  return "見送り";
+  if (judgmentType === "use_now") return "採用";
+  if (judgmentType === "watch") return "後で考える";
+  return "見送る";
 };
 
 const evaluateUnitCost = (params: {
@@ -144,7 +144,7 @@ const evaluateUnitCost = (params: {
       : `${formatCurrency(metricValue, params.locale)}/hour`;
   const thresholdSummary =
     params.locale === "ja"
-      ? `${formatCurrency(thresholds.useNowMax, params.locale)}/時間以下で今使う、${formatCurrency(thresholds.skipAbove, params.locale)}/時間超で見送り`
+      ? `${formatCurrency(thresholds.useNowMax, params.locale)}/時間以下で採用、${formatCurrency(thresholds.skipAbove, params.locale)}/時間超で見送る`
       : `Use now at or below ${formatCurrency(thresholds.useNowMax, params.locale)}/hour, skip above ${formatCurrency(thresholds.skipAbove, params.locale)}/hour`;
 
   let reason = "";
@@ -153,8 +153,8 @@ const evaluateUnitCost = (params: {
       judgmentType === "use_now"
         ? `1時間単価は ${metricDisplay} で、許容ラインの ${formatCurrency(thresholds.useNowMax, params.locale)}/時間 以下です。`
         : judgmentType === "skip"
-          ? `1時間単価は ${metricDisplay} で、見送りラインの ${formatCurrency(thresholds.skipAbove, params.locale)}/時間 を超えています。`
-          : `1時間単価は ${metricDisplay} で、今使う基準と見送り基準の間です。`;
+          ? `1時間単価は ${metricDisplay} で、見送るラインの ${formatCurrency(thresholds.skipAbove, params.locale)}/時間 を超えています。`
+          : `1時間単価は ${metricDisplay} で、採用基準と見送る基準の間です。`;
   } else {
     reason =
       judgmentType === "use_now"
@@ -190,7 +190,7 @@ const evaluateAdRatio = (params: {
   const metricDisplay = `${formatDecimal(metricValue, 1, params.locale)}%`;
   const thresholdSummary =
     params.locale === "ja"
-      ? `${formatDecimal(threshold, 1, params.locale)}%以下で継続、超えたら見送り`
+      ? `${formatDecimal(threshold, 1, params.locale)}%以下で継続、超えたら見送る`
       : `Keep using at or below ${formatDecimal(threshold, 1, params.locale)}%, skip above it`;
 
   const reason =
@@ -290,7 +290,7 @@ export const describeDecisionCalculatorThresholds = (params: {
       metricLabel: locale === "ja" ? "1時間単価" : "Cost per hour",
       summary:
         locale === "ja"
-          ? `${formatCurrency(thresholds.useNowMax, locale)}/時間以下なら今使う、${formatCurrency(thresholds.skipAbove, locale)}/時間超なら見送り`
+          ? `${formatCurrency(thresholds.useNowMax, locale)}/時間以下なら採用、${formatCurrency(thresholds.skipAbove, locale)}/時間超なら見送る`
           : `Use now at or below ${formatCurrency(thresholds.useNowMax, locale)}/hour, skip above ${formatCurrency(thresholds.skipAbove, locale)}/hour`
     };
   }
@@ -302,7 +302,7 @@ export const describeDecisionCalculatorThresholds = (params: {
       metricLabel: locale === "ja" ? "時間あたり月額" : "Monthly cost per hour",
       summary:
         locale === "ja"
-          ? `${formatCurrency(thresholds.useNowMax, locale)}/時間以下なら今使う、${formatCurrency(thresholds.skipAbove, locale)}/時間超なら見送り`
+          ? `${formatCurrency(thresholds.useNowMax, locale)}/時間以下なら採用、${formatCurrency(thresholds.skipAbove, locale)}/時間超なら見送る`
           : `Use now at or below ${formatCurrency(thresholds.useNowMax, locale)}/hour, skip above ${formatCurrency(thresholds.skipAbove, locale)}/hour`
     };
   }
@@ -313,7 +313,7 @@ export const describeDecisionCalculatorThresholds = (params: {
     metricLabel: locale === "ja" ? "広告比率" : "Ad ratio",
     summary:
       locale === "ja"
-        ? `${formatDecimal(threshold, 1, locale)}%以下なら継続、超えたら見送り`
+        ? `${formatDecimal(threshold, 1, locale)}%以下なら継続、超えたら見送る`
         : `Keep using at or below ${formatDecimal(threshold, 1, locale)}%, skip above it`
   };
 };

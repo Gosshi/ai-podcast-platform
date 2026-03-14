@@ -72,10 +72,10 @@ export default async function DecisionReplayPage({
 
       {!viewer ? (
         <section className={styles.noticePanel}>
-          <p className={styles.eyebrow}>振り返り</p>
-          <h1>振り返りを見るにはログインが必要です</h1>
+          <p className={styles.eyebrow}>学び</p>
+          <h1>学びを見るにはログインが必要です</h1>
           <p className={styles.bodyText}>
-            保存済みの判断だけを時系列で振り返れるようにしているため、この画面はログイン後に開放されます。
+            保存済みの判断だけを時系列で見直せるようにしているため、この画面はログイン後に開放されます。
           </p>
           <TrackedLink
             href="/account"
@@ -91,16 +91,16 @@ export default async function DecisionReplayPage({
         </section>
       ) : null}
 
-      {replayState.error ? <p className={styles.errorText}>振り返りの読み込みに失敗しました: {replayState.error}</p> : null}
+      {replayState.error ? <p className={styles.errorText}>学びの読み込みに失敗しました: {replayState.error}</p> : null}
 
       {visibleReplay && replay ? (
         <>
           <section className={styles.hero}>
             <div className={styles.heroCopy}>
-              <p className={styles.eyebrow}>振り返り</p>
+              <p className={styles.eyebrow}>学び</p>
               <h1>{formatTopicTitle(replay.topic_title)}</h1>
               <p className={styles.lead}>
-                当時の判断内容と、あとから記録した結果を並べて振り返ります。
+                当時の判断内容と、あとから記録した結果を並べて見直します。
               </p>
 
               <div className={styles.badgeRow}>
@@ -108,7 +108,7 @@ export default async function DecisionReplayPage({
                   おすすめ: {DECISION_TYPE_LABELS[replay.judgment_type]}
                 </span>
                 <span className={`${styles.badge} ${styles[`badge_${replay.decision_type}`]}`.trim()}>
-                  保存時: {DECISION_TYPE_LABELS[replay.decision_type]}
+                  採用時: {DECISION_TYPE_LABELS[replay.decision_type]}
                 </span>
                 <span className={styles.outcomeBadge}>{formatDecisionOutcomeLabel(replay.outcome)}</span>
               </div>
@@ -117,7 +117,7 @@ export default async function DecisionReplayPage({
             <MemberControls
               viewer={viewer}
               title="プラン"
-              copy="無料版は振り返りの要点まで、有料版は当時の判断理由まで見返せます。"
+              copy="無料版は要点まで、有料版は当時の判断理由まで見返せます。"
               analyticsSource={pagePath}
               variant="compact"
             />
@@ -133,11 +133,11 @@ export default async function DecisionReplayPage({
 
             <dl className={styles.summaryGrid}>
               <div>
-                <dt>タイトル</dt>
+                <dt>判断</dt>
                 <dd>{formatTopicTitle(replay.topic_title)}</dd>
               </div>
               <div>
-                <dt>ジャンル</dt>
+                <dt>カテゴリ</dt>
                 <dd>{formatGenreLabel(replay.genre, "-")}</dd>
               </div>
               <div>
@@ -145,7 +145,7 @@ export default async function DecisionReplayPage({
                 <dd>{formatFrameTypeLabel(replay.frame_type, "-")}</dd>
               </div>
               <div>
-                <dt>判断内容</dt>
+                <dt>おすすめ</dt>
                 <dd>{DECISION_TYPE_LABELS[replay.judgment_type]}</dd>
               </div>
               <div>
@@ -169,12 +169,12 @@ export default async function DecisionReplayPage({
 
             <div className={styles.detailColumns}>
               <article className={styles.panel}>
-                <p className={styles.cardLabel}>判断の説明</p>
+                <p className={styles.cardLabel}>理由</p>
                 <p className={styles.summaryText}>{replay.judgment_summary}</p>
               </article>
 
               <article className={styles.panel}>
-                <p className={styles.cardLabel}>なぜそう判断だったか</p>
+                <p className={styles.cardLabel}>次の行動と見直し</p>
                 {viewer?.isPaid ? (
                   <div className={styles.reasonStack}>
                     <div className={styles.detailGroup}>
@@ -182,7 +182,7 @@ export default async function DecisionReplayPage({
                       <strong>{visibleReplay.action_text ?? "記録なし"}</strong>
                     </div>
                     <div className={styles.detailGroup}>
-                      <span>期限</span>
+                      <span>見直しタイミング</span>
                       <strong>{formatDecisionReplayDateTime(visibleReplay.deadline_at)}</strong>
                     </div>
                     {visibleReplay.watch_points.length > 0 ? (
@@ -208,8 +208,8 @@ export default async function DecisionReplayPage({
                   </div>
                 ) : (
                   <div className={styles.lockedPanel}>
-                    <strong>有料版では当時の詳細まで振り返れます</strong>
-                    <p>当時の行動指針、期限、見直しポイントをまとめて確認できます。</p>
+                        <strong>有料版では当時の詳細まで見返せます</strong>
+                        <p>当時の行動指針、見直しタイミング、判断理由をまとめて確認できます。</p>
                     <TrackedLink
                       href="/account"
                       className={styles.secondaryLink}
@@ -257,7 +257,7 @@ export default async function DecisionReplayPage({
               <article className={styles.compareCard}>
                 <p className={styles.cardLabel}>実際の結果</p>
                 <strong>{formatDecisionOutcomeLabel(replay.outcome)}</strong>
-                <p className={styles.bodyText}>保存した判断: {DECISION_TYPE_LABELS[replay.decision_type]}</p>
+                <p className={styles.bodyText}>採用した判断: {DECISION_TYPE_LABELS[replay.decision_type]}</p>
                 <dl className={styles.metaList}>
                   <div>
                     <dt>結果</dt>
@@ -276,7 +276,7 @@ export default async function DecisionReplayPage({
             <div className={styles.sectionHeading}>
               <div>
                 <p className={styles.sectionEyebrow}>メモ</p>
-                <h2>振り返りメモ</h2>
+                <h2>学びメモ</h2>
               </div>
             </div>
 
@@ -305,12 +305,12 @@ export default async function DecisionReplayPage({
                     ))}
                   </ul>
                 ) : (
-                  <p className={styles.mutedText}>まだ振り返りメモはありません。履歴が増えるほど、より具体的な学びを返しやすくなります。</p>
+                  <p className={styles.mutedText}>まだ学びメモはありません。履歴が増えるほど、より具体的な学びを返しやすくなります。</p>
                 )}
               </>
             ) : (
               <div className={styles.lockedPanel}>
-                <strong>有料版では振り返りメモを詳しく表示します</strong>
+                <strong>有料版では学びメモを詳しく表示します</strong>
                 <p>過去の判断から学べる内容を、より詳しく確認できます。</p>
               </div>
             )}

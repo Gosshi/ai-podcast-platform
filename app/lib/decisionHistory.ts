@@ -95,7 +95,7 @@ const createEmptyDecisionProfile = (): DecisionProfile => ({
   decisionTypeStats: {
     use_now: {
       key: "use_now",
-      label: "使う",
+      label: "採用",
       count: 0,
       successCount: 0,
       regretCount: 0,
@@ -113,7 +113,7 @@ const createEmptyDecisionProfile = (): DecisionProfile => ({
     },
     watch: {
       key: "watch",
-      label: "あとで判断",
+      label: "後で考える",
       count: 0,
       successCount: 0,
       regretCount: 0,
@@ -131,7 +131,7 @@ const createEmptyDecisionProfile = (): DecisionProfile => ({
     },
     skip: {
       key: "skip",
-      label: "見送り",
+      label: "見送る",
       count: 0,
       successCount: 0,
       regretCount: 0,

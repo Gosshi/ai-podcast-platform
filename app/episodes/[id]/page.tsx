@@ -60,7 +60,7 @@ export default async function EpisodeDetailPage({
   return (
     <main className={styles.page}>
       <div className={styles.backRow}>
-        <Link href="/decisions">今日の判断</Link>
+        <Link href="/decisions">今日のおすすめ</Link>
         <Link href="/episodes">詳細一覧</Link>
       </div>
 
@@ -74,7 +74,7 @@ export default async function EpisodeDetailPage({
               <h1>{formatEpisodeTitle(episode.title)}</h1>
               <div className={styles.metaRow}>
                 <span>{formatLanguageLabel(episode.lang)}</span>
-                <span>{formatGenreLabel(episode.genre, "配信作品")}</span>
+                <span>{formatGenreLabel(episode.genre)}</span>
                 <span>{formatDateTime(episode.published_at ?? episode.created_at)}</span>
               </div>
 
@@ -88,7 +88,7 @@ export default async function EpisodeDetailPage({
             <MemberControls
               viewer={viewer}
               title="プラン"
-              copy="無料版は要点まで、有料版は詳しい判断メモと解説まで見られます。"
+              copy="無料版は要点まで、有料版は理由や見直しタイミングまで見られます。"
               analyticsSource={`/episodes/${id}`}
               variant="compact"
             />
@@ -166,9 +166,13 @@ export default async function EpisodeDetailPage({
                           <dd>{card.action_text}</dd>
                         </div>
                       ) : null}
+                      <div>
+                        <dt>理由</dt>
+                        <dd>{card.judgment_summary}</dd>
+                      </div>
                       {card.deadline_at ? (
                         <div>
-                          <dt>期限</dt>
+                          <dt>見直しタイミング</dt>
                           <dd>{formatDateTime(card.deadline_at)}</dd>
                         </div>
                       ) : null}
@@ -190,7 +194,7 @@ export default async function EpisodeDetailPage({
                     {!viewer?.isPaid ? (
                       <div className={styles.lockedBlock}>
                         <strong>この先は有料会員向け</strong>
-                        <p>次の行動、判断期限、見直しポイントの詳細を開放します。</p>
+                        <p>理由、次の行動、見直しタイミングの詳細を開放します。</p>
                         <TrackedLink
                           href="/account"
                           eventName="judgment_card_locked_cta_click"

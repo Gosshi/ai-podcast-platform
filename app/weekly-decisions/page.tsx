@@ -10,14 +10,14 @@ import styles from "./page.module.css";
 export const dynamic = "force-dynamic";
 
 const JUDGMENT_TYPE_LABELS = {
-  use_now: "今週の今すぐ見る",
-  watch: "今週のあとで判断",
-  skip: "今週の見送り"
+  use_now: "今週の採用",
+  watch: "今週の後で考える",
+  skip: "今週の見送る"
 } as const;
 
 const JUDGMENT_TYPE_BADGES = {
-  use_now: "今すぐ見る",
-  watch: "あとで判断",
+  use_now: "採用",
+  watch: "後で考える",
   skip: "見送る"
 } as const;
 
@@ -70,14 +70,14 @@ export default async function WeeklyDecisionsPage() {
           <p className={styles.eyebrow}>週ごとのまとめ</p>
           <h1>毎日追えなくても、週単位で「今どう判断するか」を回収できる。</h1>
           <p className={styles.lead}>
-            直近7日間の判断を「今すぐ見る / あとで判断 / 見送る」ごとにまとめて、今週の傾向を一画面で振り返れます。
+            直近7日間の判断を「採用 / 後で考える / 見送る」ごとにまとめて、今週の傾向を一画面で見直せます。
           </p>
           <div className={styles.heroMeta}>
             <span className={styles.heroBadge}>{isPaid ? "有料版" : "無料版"}</span>
             <span className={styles.stat}>{windowLabel}</span>
-            <span className={styles.stat}>今すぐ見る {digest.counts.use_now}件</span>
-            <span className={styles.stat}>あとで判断 {digest.counts.watch}件</span>
-            <span className={styles.stat}>見送り {digest.counts.skip}件</span>
+            <span className={styles.stat}>採用 {digest.counts.use_now}件</span>
+            <span className={styles.stat}>後で考える {digest.counts.watch}件</span>
+            <span className={styles.stat}>見送る {digest.counts.skip}件</span>
           </div>
           <div className={styles.breakdownRow}>
             {digest.genreBreakdown.slice(0, 3).map((item) => (
@@ -158,13 +158,13 @@ export default async function WeeklyDecisionsPage() {
                       <span className={`${styles.badge} ${styles[`badge_${item.judgment_type}`]}`.trim()}>
                         {JUDGMENT_TYPE_BADGES[item.judgment_type]}
                       </span>
-                      <span className={styles.genreTag}>{formatGenreLabel(item.genre, "配信作品")}</span>
+                      <span className={styles.genreTag}>{formatGenreLabel(item.genre)}</span>
                     </div>
                     <h3>{formatTopicTitle(item.topic_title)}</h3>
                     <p>{item.judgment_summary}</p>
                     <dl className={styles.metaList}>
                       <div>
-                        <dt>期限</dt>
+                        <dt>見直しタイミング</dt>
                         <dd>{isPaid ? formatDeadline(item.deadline_at) : "有料会員で表示"}</dd>
                       </div>
                       <div>

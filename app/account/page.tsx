@@ -104,7 +104,7 @@ export default async function AccountPage({
             </p>
             {subscription === "success" && viewer?.isPaid ? (
               <p className={`${styles.statusMessage} ${styles.success}`}>
-                有料会員への切り替えが完了しました。判断カード全文、判断期限、見直しポイント、アーカイブが使えます。
+                有料会員への切り替えが完了しました。迷いを減らし、判断を早く進めるための機能が使えます。
               </p>
             ) : null}
             {subscription === "success" && !viewer?.isPaid ? (
@@ -190,25 +190,25 @@ export default async function AccountPage({
           <div>
             <p className={styles.eyebrow}>有料版でできること</p>
             <h2>{viewer?.isPaid ? "有料会員で使えること" : "有料会員になるとできること"}</h2>
-            <p className={styles.sectionLead}>有料版で広がる使い方を、わかりやすくまとめています。</p>
+            <p className={styles.sectionLead}>有料版で得られる成果を、わかりやすくまとめています。</p>
           </div>
 
           <div className={styles.featureGrid}>
             <article className={styles.featureCard}>
-              <h3>判断カード全文</h3>
-              <p>判断の要点だけでなく、行動指針、期限、見直しポイントまで確認できます。</p>
+              <h3>締切を逃しにくくなる</h3>
+              <p>見直しタイミングが分かるので、後回しにした判断を放置しにくくなります。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>詳しい解説</h3>
-              <p>各テーマの背景や判断理由を、途中で省略されずに追えます。</p>
+              <h3>迷いが減る</h3>
+              <p>理由と次の行動まで見えるので、その場で止まらずに判断できます。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>アーカイブと管理</h3>
-              <p>過去エピソードをさかのぼりつつ、支払い方法や解約も支払い設定から管理できます。</p>
+              <h3>判断が早くなる</h3>
+              <p>結果と履歴がたまるほど、自分に合う判断パターンを再利用しやすくなります。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>あなたの傾向</h3>
-              <p>履歴から好みの傾向を見つけて、次に見る候補の補足として返します。</p>
+              <h3>次の判断が整う</h3>
+              <p>履歴から好みの傾向を見つけて、次のおすすめに補足として返します。</p>
             </article>
           </div>
 
@@ -219,10 +219,10 @@ export default async function AccountPage({
             <li>反映中でもアカウント画面から状態確認を続けられます。</li>
           </ul>
 
-          <p className={styles.lead}>判断を見直すなら「今日の判断」へ戻れます。</p>
+          <p className={styles.lead}>判断を見直すなら「今日のおすすめ」へ戻れます。</p>
           <div className={styles.ctaRow}>
             <Link href="/decisions" className={styles.primaryLink}>
-              今日の判断へ戻る
+              今日のおすすめへ戻る
             </Link>
             <Link href="/episodes" className={styles.secondaryLink}>
               詳細を見る
@@ -291,7 +291,7 @@ export default async function AccountPage({
                 {viewer.needsOnboarding ? "好みを設定する" : "好みを見直す"}
               </Link>
               <Link href="/decisions" className={styles.secondaryLink}>
-                おすすめを見る
+                今日のおすすめを見る
               </Link>
             </div>
           </section>

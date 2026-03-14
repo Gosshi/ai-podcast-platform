@@ -28,7 +28,7 @@ type WatchlistFiltersProps = {
 
 const STATUS_OPTIONS: Array<{ value: WatchlistStatus | null; label: string }> = [
   { value: null, label: "すべて" },
-  { value: "saved", label: "保存" },
+  { value: "saved", label: "後で考える" },
   { value: "archived", label: "見送る" }
 ];
 
@@ -212,7 +212,7 @@ export default function WatchlistFilters({
         </label>
 
         <label className={styles.selectLabel}>
-          <span>期限</span>
+          <span>見直しタイミング</span>
           <select
             value={urgency ?? ""}
             className={styles.select}

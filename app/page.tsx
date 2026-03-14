@@ -8,40 +8,75 @@ import styles from "./home.module.css";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
-  title: "今日見るもの、続けるもの、見送るものを決める。 | 視聴判断ガイド",
-  description: "エンタメ視聴とサブスクの迷いを、AIと履歴で整理する。"
+  title: "日々の判断をAIと履歴で整理する | AI Decision Assistant",
+  description: "今日何を見るか、何を試すか、何を見送るかを短い判断カードで整理する。"
 };
 
 const JUDGMENT_LABELS = {
-  use_now: "今すぐ見る",
-  watch: "あとで判断",
+  use_now: "採用",
+  watch: "後で考える",
   skip: "見送る"
 } as const;
 
-const FALLBACK_SAMPLES = [
+const FALLBACK_HERO_SAMPLES = [
   {
-    topicTitle: "週末に入る前に、今のサブスクで見ておきたい1本",
+    topicTitle: "今夜は新しいドラマを1話だけ試す",
     judgmentType: "use_now",
-    genre: "ドラマ",
-    summary: "今の気分と使える時間に合う作品を先に絞ると、迷わず見始められます。",
-    nextAction: "今夜見る候補を3本まで絞る",
-    deadline: "日曜 21:00 までに確認"
+    genre: "エンタメ",
+    summary: "平日の残り時間で最後まで見切れる長さに絞ると、迷いが減ります。",
+    nextAction: "候補を1本だけ開く",
+    deadline: "今夜 21:00 に見直す"
   },
   {
-    topicTitle: "続きものは今週のうちに続けるべきか",
+    topicTitle: "今のサブスクは今月もう1か月続ける",
     judgmentType: "watch",
-    genre: "アニメ",
-    summary: "話題だけで追いかけず、今のペースで続けられるかを先に判断できます。",
-    nextAction: "次の1話だけ試して、続けるか決める",
-    deadline: "次回配信前に見直す"
+    genre: "サブスク",
+    summary: "今週使う予定があるなら、先に使い切ってから解約判断したほうが後悔しにくくなります。",
+    nextAction: "今週使った回数を数える",
+    deadline: "3日後に見直す"
   },
   {
-    topicTitle: "追加課金してまで見るか迷う作品",
+    topicTitle: "AIノート環境は今週1つだけ試す",
+    judgmentType: "watch",
+    genre: "ツール",
+    summary: "今の制限で作業が遅いなら、全面移行ではなく1つ試す判断が現実的です。",
+    nextAction: "候補を1つだけ試す",
+    deadline: "3日後に見直す"
+  }
+] as const;
+
+const SHOWCASE_SAMPLES = [
+  {
+    topicTitle: "今夜は新しいドラマを1話だけ試す",
+    judgmentType: "use_now",
+    genre: "エンタメ",
+    summary: "気分と使える時間に合う候補から始めると、迷わず動けます。",
+    nextAction: "候補を1本だけ開く",
+    deadline: "今夜 21:00 に見直す"
+  },
+  {
+    topicTitle: "今のサブスクは今月もう1か月続ける",
+    judgmentType: "watch",
+    genre: "サブスク",
+    summary: "利用頻度を確認してから更新判断すると、無駄な継続を減らせます。",
+    nextAction: "今週使った回数を数える",
+    deadline: "3日後に見直す"
+  },
+  {
+    topicTitle: "AIノート環境は今週1つだけ試す",
+    judgmentType: "watch",
+    genre: "ツール",
+    summary: "全面移行ではなく1つ試すと、判断コストを抑えながら比較できます。",
+    nextAction: "候補を1つだけ試す",
+    deadline: "3日後に見直す"
+  },
+  {
+    topicTitle: "明日の朝にやることは1つに絞る",
     judgmentType: "skip",
-    genre: "映画",
-    summary: "今の予算や満足度の見込みを整理して、今回は見送る判断も残せます。",
-    nextAction: "配信待ちリストに入れて後日確認",
-    deadline: "来月の更新前に見直す"
+    genre: "生活",
+    summary: "優先順位が曖昧なままだと着手が遅れるので、最初の1つだけを決めます。",
+    nextAction: "朝一で着手する1件を決める",
+    deadline: "明日 08:00 に見直す"
   }
 ] as const;
 
@@ -71,25 +106,23 @@ export default async function HomePage() {
 
   const onboardingHref = buildOnboardingPath("/decisions");
   const onboardingEntryHref = onboardingHref;
-  const startHref = onboardingHref;
   const loginHref = buildAccountEntryPath(onboardingHref);
+  const startHref = viewer ? onboardingHref : loginHref;
   const onboardingSource = viewer?.needsOnboarding ? "landing_first_run" : "landing_preferences";
 
   const samples =
     cards
-      .filter((card) => card.genre !== "tech")
-      .slice(0, 3)
+      .slice(0, 1)
       .map((card) => ({
       topicTitle: formatTopicTitle(card.topic_title),
       judgmentType: card.judgment_type,
-      genre: formatGenreLabel(card.genre, "配信作品"),
+      genre: formatGenreLabel(card.genre, "カテゴリ未設定"),
       summary: card.judgment_summary,
       nextAction: card.action_text ?? "気になったら詳細を開いて確認",
       deadline: formatDeadline(card.deadline_at)
     })) || [];
 
-  const visibleSamples = samples.length > 0 ? samples : FALLBACK_SAMPLES;
-  const heroSample = visibleSamples[0];
+  const heroSample = samples[0] ?? FALLBACK_HERO_SAMPLES[0];
 
   return (
     <main className={styles.page}>
@@ -99,11 +132,11 @@ export default async function HomePage() {
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <p className={styles.eyebrow}>ホーム</p>
-            <h1>今日見るもの、続けるもの、見送るものを決める。</h1>
-            <p className={styles.subcopy}>エンタメ視聴とサブスクの迷いを、AIと履歴で整理する。</p>
+            <h1>日々の判断をAIと履歴で整理する。</h1>
+            <p className={styles.subcopy}>AI Decision Assistant</p>
             <p className={styles.lead}>
-              AIが、あなたの好みや過去の判断をもとに、今日のおすすめ判断を提案します。
-              迷った判断を保存し、結果を振り返り、次の判断をより良くできます。
+              今日何を見るか、サブスクを続けるか、ツールを試すか、何を先にやるか。
+              AIが短い判断カードで整理し、行動、結果、学習のループを支えます。
             </p>
 
             <div className={styles.ctaRow}>
@@ -159,7 +192,7 @@ export default async function HomePage() {
                   }
                 ]}
               >
-                好みを設定する
+                {viewer ? "好みを設定する" : "ログインして続ける"}
               </TrackedLink>
               <TrackedLink
                 href="/decisions"
@@ -171,40 +204,40 @@ export default async function HomePage() {
                   destination: "/decisions"
                 }}
               >
-                判断を見る
+                今日のおすすめを見る
               </TrackedLink>
             </div>
 
             <div className={styles.stats}>
               <article className={styles.stat}>
-                <span>今日のおすすめ判断</span>
-                <strong>まず何を見るかがすぐ分かる</strong>
+                <span>短い判断カード</span>
+                <strong>まず1つ決めて動ける</strong>
               </article>
               <article className={styles.stat}>
-                <span>保存した判断</span>
-                <strong>迷った候補を残して整理できる</strong>
+                <span>保存</span>
+                <strong>後で考える判断を残せる</strong>
               </article>
               <article className={styles.stat}>
-                <span>振り返り</span>
-                <strong>結果を次の判断に活かせる</strong>
+                <span>結果</span>
+                <strong>満足 / 普通 / 後悔を次に活かせる</strong>
               </article>
             </div>
           </div>
 
           <aside className={styles.sampleCard}>
             <div className={styles.sampleHeader}>
-              <span className={styles.sampleLabel}>今日の判断例</span>
+              <span className={styles.sampleLabel}>おすすめカード</span>
               <span className={styles.sampleBadge}>{JUDGMENT_LABELS[heroSample.judgmentType]}</span>
             </div>
             <h2>{heroSample.topicTitle}</h2>
             <p className={styles.sampleSummary}>{heroSample.summary}</p>
             <dl className={styles.sampleMeta}>
               <div>
-                <dt>ジャンル</dt>
+                <dt>カテゴリ</dt>
                 <dd>{heroSample.genre}</dd>
               </div>
               <div>
-                <dt>次にするとよいこと</dt>
+                <dt>次の行動</dt>
                 <dd>{heroSample.nextAction}</dd>
               </div>
               <div>
@@ -218,20 +251,20 @@ export default async function HomePage() {
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>できること</p>
-            <h2>最初に分かる3つのこと</h2>
+            <h2>判断を前に進める3つの流れ</h2>
           </div>
           <div className={styles.featureGrid}>
             <article className={styles.featureCard}>
-              <h3>今日のおすすめ判断が分かる</h3>
-              <p>今日見るもの、続けるか見極めるもの、見送るものを、短く分かりやすく提案します。</p>
+              <h3>判断を短く整理する</h3>
+              <p>理由、次の行動、見直しタイミングまで含めて、迷いを短いカードにまとめます。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>迷った判断を保存できる</h3>
-              <p>その場で決めきれない候補は残しておき、あとから見直して判断を続けられます。</p>
+              <h3>行動に変える</h3>
+              <p>カードを見たあとに何をするかが決まるので、考えたまま止まりにくくなります。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>結果を振り返って次に活かせる</h3>
-              <p>保存した判断の結果を残すことで、次のおすすめが少しずつあなた向けに整います。</p>
+              <h3>結果から学ぶ</h3>
+              <p>実行後の満足、普通、後悔を残すことで、次のおすすめが少しずつ自分向けになります。</p>
             </article>
           </div>
         </section>
@@ -240,10 +273,10 @@ export default async function HomePage() {
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>判断カードのサンプル</p>
             <h2>こういう判断が表示されます</h2>
-            <p className={styles.sectionLead}>今すぐ見る候補だけでなく、あとで判断したい候補や見送る判断も並びます。</p>
+            <p className={styles.sectionLead}>動画だけではなく、サブスク、ツール、生活判断まで同じ形で整理します。</p>
           </div>
           <div className={styles.sampleGrid}>
-            {visibleSamples.map((sample, index) => (
+            {SHOWCASE_SAMPLES.map((sample, index) => (
               <article key={`${sample.topicTitle}-${index}`} className={styles.samplePanel}>
                 <div className={styles.samplePanelHeader}>
                   <span className={styles.samplePanelBadge}>{JUDGMENT_LABELS[sample.judgmentType]}</span>
@@ -253,7 +286,7 @@ export default async function HomePage() {
                 <p>{sample.summary}</p>
                 <dl className={styles.samplePanelMeta}>
                   <div>
-                    <dt>次にするとよいこと</dt>
+                    <dt>次の行動</dt>
                     <dd>{sample.nextAction}</dd>
                   </div>
                   <div>
@@ -273,16 +306,16 @@ export default async function HomePage() {
           </div>
           <ol className={styles.stepList}>
             <li className={styles.stepCard}>
-              <strong>1. 好みを設定する</strong>
-              <p>よく見るジャンルや使っているサービスを入れて、今日のおすすめを整えます。</p>
+              <strong>1. まず1枚の判断を見る</strong>
+              <p>最初におすすめカードを見て、このアプリがどんな判断を返すかを体験します。</p>
             </li>
             <li className={styles.stepCard}>
-              <strong>2. 今日の判断を見る</strong>
-              <p>AIが出した判断を見て、今日見るか、続けるか、見送るかを決めます。</p>
+              <strong>2. ログインして好みを整える</strong>
+              <p>よく使うサービスや重視することを入れて、おすすめを自分向けにします。</p>
             </li>
             <li className={styles.stepCard}>
-              <strong>3. 保存して振り返る</strong>
-              <p>迷った判断や結果を残して、次に同じように迷ったときの判断材料にします。</p>
+              <strong>3. 行動して結果を残す</strong>
+              <p>保存や採用、結果の記録を繰り返して、判断の精度を上げていきます。</p>
             </li>
           </ol>
         </section>
@@ -291,7 +324,7 @@ export default async function HomePage() {
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>次にすること</p>
             <h2>まず何をすればいいか、ここから選べます</h2>
-            <p className={styles.sectionLead}>初めてなら好み設定から、すぐ試したいなら判断一覧から始められます。</p>
+            <p className={styles.sectionLead}>初回はログインしておすすめを整え、慣れていればそのまま今日のおすすめへ進めます。</p>
           </div>
           <div className={styles.ctaRow}>
             <TrackedLink
@@ -333,9 +366,9 @@ export default async function HomePage() {
                 source: "landing_footer_login",
                 destination: loginHref
               }}
-            >
-              ログイン
-            </TrackedLink>
+              >
+                ログイン
+              </TrackedLink>
             <TrackedLink
               href="/decisions"
               className={styles.ghostLink}
@@ -345,11 +378,11 @@ export default async function HomePage() {
                 source: "landing_footer_decisions",
                 destination: "/decisions"
               }}
-            >
-              すでに利用中なら今日の判断へ
-            </TrackedLink>
-          </div>
-        </section>
+              >
+                すでに利用中なら今日のおすすめへ
+              </TrackedLink>
+            </div>
+          </section>
       </div>
     </main>
   );
