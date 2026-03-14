@@ -2,6 +2,7 @@ import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
 import TrackedLink from "@/app/components/TrackedLink";
+import { formatEpisodeTitle, formatFrameTypeLabel, formatTopicTitle } from "@/app/lib/uiText";
 import { loadWeeklyDecisionDigest } from "@/app/lib/weeklyDecisionDigest";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./page.module.css";
@@ -9,15 +10,15 @@ import styles from "./page.module.css";
 export const dynamic = "force-dynamic";
 
 const JUDGMENT_TYPE_LABELS = {
-  use_now: "今週の使う",
-  watch: "今週の監視",
-  skip: "今週の見送り"
+  use_now: "今週の今日見る",
+  watch: "今週の様子を見る",
+  skip: "今週の見送る"
 } as const;
 
 const JUDGMENT_TYPE_BADGES = {
-  use_now: "使う",
-  watch: "監視",
-  skip: "見送り"
+  use_now: "今日見る",
+  watch: "様子を見る",
+  skip: "見送る"
 } as const;
 
 const formatWindowLabel = (start: string, end: string): string => {
@@ -66,13 +67,13 @@ export default async function WeeklyDecisionsPage() {
       />
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>Weekly Decision Digest</p>
+          <p className={styles.eyebrow}>週ごとのまとめ</p>
           <h1>毎日追えなくても、週単位で「今どう判断するか」を回収できる。</h1>
           <p className={styles.lead}>
-            直近7日間の judgment cards を `use_now / watch / skip` ごとにまとめて、今週の意思決定を一画面で振り返れます。
+            直近7日間の判断を `今使う / 様子を見る / 見送る` ごとにまとめて、今週の傾向を一画面で振り返れます。
           </p>
           <div className={styles.heroMeta}>
-            <span className={styles.heroBadge}>{isPaid ? "PAID" : "FREE"}</span>
+            <span className={styles.heroBadge}>{isPaid ? "有料版" : "無料版"}</span>
             <span className={styles.stat}>{windowLabel}</span>
             <span className={styles.stat}>使う {digest.counts.use_now}件</span>
             <span className={styles.stat}>監視 {digest.counts.watch}件</span>
@@ -80,10 +81,10 @@ export default async function WeeklyDecisionsPage() {
           </div>
           <div className={styles.breakdownRow}>
             {digest.genreBreakdown.slice(0, 3).map((item) => (
-              <span key={`genre-${item.key}`}>genre: {item.key} {item.count}</span>
+              <span key={`genre-${item.key}`}>ジャンル: {item.key} {item.count}</span>
             ))}
             {digest.frameTypeBreakdown.slice(0, 3).map((item) => (
-              <span key={`frame-${item.key}`}>frame: {item.key} {item.count}</span>
+              <span key={`frame-${item.key}`}>判断タイプ: {formatFrameTypeLabel(item.key)} {item.count}</span>
             ))}
           </div>
         </div>
@@ -97,14 +98,14 @@ export default async function WeeklyDecisionsPage() {
         />
       </section>
 
-      {error ? <p className={styles.errorText}>weekly digest の読み込みに失敗しました: {error}</p> : null}
+      {error ? <p className={styles.errorText}>週ごとのまとめの読み込みに失敗しました: {error}</p> : null}
 
       {!isPaid && digest.previewLimited ? (
         <section className={styles.paywallBanner}>
           <div>
-            <p className={styles.eyebrow}>Preview</p>
+            <p className={styles.eyebrow}>プレビュー</p>
             <h2>無料版はカテゴリごとに一部だけ表示します</h2>
-            <p>有料会員になると今週の全件と deadline 付きの判断一覧をまとめて確認できます。</p>
+            <p>有料会員になると今週の全件と期限付きの判断一覧をまとめて確認できます。</p>
           </div>
           <TrackedLink
             href="/account"
@@ -115,7 +116,7 @@ export default async function WeeklyDecisionsPage() {
               source: "weekly_digest_paywall_banner"
             }}
           >
-            Upgrade
+            プランを見る
           </TrackedLink>
         </section>
       ) : null}
@@ -127,7 +128,7 @@ export default async function WeeklyDecisionsPage() {
           <section key={judgmentType} className={styles.section}>
             <div className={styles.sectionHeading}>
               <div>
-                <p className={styles.sectionEyebrow}>Weekly Digest</p>
+                <p className={styles.sectionEyebrow}>週ごとのまとめ</p>
                 <h2>{JUDGMENT_TYPE_LABELS[judgmentType]}</h2>
               </div>
               <span className={styles.sectionCount}>{digest.counts[judgmentType]}件</span>
@@ -157,18 +158,18 @@ export default async function WeeklyDecisionsPage() {
                       <span className={`${styles.badge} ${styles[`badge_${item.judgment_type}`]}`.trim()}>
                         {JUDGMENT_TYPE_BADGES[item.judgment_type]}
                       </span>
-                      <span className={styles.genreTag}>{item.genre ?? "general"}</span>
+                      <span className={styles.genreTag}>{item.genre ?? "配信作品"}</span>
                     </div>
-                    <h3>{item.topic_title}</h3>
+                    <h3>{formatTopicTitle(item.topic_title)}</h3>
                     <p>{item.judgment_summary}</p>
                     <dl className={styles.metaList}>
                       <div>
-                        <dt>Deadline</dt>
+                        <dt>期限</dt>
                         <dd>{isPaid ? formatDeadline(item.deadline_at) : "有料会員で表示"}</dd>
                       </div>
                       <div>
-                        <dt>Episode</dt>
-                        <dd>{item.episode_title ?? "Untitled episode"}</dd>
+                        <dt>詳細</dt>
+                        <dd>{formatEpisodeTitle(item.episode_title)}</dd>
                       </div>
                     </dl>
                   </TrackedLink>

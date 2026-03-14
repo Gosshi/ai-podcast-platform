@@ -221,16 +221,16 @@ export const buildDeadlineDueSoonAlerts = (
           title: `${card.topic_title} の締切が近づいています`,
           summary:
             hoursUntilDue <= 24
-              ? "24時間以内に判断が必要です。episode で条件と次の行動を確認できます。"
-              : `${hoursUntilDue}時間以内に確認したい judgment です。library と episode から再訪できます。`,
+              ? "24時間以内に確認したい判断です。詳細から条件と次の行動を確認できます。"
+              : `${hoursUntilDue}時間以内に見直したい判断です。保存一覧や詳細から再訪できます。`,
           urgency: resolveUrgencyFromHours(hoursUntilDue),
           due_at: card.deadline_at,
           created_at: createdAt,
           metadata: {
             judgment_card_id: card.id,
             links: [
-              { href: `/episodes/${card.episode_id}`, label: "Episode" },
-              { href: "/decisions/library", label: "Library" }
+              { href: `/episodes/${card.episode_id}`, label: "詳細" },
+              { href: "/decisions/library", label: "保存" }
             ]
           }
         } satisfies UserAlertCandidate
@@ -277,11 +277,11 @@ export const buildWatchlistDueSoonAlerts = (
           judgment_card_id: item.judgment_card_id,
           user_decision_id: item.history_decision_id,
           episode_id: item.episode_id,
-          title: `Watchlist の ${item.topic_title} を見直すタイミングです`,
+          title: `保存中の「${item.topic_title}」を見直すタイミングです`,
           summary:
             item.status === "watching"
-              ? "watching 中の判断です。deadline 前に episode と watchlist を見直してください。"
-              : "saved した判断です。deadline が来る前に watchlist から再訪してください。",
+              ? "様子を見ている判断です。期限前に詳細と保存一覧を見直してください。"
+              : "保存した判断です。期限が来る前に保存一覧から再訪してください。",
           urgency: resolveUrgencyFromHours(hoursUntilDue),
           due_at: item.deadline_at,
           created_at: createdAt,
@@ -289,8 +289,8 @@ export const buildWatchlistDueSoonAlerts = (
             judgment_card_id: item.judgment_card_id,
             user_decision_id: item.history_decision_id,
             links: [
-              { href: "/watchlist", label: "Watchlist" },
-              { href: `/episodes/${item.episode_id}`, label: "Episode" }
+              { href: "/watchlist", label: "保存" },
+              { href: `/episodes/${item.episode_id}`, label: "詳細" }
             ]
           }
         } satisfies UserAlertCandidate
@@ -320,8 +320,8 @@ export const buildOutcomeReminderAlerts = (
           judgment_card_id: candidate.judgment_card_id,
           user_decision_id: candidate.id,
           episode_id: candidate.episode_id,
-          title: `${candidate.topic_title} の outcome を記録してください`,
-          summary: `${formatOutcomeReminderTiming(candidate)}。history / replay から学習ループを閉じられます。`,
+          title: `${candidate.topic_title} の結果を記録してください`,
+          summary: `${formatOutcomeReminderTiming(candidate)}。履歴や振り返りから見直せます。`,
           urgency:
             candidate.reason === "deadline_passed"
               ? candidate.days_past_deadline === 0
@@ -336,9 +336,9 @@ export const buildOutcomeReminderAlerts = (
             judgment_card_id: candidate.judgment_card_id,
             user_decision_id: candidate.id,
             links: [
-              { href: `/history#decision-${candidate.id}`, label: "History" },
-              { href: `/history/replay/${candidate.id}`, label: "Replay" },
-              { href: `/episodes/${candidate.episode_id}`, label: "Episode" }
+              { href: `/history#decision-${candidate.id}`, label: "履歴" },
+              { href: `/history/replay/${candidate.id}`, label: "振り返り" },
+              { href: `/episodes/${candidate.episode_id}`, label: "詳細" }
             ]
           }
         }) satisfies UserAlertCandidate
@@ -366,8 +366,8 @@ export const buildWeeklyDigestReadyAlerts = (
   const now = options.now ?? new Date();
   const createdAt = now.toISOString();
   const title = options.isPaid
-    ? `今週の digest がまとまりました (${total}件)`
-    : `今週の digest preview ができました (${total}件)`;
+    ? `今週のまとめができました (${total}件)`
+    : `今週のまとめプレビューができました (${total}件)`;
 
   return [
     {
@@ -380,8 +380,8 @@ export const buildWeeklyDigestReadyAlerts = (
       episode_id: null,
       title,
       summary: options.isPaid
-        ? `use_now ${digest.counts.use_now} / watch ${digest.counts.watch} / skip ${digest.counts.skip} を weekly digest で確認できます。`
-        : "free はカテゴリごとに一部 preview まで表示します。paid で full digest を確認できます。",
+        ? `今日見る ${digest.counts.use_now} / 様子を見る ${digest.counts.watch} / 見送る ${digest.counts.skip} を週まとめで確認できます。`
+        : "無料版では一部プレビューまで表示します。有料版で全体を確認できます。",
       urgency: "low",
       due_at: digest.windowEnd,
       created_at: createdAt,
@@ -390,8 +390,8 @@ export const buildWeeklyDigestReadyAlerts = (
         window_start: digest.windowStart,
         window_end: digest.windowEnd,
         links: [
-          { href: "/weekly-decisions", label: "Weekly Digest" },
-          { href: "/decisions", label: "Decisions" }
+          { href: "/weekly-decisions", label: "週ごとのまとめ" },
+          { href: "/decisions", label: "今日の判断" }
         ]
       }
     }
@@ -431,15 +431,15 @@ export const buildUserAlertCandidates = (params: {
 };
 
 export const ALERT_TYPE_LABELS: Record<AlertType, string> = {
-  deadline_due_soon: "Deadline",
-  outcome_reminder: "Outcome Reminder",
-  weekly_digest_ready: "Weekly Digest",
-  watchlist_due_soon: "Watchlist"
+  deadline_due_soon: "期限あり",
+  outcome_reminder: "結果の記録",
+  weekly_digest_ready: "週ごとのまとめ",
+  watchlist_due_soon: "保存中"
 };
 
 export const ALERT_URGENCY_LABELS: Record<AlertUrgency, string> = {
-  critical: "Critical",
-  high: "High",
-  medium: "Medium",
-  low: "Low"
+  critical: "高",
+  high: "やや高",
+  medium: "通常",
+  low: "あとで"
 };

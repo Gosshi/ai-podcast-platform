@@ -26,23 +26,23 @@ type WatchlistFiltersProps = {
 };
 
 const STATUS_OPTIONS: Array<{ value: WatchlistStatus | null; label: string }> = [
-  { value: null, label: "All" },
-  { value: "saved", label: "Saved" },
-  { value: "watching", label: "Watching" },
-  { value: "archived", label: "Archived" }
+  { value: null, label: "すべて" },
+  { value: "saved", label: "あとで見る" },
+  { value: "watching", label: "様子を見る" },
+  { value: "archived", label: "保管中" }
 ];
 
 const URGENCY_OPTIONS: Array<{ value: WatchlistUrgency | null; label: string }> = [
-  { value: null, label: "All" },
-  { value: "overdue", label: "Overdue" },
-  { value: "due_soon", label: "Due Soon" },
-  { value: "no_deadline", label: "No Deadline" }
+  { value: null, label: "すべて" },
+  { value: "overdue", label: "期限切れ" },
+  { value: "due_soon", label: "期限あり" },
+  { value: "no_deadline", label: "期限なし" }
 ];
 
 const SORT_LABELS: Record<WatchlistSort, string> = {
-  newest: "Newest",
-  deadline_soon: "Deadline Soon",
-  saved_order: "Saved Order"
+  newest: "新しい順",
+  deadline_soon: "期限が近い順",
+  saved_order: "保存順"
 };
 
 const buildSearchParams = (filters: WatchlistFiltersProps["initialFilters"], isPaid: boolean): string => {
@@ -128,7 +128,7 @@ export default function WatchlistFilters({
     <section className={styles.filterPanel}>
       <div className={styles.filterGrid}>
         <label className={styles.selectLabel}>
-          <span>Status</span>
+          <span>状態</span>
           <select
             value={status ?? ""}
             className={styles.select}
@@ -148,7 +148,7 @@ export default function WatchlistFilters({
         </label>
 
         <label className={styles.selectLabel}>
-          <span>Genre</span>
+          <span>ジャンル</span>
           <select
             value={genre ?? ""}
             className={styles.select}
@@ -159,7 +159,7 @@ export default function WatchlistFilters({
               updateFilters("genre", nextValue);
             }}
           >
-            <option value="">All genres</option>
+            <option value="">すべてのジャンル</option>
             {options.genres.map((item) => (
               <option key={item} value={item}>
                 {item}
@@ -169,7 +169,7 @@ export default function WatchlistFilters({
         </label>
 
         <label className={styles.selectLabel}>
-          <span>Frame</span>
+          <span>判断タイプ</span>
           <select
             value={frameType ?? ""}
             className={styles.select}
@@ -180,7 +180,7 @@ export default function WatchlistFilters({
               updateFilters("frameType", nextValue);
             }}
           >
-            <option value="">All frames</option>
+            <option value="">すべての判断タイプ</option>
             {options.frameTypes.map((item) => (
               <option key={item} value={item}>
                 {item}
@@ -190,7 +190,7 @@ export default function WatchlistFilters({
         </label>
 
         <label className={styles.selectLabel}>
-          <span>Sort</span>
+          <span>並び順</span>
           <select
             value={sort}
             className={styles.select}
@@ -212,7 +212,7 @@ export default function WatchlistFilters({
         </label>
 
         <label className={styles.selectLabel}>
-          <span>Urgency</span>
+          <span>期限</span>
           <select
             value={urgency ?? ""}
             className={styles.select}
@@ -233,7 +233,7 @@ export default function WatchlistFilters({
       </div>
 
       <div className={styles.filterFooter}>
-        {!isPaid ? <p className={styles.filterHint}>free は urgency filter と deadline sort をロックしています。</p> : null}
+        {!isPaid ? <p className={styles.filterHint}>無料版では期限での絞り込みと並び替えは一部のみ使えます。</p> : null}
         <button
           type="button"
           className={styles.secondaryButton}
@@ -255,7 +255,7 @@ export default function WatchlistFilters({
             navigate(resetFilters);
           }}
         >
-          Reset
+          リセット
         </button>
       </div>
     </section>

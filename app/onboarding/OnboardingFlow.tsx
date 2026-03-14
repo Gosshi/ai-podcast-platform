@@ -32,25 +32,25 @@ type OnboardingFlowProps = {
 const STEP_TITLES = [
   {
     id: "interest_topics",
-    eyebrow: "Step 1",
+    eyebrow: "1 / 4",
     title: "興味ジャンルを選ぶ",
     description: "まずは、ふだん気になりやすいジャンルを教えてください。複数選べます。"
   },
   {
     id: "active_subscriptions",
-    eyebrow: "Step 2",
+    eyebrow: "2 / 4",
     title: "使っているサービスを教える",
     description: "今すぐ見られるかどうかを判断しやすくするために使います。"
   },
   {
     id: "decision_priority",
-    eyebrow: "Step 3",
+    eyebrow: "3 / 4",
     title: "判断で何を優先するかを決める",
     description: "お金、時間、新しい出会い、後悔しにくさのどれを重視するかを決めます。"
   },
   {
     id: "time_and_budget",
-    eyebrow: "Step 4",
+    eyebrow: "4 / 4",
     title: "使える時間を教える",
     description: "使える時間と予算感覚を入れて、無理のないおすすめに整えます。"
   }
@@ -268,18 +268,17 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
           }
 
           trackStepCompletion(step);
-          if (isFirstRun) {
-            track("onboarding_complete", {
-              page: "/onboarding",
-              source: analyticsSource,
-              is_first_run: true,
-              interest_topic_count: interestTopics.length,
-              active_subscription_count: activeSubscriptions.filter((entry) => entry !== "none").length,
-              decision_priority: decisionPriority,
-              daily_available_time: dailyAvailableTime,
-              budget_sensitivity: budgetSensitivity
-            });
-          }
+          track("onboarding_complete", {
+            page: "/onboarding",
+            source: analyticsSource,
+            is_first_run: isFirstRun,
+            interest_topic_count: interestTopics.length,
+            active_subscription_count: activeSubscriptions.filter((entry) => entry !== "none").length,
+            decision_priority: decisionPriority,
+            daily_available_time: dailyAvailableTime,
+            budget_sensitivity: budgetSensitivity,
+            next_path: nextPath
+          });
 
           router.replace(nextPath);
           router.refresh();

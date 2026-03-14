@@ -5,11 +5,11 @@ import TrackedLink from "@/app/components/TrackedLink";
 import styles from "./app-navigation.module.css";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Home" },
-  { href: "/decisions", label: "Decisions" },
-  { href: "/decisions/library", label: "Library" },
-  { href: "/history", label: "History" },
-  { href: "/account", label: "Account" }
+  { href: "/", label: "ホーム" },
+  { href: "/decisions", label: "今日の判断" },
+  { href: "/decisions/library", label: "保存" },
+  { href: "/history", label: "履歴" },
+  { href: "/account", label: "アカウント" }
 ];
 
 const isActivePath = (pathname: string, href: string): boolean => {

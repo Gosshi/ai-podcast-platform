@@ -13,11 +13,11 @@ export const formatMembershipDate = (
 
 export const resolvePlanName = (planType: string | null, isPaid: boolean): string => {
   if (!planType) {
-    return isPaid ? "Paid Member" : "Free";
+    return isPaid ? "有料会員" : "無料版";
   }
 
   if (planType === "pro_monthly") {
-    return "Pro Monthly";
+    return "月額プラン";
   }
 
   return planType
@@ -27,7 +27,7 @@ export const resolvePlanName = (planType: string | null, isPaid: boolean): strin
 };
 
 export const resolveMembershipBadgeLabel = (isPaid: boolean): string => {
-  return isPaid ? "PAID" : "FREE";
+  return isPaid ? "有料版" : "無料版";
 };
 
 export const resolveMembershipStatusLabel = (

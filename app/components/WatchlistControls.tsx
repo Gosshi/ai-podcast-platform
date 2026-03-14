@@ -142,6 +142,11 @@ export default function WatchlistControls({
       const previousStatus = status;
       setItemId(payload.item.id);
       setStatus(payload.item.status ?? previousStatus);
+      track("decision_action_click", {
+        ...analyticsProps,
+        action_name: nextStatus,
+        previous_status: previousStatus ?? undefined
+      });
       track("watchlist_add", {
         ...analyticsProps,
         watchlist_status: payload.item.status ?? previousStatus ?? undefined,
@@ -184,6 +189,11 @@ export default function WatchlistControls({
       const previousStatus = status;
       setItemId(null);
       setStatus(null);
+      track("decision_action_click", {
+        ...analyticsProps,
+        action_name: "remove_watchlist",
+        previous_status: previousStatus ?? undefined
+      });
       track("watchlist_remove", {
         ...analyticsProps,
         previous_status: previousStatus ?? undefined,
@@ -205,7 +215,7 @@ export default function WatchlistControls({
           className={`${styles.button} ${styles.buttonGhost}`.trim()}
           onClick={() => router.push("/account")}
         >
-          ログインしてあとで見る
+          ログインして保存
         </button>
       </div>
     );
@@ -232,7 +242,7 @@ export default function WatchlistControls({
             onClick={() => void upsertStatus("archived")}
             disabled={isSubmitting}
           >
-            保管する
+            非表示
           </button>
         ) : null}
         {itemId ? (

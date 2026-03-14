@@ -14,6 +14,7 @@ import {
   formatDecisionReplayDateTime,
   loadDecisionReplay
 } from "@/app/lib/decisionReplay";
+import { formatFrameTypeLabel, formatTopicTitle } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./page.module.css";
 
@@ -65,14 +66,14 @@ export default async function DecisionReplayPage({
       />
 
       <div className={styles.backRow}>
-        <Link href="/history">History</Link>
-        {replay?.episode_id ? <Link href={`/episodes/${replay.episode_id}`}>Episode</Link> : null}
+        <Link href="/history">履歴</Link>
+        {replay?.episode_id ? <Link href={`/episodes/${replay.episode_id}`}>詳細</Link> : null}
       </div>
 
       {!viewer ? (
         <section className={styles.noticePanel}>
-          <p className={styles.eyebrow}>Decision Replay</p>
-          <h1>Replay を見るにはログインが必要です</h1>
+          <p className={styles.eyebrow}>振り返り</p>
+          <h1>振り返りを見るにはログインが必要です</h1>
           <p className={styles.bodyText}>
             保存済みの判断だけを時系列で振り返れるようにしているため、この画面はログイン後に開放されます。
           </p>
@@ -85,30 +86,29 @@ export default async function DecisionReplayPage({
               source: "decision_replay_login_notice"
             }}
           >
-            Account でログイン
+            アカウントでログイン
           </TrackedLink>
         </section>
       ) : null}
 
-      {replayState.error ? <p className={styles.errorText}>replay の読み込みに失敗しました: {replayState.error}</p> : null}
+      {replayState.error ? <p className={styles.errorText}>振り返りの読み込みに失敗しました: {replayState.error}</p> : null}
 
       {visibleReplay && replay ? (
         <>
           <section className={styles.hero}>
             <div className={styles.heroCopy}>
-              <p className={styles.eyebrow}>Decision Replay</p>
-              <h1>{replay.topic_title}</h1>
+              <p className={styles.eyebrow}>振り返り</p>
+              <h1>{formatTopicTitle(replay.topic_title)}</h1>
               <p className={styles.lead}>
-                当時の judgment card と、あとから記録した outcome を並べて振り返ります。過去の判断を profile と
-                recommendation に戻すための replay です。
+                当時の判断内容と、あとから記録した結果を並べて振り返ります。
               </p>
 
               <div className={styles.badgeRow}>
                 <span className={`${styles.badge} ${styles[`badge_${replay.judgment_type}`]}`.trim()}>
-                  Card: {DECISION_TYPE_LABELS[replay.judgment_type]}
+                  判断: {DECISION_TYPE_LABELS[replay.judgment_type]}
                 </span>
                 <span className={`${styles.badge} ${styles[`badge_${replay.decision_type}`]}`.trim()}>
-                  Saved: {DECISION_TYPE_LABELS[replay.decision_type]}
+                  保存: {DECISION_TYPE_LABELS[replay.decision_type]}
                 </span>
                 <span className={styles.outcomeBadge}>{formatDecisionOutcomeLabel(replay.outcome)}</span>
               </div>
@@ -126,26 +126,26 @@ export default async function DecisionReplayPage({
           <section className={styles.section}>
             <div className={styles.sectionHeading}>
               <div>
-                <p className={styles.sectionEyebrow}>Section 1</p>
+                <p className={styles.sectionEyebrow}>概要</p>
                 <h2>判断概要</h2>
               </div>
             </div>
 
             <dl className={styles.summaryGrid}>
               <div>
-                <dt>Topic</dt>
-                <dd>{replay.topic_title}</dd>
+                <dt>タイトル</dt>
+                <dd>{formatTopicTitle(replay.topic_title)}</dd>
               </div>
               <div>
-                <dt>Genre</dt>
+                <dt>ジャンル</dt>
                 <dd>{replay.genre ?? "-"}</dd>
               </div>
               <div>
-                <dt>Frame</dt>
-                <dd>{replay.frame_type ?? "-"}</dd>
+                <dt>判断タイプ</dt>
+                <dd>{formatFrameTypeLabel(replay.frame_type, "-")}</dd>
               </div>
               <div>
-                <dt>Judgment Type</dt>
+                <dt>判断内容</dt>
                 <dd>{DECISION_TYPE_LABELS[replay.judgment_type]}</dd>
               </div>
               <div>
@@ -162,14 +162,14 @@ export default async function DecisionReplayPage({
           <section className={styles.section}>
             <div className={styles.sectionHeading}>
               <div>
-                <p className={styles.sectionEyebrow}>Section 2</p>
+                <p className={styles.sectionEyebrow}>判断内容</p>
                 <h2>当時の判断内容</h2>
               </div>
             </div>
 
             <div className={styles.detailColumns}>
               <article className={styles.panel}>
-                <p className={styles.cardLabel}>Judgment Summary</p>
+                <p className={styles.cardLabel}>判断の説明</p>
                 <p className={styles.summaryText}>{replay.judgment_summary}</p>
               </article>
 
@@ -208,8 +208,8 @@ export default async function DecisionReplayPage({
                   </div>
                 ) : (
                   <div className={styles.lockedPanel}>
-                    <strong>paid で full replay を開放</strong>
-                    <p>当時の行動指針、deadline、watch points、threshold を並べて振り返れます。</p>
+                    <strong>有料版では当時の詳細まで振り返れます</strong>
+                    <p>当時の行動指針、期限、見直しポイントをまとめて確認できます。</p>
                     <TrackedLink
                       href="/account"
                       className={styles.secondaryLink}
@@ -221,7 +221,7 @@ export default async function DecisionReplayPage({
                         judgment_card_id: replay.judgment_card_id
                       }}
                     >
-                      full replay を開く
+                      詳しく見る
                     </TrackedLink>
                   </div>
                 )}
@@ -232,7 +232,7 @@ export default async function DecisionReplayPage({
           <section className={styles.section}>
             <div className={styles.sectionHeading}>
               <div>
-                <p className={styles.sectionEyebrow}>Section 3</p>
+                <p className={styles.sectionEyebrow}>結果</p>
                 <h2>あなたの行動</h2>
               </div>
             </div>
@@ -244,7 +244,7 @@ export default async function DecisionReplayPage({
                 <p className={styles.bodyText}>{replay.judgment_summary}</p>
                 <dl className={styles.metaList}>
                   <div>
-                    <dt>Card Recommendation</dt>
+                    <dt>おすすめ</dt>
                     <dd>{DECISION_TYPE_LABELS[replay.judgment_type]}</dd>
                   </div>
                   <div>
@@ -260,7 +260,7 @@ export default async function DecisionReplayPage({
                 <p className={styles.bodyText}>保存した判断: {DECISION_TYPE_LABELS[replay.decision_type]}</p>
                 <dl className={styles.metaList}>
                   <div>
-                    <dt>Outcome</dt>
+                    <dt>結果</dt>
                     <dd>{formatDecisionOutcomeLabel(replay.outcome)}</dd>
                   </div>
                   <div>
@@ -275,8 +275,8 @@ export default async function DecisionReplayPage({
           <section className={styles.section}>
             <div className={styles.sectionHeading}>
               <div>
-                <p className={styles.sectionEyebrow}>Section 4</p>
-                <h2>Replay Insight</h2>
+                <p className={styles.sectionEyebrow}>メモ</p>
+                <h2>振り返りメモ</h2>
               </div>
             </div>
 
@@ -305,13 +305,13 @@ export default async function DecisionReplayPage({
                     ))}
                   </ul>
                 ) : (
-                  <p className={styles.mutedText}>まだ replay insight はありません。履歴が増えるほど、より具体的な学びを返しやすくなります。</p>
+                  <p className={styles.mutedText}>まだ振り返りメモはありません。履歴が増えるほど、より具体的な学びを返しやすくなります。</p>
                 )}
               </>
             ) : (
               <div className={styles.lockedPanel}>
-                <strong>paid で insight を開放</strong>
-                <p>replay を profile と recommendation に返す学びは、有料会員でフル表示されます。</p>
+                <strong>有料版では振り返りメモを詳しく表示します</strong>
+                <p>過去の判断から学べる内容を、より詳しく確認できます。</p>
               </div>
             )}
           </section>

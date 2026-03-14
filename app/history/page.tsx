@@ -13,6 +13,7 @@ import {
   OUTCOME_LABELS
 } from "@/app/lib/decisionHistory";
 import { buildDecisionReplayPath } from "@/app/lib/decisionReplay";
+import { formatEpisodeTitle, formatFrameTypeLabel, formatTopicTitle } from "@/app/lib/uiText";
 import { EMPTY_DECISION_PROFILE } from "@/src/lib/decisionProfile";
 import {
   buildOutcomeReminderCandidates,
@@ -52,10 +53,10 @@ export default async function HistoryPage() {
       <AnalyticsPageView page="/history" pageEventName="history_view" />
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>Decision History</p>
+          <p className={styles.eyebrow}>履歴</p>
           <h1>採用した判断と、その結果をあとで学習できる状態にする。</h1>
           <p className={styles.lead}>
-            どの judgment card を使ったかを残し、あとから満足・後悔・普通で結果を更新できます。自分の判断傾向を蓄積して、次回の選び方に戻せます。
+            どの判断を使ったかを残し、あとから満足・後悔・普通で結果を更新できます。自分の判断傾向を蓄積して、次回の選び方に活かせます。
           </p>
 
           <div className={styles.statsGrid}>
@@ -110,7 +111,7 @@ export default async function HistoryPage() {
               source: "history_login_notice"
             }}
           >
-            Account でログイン
+            アカウントでログイン
           </TrackedLink>
         </section>
       ) : null}
@@ -151,7 +152,7 @@ export default async function HistoryPage() {
               <p className={styles.sectionEyebrow}>Personal Decision Profile</p>
               <h2>履歴から見える、あなたの判断傾向</h2>
               <p className={styles.sectionLead}>
-                保存した decision history を集計して、どの frame / genre / outcome に偏りがあるかを可視化します。
+                保存した履歴を集計して、どの判断タイプやジャンルに偏りがあるかを見やすくします。
               </p>
             </div>
             <span className={styles.sectionCount}>{profile.totalDecisions}件</span>
@@ -170,20 +171,20 @@ export default async function HistoryPage() {
                   <dd>{stats.successRate}%</dd>
                 </div>
                 <div>
-                  <dt>満足しやすい frame</dt>
+                  <dt>満足しやすい判断タイプ</dt>
                   <dd>{profile.bestFrameType ? `${profile.bestFrameType.label} (${profile.bestFrameType.successRate}%)` : "データ待ち"}</dd>
                 </div>
                 <div>
-                  <dt>後悔しやすい frame</dt>
+                  <dt>後悔しやすい判断タイプ</dt>
                   <dd>{profile.riskyFrameType ? `${profile.riskyFrameType.label} (${profile.riskyFrameType.regretRate}%)` : "データ待ち"}</dd>
                 </div>
               </div>
             </article>
 
             <article className={styles.profilePanel}>
-              <h3>判断と outcome の比率</h3>
+              <h3>判断と結果の比率</h3>
               <div className={styles.ratioGroup}>
-                <p className={styles.ratioLabel}>Decision Type</p>
+                <p className={styles.ratioLabel}>判断タイプ</p>
                 <div className={styles.ratioRow}>
                   {(["use_now", "watch", "skip"] as const).map((decisionType) => (
                     <div key={decisionType} className={styles.ratioChip}>
@@ -194,7 +195,7 @@ export default async function HistoryPage() {
                 </div>
               </div>
               <div className={styles.ratioGroup}>
-                <p className={styles.ratioLabel}>Outcome</p>
+                <p className={styles.ratioLabel}>結果</p>
                 <div className={styles.ratioRow}>
                   {(["success", "regret", "neutral"] as const).map((outcome) => (
                     <div key={outcome} className={styles.ratioChip}>
@@ -225,7 +226,7 @@ export default async function HistoryPage() {
             </article>
 
             <article className={styles.profilePanel}>
-              <h3>後悔しやすいジャンル / frame</h3>
+              <h3>後悔しやすいジャンル / 判断タイプ</h3>
               <ul className={styles.profileList}>
                 <li>
                   <span>ジャンル</span>
@@ -236,7 +237,7 @@ export default async function HistoryPage() {
                   </strong>
                 </li>
                 <li>
-                  <span>frame</span>
+                  <span>判断タイプ</span>
                   <strong>
                     {profile.riskyFrameType
                       ? `${profile.riskyFrameType.label} (${profile.riskyFrameType.regretCount}/${profile.riskyFrameType.count})`
@@ -244,7 +245,7 @@ export default async function HistoryPage() {
                   </strong>
                 </li>
                 <li>
-                  <span>満足 frame</span>
+                  <span>満足しやすい判断タイプ</span>
                   <strong>
                     {profile.bestFrameType
                       ? `${profile.bestFrameType.label} (${profile.bestFrameType.successCount}/${profile.bestFrameType.count})`
@@ -258,7 +259,7 @@ export default async function HistoryPage() {
               <h3>あなたの傾向</h3>
               {profile.insights.length === 0 ? (
                 <p className={styles.profileEmpty}>
-                  履歴が5件以上たまると、frame / genre / outcome の傾向 insight をここに表示します。
+                  履歴が5件以上たまると、判断タイプ / ジャンル / 結果の傾向をここに表示します。
                 </p>
               ) : (
                 <ul className={styles.insightList}>
@@ -278,8 +279,8 @@ export default async function HistoryPage() {
 
           <p className={styles.profileFootnote}>
             {viewer.isPaid
-              ? "paid は保存上限なしで profile を育てられ、judgment card 上にも personal hint を返せます。"
-              : `free は最大${FREE_DECISION_HISTORY_LIMIT}件までで profile を更新します。paid にすると履歴上限なし + judgment card の personal hint を開放します。`}
+              ? "有料版では保存上限なしで傾向を育てられ、判断カードにも補足が返ります。"
+              : `無料版では最大${FREE_DECISION_HISTORY_LIMIT}件まで傾向を更新します。有料版で履歴上限なしになります。`}
           </p>
         </section>
       ) : null}
@@ -287,7 +288,7 @@ export default async function HistoryPage() {
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionEyebrow}>Past Decisions</p>
+            <p className={styles.sectionEyebrow}>履歴一覧</p>
             <h2>過去の判断</h2>
           </div>
           <span className={styles.sectionCount}>{visibleEntries.length}件</span>
@@ -295,7 +296,7 @@ export default async function HistoryPage() {
 
         {visibleEntries.length === 0 ? (
           <p className={styles.emptyText}>
-            まだ履歴はありません。`/decisions` またはエピソード詳細から判断を保存すると、ここに積み上がります。
+            まだ履歴はありません。`/decisions` または詳細から判断を保存すると、ここに積み上がります。
           </p>
         ) : (
           <div className={styles.historyList}>
@@ -303,8 +304,8 @@ export default async function HistoryPage() {
               <article key={entry.id} id={`decision-${entry.id}`} className={styles.historyCard}>
                 <div className={styles.historyHeader}>
                   <div>
-                    <p className={styles.cardEyebrow}>{entry.frame_type ?? "Frame 未設定"}</p>
-                    <h3>{entry.topic_title}</h3>
+                    <p className={styles.cardEyebrow}>{formatFrameTypeLabel(entry.frame_type)}</p>
+                    <h3>{formatTopicTitle(entry.topic_title)}</h3>
                   </div>
                   <span className={`${styles.badge} ${styles[`badge_${entry.decision_type}`]}`.trim()}>
                     {DECISION_TYPE_LABELS[entry.decision_type]}
@@ -313,20 +314,20 @@ export default async function HistoryPage() {
 
                 <dl className={styles.metaGrid}>
                   <div>
-                    <dt>Topic</dt>
-                    <dd>{entry.topic_title}</dd>
+                    <dt>タイトル</dt>
+                    <dd>{formatTopicTitle(entry.topic_title)}</dd>
                   </div>
                   <div>
-                    <dt>Frame</dt>
-                    <dd>{entry.frame_type ?? "-"}</dd>
+                    <dt>判断タイプ</dt>
+                    <dd>{formatFrameTypeLabel(entry.frame_type, "-")}</dd>
                   </div>
                   <div>
-                    <dt>Date</dt>
+                    <dt>記録日</dt>
                     <dd>{formatDecisionHistoryDate(entry.created_at)}</dd>
                   </div>
                   <div>
-                    <dt>Episode</dt>
-                    <dd>{entry.episode_title ?? "Untitled episode"}</dd>
+                    <dt>詳細</dt>
+                    <dd>{formatEpisodeTitle(entry.episode_title)}</dd>
                   </div>
                 </dl>
 
@@ -363,7 +364,7 @@ export default async function HistoryPage() {
                       outcome: entry.outcome
                     }}
                   >
-                    Replayを見る
+                    振り返りを見る
                   </TrackedLink>
                 </div>
                 <RemoveDecisionButton

@@ -57,8 +57,8 @@ export default function NotificationPreferencesForm({
           }
         />
         <div>
-          <h3>Weekly Digest</h3>
-          <p>週次まとめ alert を `/alerts` と `/account` に表示します。</p>
+          <h3>週ごとのまとめ</h3>
+          <p>週次まとめを `/alerts` と `/account` に表示します。</p>
         </div>
       </label>
 
@@ -74,8 +74,8 @@ export default function NotificationPreferencesForm({
           }
         />
         <div>
-          <h3>Deadline / Watchlist Alerts</h3>
-          <p>期限が近い judgment と watchlist を in-app alert に出します。</p>
+          <h3>期限と保存中のお知らせ</h3>
+          <p>期限が近い判断や保存した候補をお知らせに表示します。</p>
         </div>
       </label>
 
@@ -91,14 +91,14 @@ export default function NotificationPreferencesForm({
           }
         />
         <div>
-          <h3>Outcome Reminders</h3>
-          <p>outcome 未入力の decision を `/history` と `/alerts` から再訪できるようにします。</p>
+          <h3>結果の記録リマインド</h3>
+          <p>結果未入力の判断を `/history` と `/alerts` から見直せるようにします。</p>
         </div>
       </label>
 
       <div className={styles.actions}>
         <button type="button" className={styles.submitButton} disabled={isPending} onClick={() => void save()}>
-          Save
+          保存する
         </button>
         {status ? <p className={styles.status}>{status}</p> : null}
       </div>

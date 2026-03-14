@@ -25,23 +25,23 @@ type LibraryControlsProps = {
 };
 
 const JUDGMENT_TYPE_LABELS: Array<{ value: JudgmentType | null; label: string }> = [
-  { value: null, label: "All" },
-  { value: "use_now", label: "使う" },
-  { value: "watch", label: "監視" },
-  { value: "skip", label: "見送り" }
+  { value: null, label: "すべて" },
+  { value: "use_now", label: "今使う" },
+  { value: "watch", label: "様子を見る" },
+  { value: "skip", label: "見送る" }
 ];
 
 const URGENCY_LABELS: Array<{ value: DecisionLibraryUrgency | null; label: string }> = [
-  { value: null, label: "All" },
-  { value: "overdue", label: "Overdue" },
-  { value: "due_soon", label: "Due Soon" },
-  { value: "no_deadline", label: "No Deadline" }
+  { value: null, label: "すべて" },
+  { value: "overdue", label: "期限切れ" },
+  { value: "due_soon", label: "期限あり" },
+  { value: "no_deadline", label: "期限なし" }
 ];
 
 const SORT_LABELS: Record<DecisionLibrarySort, string> = {
-  newest: "Newest",
-  deadline_soon: "Deadline Soon",
-  judgment_priority: "Judgment Priority"
+  newest: "新しい順",
+  deadline_soon: "期限が近い順",
+  judgment_priority: "おすすめ順"
 };
 
 const buildSearchParams = (
@@ -152,17 +152,17 @@ export default function LibraryControls({
     <section className={styles.panel}>
       <form className={styles.searchRow} onSubmit={submitSearch}>
         <label className={styles.searchLabel}>
-          <span>Search</span>
+          <span>検索</span>
           <input
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="topic title / judgment summary"
+            placeholder="判断タイトル / 説明"
             className={styles.searchInput}
           />
         </label>
         <button type="submit" className={styles.primaryButton} disabled={isPending}>
-          Search
+          検索
         </button>
         <button
           type="button"
@@ -191,13 +191,13 @@ export default function LibraryControls({
             navigate(resetFilters);
           }}
         >
-          Reset
+          リセット
         </button>
       </form>
 
       <div className={styles.controlGrid}>
         <label className={styles.selectLabel}>
-          <span>Genre</span>
+          <span>ジャンル</span>
           <select
             value={genre ?? ""}
             onChange={(event) => {
@@ -207,7 +207,7 @@ export default function LibraryControls({
             }}
             className={styles.select}
           >
-            <option value="">All genres</option>
+            <option value="">すべてのジャンル</option>
             {options.genres.map((item) => (
               <option key={item} value={item}>
                 {item}
@@ -217,7 +217,7 @@ export default function LibraryControls({
         </label>
 
         <label className={styles.selectLabel}>
-          <span>Frame</span>
+          <span>判断タイプ</span>
           <select
             value={frameType ?? ""}
             onChange={(event) => {
@@ -227,7 +227,7 @@ export default function LibraryControls({
             }}
             className={styles.select}
           >
-            <option value="">All frames</option>
+            <option value="">すべての判断タイプ</option>
             {options.frameTypes.map((item) => (
               <option key={item} value={item}>
                 {item}
@@ -237,7 +237,7 @@ export default function LibraryControls({
         </label>
 
         <label className={styles.selectLabel}>
-          <span>Sort</span>
+          <span>並び順</span>
           <select
             value={sort}
             onChange={(event) => {
@@ -270,7 +270,7 @@ export default function LibraryControls({
       </div>
 
       <div className={styles.chipGroup}>
-        <span className={styles.chipLabel}>Judgment</span>
+        <span className={styles.chipLabel}>判断</span>
         <div className={styles.chipRow}>
           {JUDGMENT_TYPE_LABELS.map((item) => (
             <button
@@ -289,7 +289,7 @@ export default function LibraryControls({
       </div>
 
       <div className={styles.chipGroup}>
-        <span className={styles.chipLabel}>Urgency</span>
+        <span className={styles.chipLabel}>期限</span>
         <div className={styles.chipRow}>
           {URGENCY_LABELS.map((item) => (
             <button

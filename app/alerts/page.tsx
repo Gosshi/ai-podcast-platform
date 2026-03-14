@@ -25,33 +25,33 @@ export default async function AlertsPage() {
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>Alerts Inbox</p>
+          <p className={styles.eyebrow}>お知らせ</p>
           <h1>アプリを閉じていても、次に見るべき判断を失わない。</h1>
           <p className={styles.lead}>
-            deadline、watchlist、outcome reminder、weekly digest を一箇所にまとめています。今は in-app delivery までに留めつつ、email / push / scheduled jobs に流用できる形で保存します。
+            期限が近い判断、保存した候補、結果の記録、週ごとのまとめを一箇所にまとめています。
           </p>
 
           <div className={styles.statGrid}>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>Plan</span>
-              <strong className={styles.statValue}>{viewer?.isPaid ? "PAID" : "FREE"}</strong>
+              <span className={styles.statLabel}>プラン</span>
+              <strong className={styles.statValue}>{viewer?.isPaid ? "有料版" : "無料版"}</strong>
             </article>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>Unread</span>
+              <span className={styles.statLabel}>未読</span>
               <strong className={styles.statValue}>{unreadCount}</strong>
             </article>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>Visible Alerts</span>
+              <span className={styles.statLabel}>表示中</span>
               <strong className={styles.statValue}>{alertState.alerts.length}</strong>
             </article>
           </div>
 
           <div className={styles.linkRow}>
             <Link href="/decisions" className={styles.primaryLink}>
-              Decisions
+              今日の判断
             </Link>
             <Link href="/weekly-decisions" className={styles.secondaryLink}>
-              Weekly Digest
+              週ごとのまとめ
             </Link>
           </div>
         </div>
@@ -67,24 +67,24 @@ export default async function AlertsPage() {
 
       {!viewer ? (
         <section className={styles.noticePanel}>
-          <h2>Alerts を使うにはログインが必要です</h2>
-          <p>判断カード、watchlist、decision history がたまると alert 候補を生成してここに表示します。</p>
+          <h2>お知らせを見るにはログインが必要です</h2>
+          <p>判断カード、保存、履歴がたまると見直したい項目をここに表示します。</p>
           <div className={styles.linkRow}>
             <Link href="/account" className={styles.primaryLink}>
-              Account
+              アカウント
             </Link>
           </div>
         </section>
       ) : null}
 
-      {alertState.error ? <p className={styles.errorText}>alerts の同期に失敗しました: {alertState.error}</p> : null}
+      {alertState.error ? <p className={styles.errorText}>お知らせの同期に失敗しました: {alertState.error}</p> : null}
 
       {viewer ? (
         <AlertsInbox
           alerts={alertState.alerts}
           page="/alerts"
-          title="Your Alerts"
-          lead="生成した alert は `user_alerts` に保存し、mark read / dismiss / future delivery に共通で使います。"
+          title="お知らせ一覧"
+          lead="見直したい項目をまとめて確認できます。"
         />
       ) : null}
     </main>

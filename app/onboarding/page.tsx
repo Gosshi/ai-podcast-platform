@@ -31,6 +31,7 @@ export default async function OnboardingPage({
 
   const params = await searchParams;
   const nextPath = resolveSafeNextPath(readParam(params.next));
+  const nextPathLabel = nextPath === "/decisions" ? "今日の判断" : "次の画面";
 
   return (
     <main className={styles.page}>
@@ -38,7 +39,7 @@ export default async function OnboardingPage({
       <div className={styles.shell}>
         <section className={styles.hero}>
           <div className={styles.copy}>
-            <p className={styles.eyebrow}>Getting Started</p>
+            <p className={styles.eyebrow}>はじめに</p>
             <h1>よく見る作品や使っているサービスを先に教えてください。</h1>
             <p className={styles.lead}>
               最初に好みを入れておくと、今日のおすすめや見直しタイミングがあなた向けに整います。数問で終わるので、
@@ -55,7 +56,7 @@ export default async function OnboardingPage({
               </article>
               <article className={styles.metaCard}>
                 <span>完了後の遷移</span>
-                <strong>{nextPath}</strong>
+                <strong>{nextPathLabel}</strong>
               </article>
             </div>
           </div>

@@ -96,11 +96,11 @@ export default async function AccountPage({
       <div className={styles.shell}>
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>Account</p>
+            <p className={styles.eyebrow}>アカウント</p>
             <h1>プランと請求を、自分で把握して管理できる状態にする。</h1>
             <p className={styles.lead}>
               現在のプラン、購読ステータス、次回更新日、支払い状態を一画面で確認できます。購読中は
-              Billing Portal から更新や解約もセルフサービスで進められます。
+              支払い設定 から更新や解約も進められます。
             </p>
             {subscription === "success" && viewer?.isPaid ? (
               <p className={`${styles.statusMessage} ${styles.success}`}>
@@ -133,18 +133,18 @@ export default async function AccountPage({
           <AlertsInbox
             alerts={alertState.alerts.slice(0, 4)}
             page="/account"
-            title="Retention Alerts"
-            lead="in-app alerts の現在地を Account から確認し、free / paid 差分もここで把握できます。"
+            title="継続チェック"
+            lead="期限が近いものや見直したい項目を、アカウントからまとめて確認できます。"
             showViewAllLink={alertState.alerts.length > 4}
           />
         ) : null}
-        {alertState.error ? <p className={styles.sectionLead}>alerts の同期に失敗しました: {alertState.error}</p> : null}
+        {alertState.error ? <p className={styles.sectionLead}>お知らせの同期に失敗しました: {alertState.error}</p> : null}
 
         <section className={styles.section}>
           <div>
-            <p className={styles.eyebrow}>Membership Snapshot</p>
+            <p className={styles.eyebrow}>会員情報</p>
             <h2>現在の会員状態</h2>
-            <p className={styles.sectionLead}>free / paid の違いと、次に何をすればよいかをすぐ判断できる表示に整理しています。</p>
+            <p className={styles.sectionLead}>今のプランと次にできることを、ひと目で把握できるようにしています。</p>
           </div>
 
           <div className={styles.statsGrid}>
@@ -173,14 +173,14 @@ export default async function AccountPage({
             </article>
             <article className={styles.statCard}>
               <span className={styles.statLabel}>購読管理</span>
-              <strong className={styles.statValue}>{viewer?.stripeCustomerId ? "Billing Portal対応" : "ログイン後に表示"}</strong>
+              <strong className={styles.statValue}>{viewer?.stripeCustomerId ? "支払い設定から変更可能" : "ログイン後に表示"}</strong>
             </article>
             <article className={styles.statCard}>
               <span className={styles.statLabel}>判断カード</span>
               <strong className={styles.statValue}>{viewer?.isPaid ? "全文を表示" : "プレビューまで"}</strong>
             </article>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>DeepDive</span>
+              <span className={styles.statLabel}>詳しい解説</span>
               <strong className={styles.statValue}>{viewer?.isPaid ? "詳しい解説を表示" : "短いプレビューを表示"}</strong>
             </article>
           </div>
@@ -188,11 +188,9 @@ export default async function AccountPage({
 
         <section className={styles.section}>
           <div>
-            <p className={styles.eyebrow}>After Purchase</p>
+            <p className={styles.eyebrow}>有料版でできること</p>
             <h2>{viewer?.isPaid ? "有料会員で使えること" : "有料会員になるとできること"}</h2>
-            <p className={styles.sectionLead}>
-              課金後の価値を「見える化」して、継続利用の理由が伝わるようにしています。
-            </p>
+            <p className={styles.sectionLead}>有料版で広がる使い方を、わかりやすくまとめています。</p>
           </div>
 
           <div className={styles.featureGrid}>
@@ -206,7 +204,7 @@ export default async function AccountPage({
             </article>
             <article className={styles.featureCard}>
               <h3>アーカイブと管理</h3>
-              <p>過去エピソードをさかのぼりつつ、支払い方法や解約も Billing Portal で自分で管理できます。</p>
+              <p>過去エピソードをさかのぼりつつ、支払い方法や解約も支払い設定から管理できます。</p>
             </article>
             <article className={styles.featureCard}>
               <h3>あなたの傾向</h3>
@@ -216,20 +214,18 @@ export default async function AccountPage({
 
           <ul className={styles.list}>
             <li>無料版は判断サマリーの入口まで。有料版は「どう動くか」を決める材料まで開放します。</li>
-            <li>paid は Decision History を profile 化し、次の判断に戻せる personal learning loop を持てます。</li>
-            <li>Stripe Billing Portal を使うので、支払い方法変更や解約フローをアプリ内で独自実装しません。</li>
-            <li>Webhook 反映中でも account 画面から状態確認を続けられます。</li>
+            <li>有料版では履歴から傾向を見つけて、次の判断に活かせます。</li>
+            <li>支払い方法の変更や解約も、この画面から進められます。</li>
+            <li>反映中でもアカウント画面から状態確認を続けられます。</li>
           </ul>
 
-          <p className={styles.lead}>
-            判断の深さを見に行くなら `Decisions`、エピソード全体を追うなら `Episodes` に戻れます。
-          </p>
+          <p className={styles.lead}>判断を見直すなら「今日の判断」へ戻れます。</p>
           <div className={styles.ctaRow}>
             <Link href="/decisions" className={styles.primaryLink}>
-              Decisionsへ戻る
+              今日の判断へ戻る
             </Link>
             <Link href="/episodes" className={styles.secondaryLink}>
-              Episodes
+              詳細を見る
             </Link>
           </div>
         </section>
@@ -237,8 +233,8 @@ export default async function AccountPage({
         {viewer ? (
           <section className={styles.section}>
             <div>
-              <p className={styles.eyebrow}>Preference Setup</p>
-              <h2>Onboarding と判断嗜好の設定</h2>
+              <p className={styles.eyebrow}>好み設定</p>
+              <h2>初回設定と好みの見直し</h2>
               <p className={styles.sectionLead}>
                 最初に設定した好みと、使いながらたまる履歴の両方を使って、おすすめの並びや補足を整えます。
               </p>
@@ -246,7 +242,7 @@ export default async function AccountPage({
 
             <div className={styles.statsGrid}>
               <article className={styles.statCard}>
-                <span className={styles.statLabel}>Onboarding</span>
+                <span className={styles.statLabel}>初回設定</span>
                 <strong className={styles.statValue}>{viewer.needsOnboarding ? "未完了" : "完了済み"}</strong>
               </article>
               <article className={styles.statCard}>
@@ -304,11 +300,9 @@ export default async function AccountPage({
         {viewer && alertState.preferences ? (
           <section className={styles.section}>
             <div>
-              <p className={styles.eyebrow}>Notification Preferences</p>
-              <h2>軽量な alert 設定</h2>
-              <p className={styles.sectionLead}>
-                MVP では in-app alerts の ON / OFF だけを持ちます。将来は email / push / snooze / mute に展開する前提です。
-              </p>
+              <p className={styles.eyebrow}>お知らせ設定</p>
+              <h2>お知らせの受け取り方</h2>
+              <p className={styles.sectionLead}>必要なお知らせだけ受け取れるように切り替えられます。</p>
             </div>
 
             <NotificationPreferencesForm preferences={alertState.preferences} />

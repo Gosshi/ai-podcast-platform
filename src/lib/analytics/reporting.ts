@@ -54,6 +54,7 @@ const FUNNEL_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: string }
 const ENGAGEMENT_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: string }> = [
   { eventName: "page_view", label: "Page Views" },
   { eventName: "landing_view", label: "Landing Views" },
+  { eventName: "landing_start_click", label: "Landing Start Clicks" },
   { eventName: "landing_cta_click", label: "Landing CTA Clicks" },
   { eventName: "onboarding_entry_click", label: "Onboarding Entry Clicks" },
   { eventName: "nav_click", label: "Navigation Clicks" },
@@ -78,6 +79,7 @@ const ENGAGEMENT_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: stri
   { eventName: "watchlist_card_click", label: "Watchlist Card Clicks" },
   { eventName: "decision_calculator_result_view", label: "Calculator Results" },
   { eventName: "decision_save", label: "Decision Saves" },
+  { eventName: "decision_action_click", label: "Decision Action Clicks" },
   { eventName: "outcome_reminder_impression", label: "Outcome Reminder Impressions" },
   { eventName: "outcome_reminder_click", label: "Outcome Reminder Clicks" },
   { eventName: "outcome_quick_submit", label: "Outcome Quick Submit" },

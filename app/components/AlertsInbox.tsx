@@ -112,7 +112,7 @@ export default function AlertsInbox({
     <section className={styles.panel}>
       <div className={styles.panelHeader}>
         <div>
-          <p className={styles.eyebrow}>Notifications</p>
+          <p className={styles.eyebrow}>お知らせ</p>
           <h2>{title}</h2>
           <p className={styles.lead}>{lead}</p>
         </div>
@@ -221,7 +221,7 @@ export default function AlertsInbox({
                       void updateAlert(alert.id, "read");
                     }}
                   >
-                    Mark Read
+                    既読
                   </button>
                 ) : null}
 
@@ -240,7 +240,7 @@ export default function AlertsInbox({
                     void updateAlert(alert.id, "dismiss");
                   }}
                 >
-                  Dismiss
+                  非表示
                 </button>
               </div>
             </article>

@@ -2,6 +2,7 @@ import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import TrackedLink from "@/app/components/TrackedLink";
 import { loadDecisionDashboardCards } from "@/app/lib/decisions";
 import { buildOnboardingPath } from "@/app/lib/onboarding";
+import { formatTopicTitle } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./home.module.css";
 
@@ -13,7 +14,7 @@ export const metadata = {
 
 const JUDGMENT_LABELS = {
   use_now: "今日見る",
-  watch: "続けるか見極める",
+  watch: "様子を見る",
   skip: "見送る"
 } as const;
 
@@ -74,13 +75,16 @@ export default async function HomePage() {
 
   const onboardingHref = buildOnboardingPath("/decisions");
   const onboardingEntryHref = viewer ? onboardingHref : buildAccountEntryPath(onboardingHref);
-  const startHref = viewer ? (viewer.needsOnboarding ? onboardingHref : "/decisions") : onboardingEntryHref;
-  const loginHref = buildAccountEntryPath("/decisions");
+  const startHref = onboardingEntryHref;
+  const loginHref = buildAccountEntryPath(onboardingHref);
   const onboardingSource = viewer?.needsOnboarding ? "landing_first_run" : "landing_preferences";
 
   const samples =
-    cards.slice(0, 3).map((card) => ({
-      topicTitle: card.topic_title,
+    cards
+      .filter((card) => card.genre !== "tech")
+      .slice(0, 3)
+      .map((card) => ({
+      topicTitle: formatTopicTitle(card.topic_title),
       judgmentType: card.judgment_type,
       genre: card.genre ?? "配信作品",
       summary: card.judgment_summary,
@@ -98,7 +102,7 @@ export default async function HomePage() {
       <div className={styles.shell}>
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>Home</p>
+            <p className={styles.eyebrow}>ホーム</p>
             <h1>今日見るもの、続けるもの、見送るものを決める。</h1>
             <p className={styles.subcopy}>エンタメ視聴とサブスクの迷いを、AIと履歴で整理する。</p>
             <p className={styles.lead}>
@@ -110,25 +114,31 @@ export default async function HomePage() {
               <TrackedLink
                 href={startHref}
                 className={styles.primaryLink}
-                eventName="landing_cta_click"
+                eventName="landing_start_click"
                 eventProperties={{
                   page: "/",
                   source: "landing_primary",
                   destination: startHref
                 }}
                 additionalEvents={
-                  startHref === onboardingEntryHref
-                    ? [
-                        {
-                          eventName: "onboarding_entry_click",
-                          eventProperties: {
-                            page: "/",
-                            source: "landing_primary",
-                            destination: onboardingHref
-                          }
-                        }
-                      ]
-                    : undefined
+                  [
+                    {
+                      eventName: "landing_cta_click",
+                      eventProperties: {
+                        page: "/",
+                        source: "landing_primary",
+                        destination: startHref
+                      }
+                    },
+                    {
+                      eventName: "onboarding_entry_click",
+                      eventProperties: {
+                        page: "/",
+                        source: "landing_primary",
+                        destination: onboardingHref
+                      }
+                    }
+                  ]
                 }
               >
                 はじめる
@@ -291,12 +301,30 @@ export default async function HomePage() {
             <TrackedLink
               href={startHref}
               className={styles.primaryLink}
-              eventName="landing_cta_click"
+              eventName="landing_start_click"
               eventProperties={{
                 page: "/",
                 source: "landing_footer_primary",
                 destination: startHref
               }}
+              additionalEvents={[
+                {
+                  eventName: "landing_cta_click",
+                  eventProperties: {
+                    page: "/",
+                    source: "landing_footer_primary",
+                    destination: startHref
+                  }
+                },
+                {
+                  eventName: "onboarding_entry_click",
+                  eventProperties: {
+                    page: "/",
+                    source: "landing_footer_primary",
+                    destination: onboardingHref
+                  }
+                }
+              ]}
             >
               はじめる
             </TrackedLink>
@@ -322,7 +350,7 @@ export default async function HomePage() {
                 destination: "/decisions"
               }}
             >
-              すでに利用中なら Decisions へ
+              すでに利用中なら今日の判断へ
             </TrackedLink>
           </div>
         </section>
