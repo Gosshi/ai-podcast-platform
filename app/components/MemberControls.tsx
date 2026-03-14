@@ -54,7 +54,7 @@ const shouldRefreshForAuthEvent = (event: AuthChangeEvent): boolean => {
 export default function MemberControls({
   viewer,
   title = "会員ステータス",
-  copy = "無料版は判断の入口まで。有料会員になると行動指針、期限、監視ポイント、アーカイブが開放されます。",
+  copy = "無料版は判断の入口まで。有料会員になると行動指針、期限、見直しポイント、アーカイブが開放されます。",
   showBillingPortal = false,
   analyticsSource,
   variant = "full",
@@ -301,7 +301,7 @@ export default function MemberControls({
           ) : null}
 
           {viewer?.isPaid ? (
-            <p className={styles.hint}>行動指針、判断期限、監視ポイント、アーカイブ全文を利用できます。</p>
+            <p className={styles.hint}>行動指針、判断期限、見直しポイント、アーカイブ全文を利用できます。</p>
           ) : (
             <p className={styles.hint}>無料版では判断サマリーのプレビューまで。有料会員になると詳細判断を自分で管理できます。</p>
           )}
@@ -349,7 +349,7 @@ export default function MemberControls({
               />
               <div className={styles.actions}>
                 <button type="submit" className={styles.primaryButton} disabled={isPending}>
-                  Magic Linkでログイン
+                  メールでログイン
                 </button>
               </div>
               <p className={styles.hint}>ログインすると、プラン確認と購読管理ができます。</p>

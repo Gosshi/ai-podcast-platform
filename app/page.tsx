@@ -2,7 +2,7 @@ import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import TrackedLink from "@/app/components/TrackedLink";
 import { loadDecisionDashboardCards } from "@/app/lib/decisions";
 import { buildOnboardingPath } from "@/app/lib/onboarding";
-import { formatTopicTitle } from "@/app/lib/uiText";
+import { formatGenreLabel, formatTopicTitle } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./home.module.css";
 
@@ -13,8 +13,8 @@ export const metadata = {
 };
 
 const JUDGMENT_LABELS = {
-  use_now: "今日見る",
-  watch: "様子を見る",
+  use_now: "今すぐ見る",
+  watch: "あとで判断",
   skip: "見送る"
 } as const;
 
@@ -86,7 +86,7 @@ export default async function HomePage() {
       .map((card) => ({
       topicTitle: formatTopicTitle(card.topic_title),
       judgmentType: card.judgment_type,
-      genre: card.genre ?? "配信作品",
+      genre: formatGenreLabel(card.genre, "配信作品"),
       summary: card.judgment_summary,
       nextAction: card.action_text ?? "気になったら詳細を開いて確認",
       deadline: formatDeadline(card.deadline_at)
@@ -244,7 +244,7 @@ export default async function HomePage() {
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>判断カードのサンプル</p>
             <h2>こういう判断が表示されます</h2>
-            <p className={styles.sectionLead}>今日すぐ見る候補だけでなく、少し様子を見る判断や見送る判断も並びます。</p>
+            <p className={styles.sectionLead}>今すぐ見る候補だけでなく、あとで判断したい候補や見送る判断も並びます。</p>
           </div>
           <div className={styles.sampleGrid}>
             {visibleSamples.map((sample, index) => (

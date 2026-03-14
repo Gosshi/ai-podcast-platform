@@ -30,6 +30,20 @@
   `next best decision` → 今日のおすすめ
   `personal decision profile` → あなたの傾向
 
+## UX Polishing Phase 2
+- 対象:
+  既存機能やデータモデルを変えずに、UI文言・情報設計・カード上の操作導線を磨きました。
+- 内部用語の除去:
+  画面上の `判断タイプA/B/C/D`、`FRAME A-D`、`deadline_soon`、`JA` などの開発者向け表現は表示せず、必要なものだけを自然な日本語ラベルに置き換えました。
+- 日本語UIの統一:
+  genre、タグ、セクション見出し、状態ラベル、ボタン文言に残っていた英語を日本語へ統一しました。ブランド名や固有名詞のみ原文を維持します。
+- Judgment Card の操作整理:
+  カード上の主要操作は迷いを減らすために整理し、同じ面で `あとで見る` と `様子を見る` を同時に出さない構成にしました。
+- 一覧ページの簡素化:
+  `/decisions/library` や `/watchlist` の debug 的な件数表示や内部ソート値は削除または自然な日本語へ整理しました。
+- 既存導線の維持:
+  `Decision History`、`Decision Replay`、`Watchlist / Saved Decisions`、`Outcome Reminder`、`Next Best Decision`、`Analytics`、`free / paid gating` は維持したまま文言と見せ方だけを改善しています。
+
 ## Stack
 - Next.js (App Router)
 - TypeScript

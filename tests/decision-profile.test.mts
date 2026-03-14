@@ -137,7 +137,7 @@ test("buildPersonalDecisionHint returns a paid-safe hint only when evidence is s
   });
 
   assert.equal(hint?.tone, "positive");
-  assert.equal(hint?.text.includes("Frame A") || hint?.text.includes("このフレーム"), true);
+  assert.equal(hint?.text.includes("使う時間で判断") || hint?.text.includes("比較のしかた"), true);
 
   const lowSampleHint = buildPersonalDecisionHint({
     profile: buildPersonalDecisionProfile([

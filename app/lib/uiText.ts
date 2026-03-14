@@ -1,28 +1,40 @@
 import type { JudgmentType } from "@/src/lib/judgmentCards";
 
 export const JUDGMENT_TYPE_LABELS: Record<JudgmentType, string> = {
-  use_now: "今日見る",
-  watch: "様子を見る",
+  use_now: "今すぐ見る",
+  watch: "あとで判断",
   skip: "見送る"
 };
 
 export const WATCHLIST_STATUS_LABELS = {
   saved: "あとで見る",
-  watching: "様子を見る",
-  archived: "保管中"
+  watching: "見直し待ち",
+  archived: "非表示"
 } as const;
 
 export const URGENCY_LABELS = {
   overdue: "期限切れ",
-  due_soon: "期限あり",
+  due_soon: "まもなく期限",
   no_deadline: "期限なし"
 } as const;
 
 const FRAME_TYPE_LABELS: Record<string, string> = {
-  "Frame A": "判断タイプA",
-  "Frame B": "判断タイプB",
-  "Frame C": "判断タイプC",
-  "Frame D": "判断タイプD"
+  "Frame A": "使う時間で判断",
+  "Frame B": "月額の見直し",
+  "Frame C": "セール時の判断",
+  "Frame D": "広告負担の見直し"
+};
+
+const GENRE_LABELS: Record<string, string> = {
+  games: "ゲーム",
+  streaming: "動画配信",
+  anime: "アニメ",
+  movies: "映画",
+  movie: "映画",
+  tech: "テック",
+  entertainment: "エンタメ",
+  general: "総合",
+  travel: "旅行"
 };
 
 const EPISODE_TITLE_MAP: Record<string, string> = {
@@ -82,6 +94,23 @@ export const formatFrameTypeLabel = (value: string | null, fallback = "未設定
   }
 
   return FRAME_TYPE_LABELS[value] ?? value;
+};
+
+export const formatGenreLabel = (value: string | null, fallback = "配信作品"): string => {
+  if (!value) {
+    return fallback;
+  }
+
+  const normalized = normalizeText(value).toLowerCase();
+  if (normalized.length === 0) {
+    return fallback;
+  }
+
+  if (hasJapaneseText(normalized)) {
+    return value;
+  }
+
+  return GENRE_LABELS[normalized] ?? value;
 };
 
 export const formatEpisodeTitle = (value: string | null, fallback = "詳細未設定"): string => {

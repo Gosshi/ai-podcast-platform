@@ -74,11 +74,11 @@ const INTEREST_TOPIC_GENRE_ALIASES: Record<InterestTopic, string[]> = {
 };
 
 const INTEREST_TOPIC_REASON_LABELS: Record<InterestTopic, string> = {
-  games: "Games interest",
-  streaming: "Streaming interest",
-  anime: "Anime interest",
-  movies: "Movies interest",
-  tech: "Tech interest"
+  games: "ゲームの興味に一致",
+  streaming: "動画配信の興味に一致",
+  anime: "アニメの興味に一致",
+  movies: "映画の興味に一致",
+  tech: "テックの興味に一致"
 };
 
 const ACTIVE_SUBSCRIPTION_KEYWORDS: Record<Exclude<ActiveSubscription, "none" | "other">, string[]> = {
@@ -91,12 +91,12 @@ const ACTIVE_SUBSCRIPTION_KEYWORDS: Record<Exclude<ActiveSubscription, "none" | 
 };
 
 const ACTIVE_SUBSCRIPTION_REASON_LABELS: Record<Exclude<ActiveSubscription, "none" | "other">, string> = {
-  netflix: "Netflix active",
-  prime: "Prime Video active",
-  disney: "Disney+ active",
-  spotify: "Spotify active",
-  youtube: "YouTube active",
-  chatgpt: "ChatGPT active"
+  netflix: "Netflixを利用中",
+  prime: "Prime Videoを利用中",
+  disney: "Disney+を利用中",
+  spotify: "Spotifyを利用中",
+  youtube: "YouTubeを利用中",
+  chatgpt: "ChatGPTを利用中"
 };
 
 const DECISION_PRIORITY_REASON_LABELS: Record<DecisionPriority, string> = {

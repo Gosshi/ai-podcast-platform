@@ -84,11 +84,11 @@ export type UserPreferenceSurfaceContext = {
 };
 
 export const INTEREST_TOPIC_LABELS: Record<InterestTopic, string> = {
-  games: "Games",
-  streaming: "Streaming",
-  anime: "Anime",
-  movies: "Movies",
-  tech: "Tech"
+  games: "ゲーム",
+  streaming: "動画配信",
+  anime: "アニメ",
+  movies: "映画",
+  tech: "テック"
 };
 
 export const ACTIVE_SUBSCRIPTION_LABELS: Record<ActiveSubscription, string> = {
@@ -98,7 +98,7 @@ export const ACTIVE_SUBSCRIPTION_LABELS: Record<ActiveSubscription, string> = {
   spotify: "Spotify",
   youtube: "YouTube",
   chatgpt: "ChatGPT",
-  other: "Other",
+  other: "その他",
   none: "使っていない"
 };
 

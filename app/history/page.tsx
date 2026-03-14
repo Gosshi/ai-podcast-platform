@@ -54,9 +54,9 @@ export default async function HistoryPage() {
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>履歴</p>
-          <h1>採用した判断と、その結果をあとで学習できる状態にする。</h1>
+          <h1>採用した判断と、その結果をあとで振り返れるようにする。</h1>
           <p className={styles.lead}>
-            どの判断を使ったかを残し、あとから満足・後悔・普通で結果を更新できます。自分の判断傾向を蓄積して、次回の選び方に活かせます。
+            採用した判断を残し、あとから満足・後悔・普通で結果を更新できます。自分の判断傾向を蓄積して、次回の選び方に活かせます。
           </p>
 
           <div className={styles.statsGrid}>
@@ -92,7 +92,7 @@ export default async function HistoryPage() {
         <MemberControls
           viewer={viewer}
           title="プラン"
-          copy="保存した判断に outcome を残すことで、自分に合う判断の精度を継続的に上げていきます。"
+          copy="保存した判断に結果を残すことで、自分に合う判断の精度を継続的に上げていきます。"
           analyticsSource="/history"
           variant="compact"
         />
@@ -149,10 +149,10 @@ export default async function HistoryPage() {
         <section className={styles.section}>
           <div className={styles.sectionHeading}>
             <div>
-              <p className={styles.sectionEyebrow}>Personal Decision Profile</p>
+              <p className={styles.sectionEyebrow}>判断の傾向</p>
               <h2>履歴から見える、あなたの判断傾向</h2>
               <p className={styles.sectionLead}>
-                保存した履歴を集計して、どの判断タイプやジャンルに偏りがあるかを見やすくします。
+                保存した履歴を集計して、どんな判断が自分に合いやすいかを見やすくします。
               </p>
             </div>
             <span className={styles.sectionCount}>{profile.totalDecisions}件</span>
@@ -171,11 +171,11 @@ export default async function HistoryPage() {
                   <dd>{stats.successRate}%</dd>
                 </div>
                 <div>
-                  <dt>満足しやすい判断タイプ</dt>
+                  <dt>相性のよい比較のしかた</dt>
                   <dd>{profile.bestFrameType ? `${profile.bestFrameType.label} (${profile.bestFrameType.successRate}%)` : "データ待ち"}</dd>
                 </div>
                 <div>
-                  <dt>後悔しやすい判断タイプ</dt>
+                  <dt>注意したい比較のしかた</dt>
                   <dd>{profile.riskyFrameType ? `${profile.riskyFrameType.label} (${profile.riskyFrameType.regretRate}%)` : "データ待ち"}</dd>
                 </div>
               </div>
@@ -184,7 +184,7 @@ export default async function HistoryPage() {
             <article className={styles.profilePanel}>
               <h3>判断と結果の比率</h3>
               <div className={styles.ratioGroup}>
-                <p className={styles.ratioLabel}>判断タイプ</p>
+                <p className={styles.ratioLabel}>判断の傾向</p>
                 <div className={styles.ratioRow}>
                   {(["use_now", "watch", "skip"] as const).map((decisionType) => (
                     <div key={decisionType} className={styles.ratioChip}>
@@ -226,7 +226,7 @@ export default async function HistoryPage() {
             </article>
 
             <article className={styles.profilePanel}>
-              <h3>後悔しやすいジャンル / 判断タイプ</h3>
+              <h3>注意したい傾向</h3>
               <ul className={styles.profileList}>
                 <li>
                   <span>ジャンル</span>
@@ -237,7 +237,7 @@ export default async function HistoryPage() {
                   </strong>
                 </li>
                 <li>
-                  <span>判断タイプ</span>
+                  <span>比較のしかた</span>
                   <strong>
                     {profile.riskyFrameType
                       ? `${profile.riskyFrameType.label} (${profile.riskyFrameType.regretCount}/${profile.riskyFrameType.count})`
@@ -245,7 +245,7 @@ export default async function HistoryPage() {
                   </strong>
                 </li>
                 <li>
-                  <span>満足しやすい判断タイプ</span>
+                  <span>相性のよい比較のしかた</span>
                   <strong>
                     {profile.bestFrameType
                       ? `${profile.bestFrameType.label} (${profile.bestFrameType.successCount}/${profile.bestFrameType.count})`
@@ -259,7 +259,7 @@ export default async function HistoryPage() {
               <h3>あなたの傾向</h3>
               {profile.insights.length === 0 ? (
                 <p className={styles.profileEmpty}>
-                  履歴が5件以上たまると、判断タイプ / ジャンル / 結果の傾向をここに表示します。
+                  履歴が5件以上たまると、比較のしかたやジャンル、結果の傾向をここに表示します。
                 </p>
               ) : (
                 <ul className={styles.insightList}>
@@ -296,7 +296,7 @@ export default async function HistoryPage() {
 
         {visibleEntries.length === 0 ? (
           <p className={styles.emptyText}>
-            まだ履歴はありません。`/decisions` または詳細から判断を保存すると、ここに積み上がります。
+            まだ履歴はありません。今日の判断または詳細画面から保存すると、ここに積み上がります。
           </p>
         ) : (
           <div className={styles.historyList}>
@@ -318,7 +318,7 @@ export default async function HistoryPage() {
                     <dd>{formatTopicTitle(entry.topic_title)}</dd>
                   </div>
                   <div>
-                    <dt>判断タイプ</dt>
+                    <dt>比較のしかた</dt>
                     <dd>{formatFrameTypeLabel(entry.frame_type, "-")}</dd>
                   </div>
                   <div>

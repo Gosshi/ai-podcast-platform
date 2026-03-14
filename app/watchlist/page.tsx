@@ -3,7 +3,14 @@ import MemberControls from "@/app/components/MemberControls";
 import TrackedLink from "@/app/components/TrackedLink";
 import WatchlistControls from "@/app/components/WatchlistControls";
 import { buildDecisionReplayPath } from "@/app/lib/decisionReplay";
-import { formatEpisodeTitle, formatFrameTypeLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS, URGENCY_LABELS, WATCHLIST_STATUS_LABELS } from "@/app/lib/uiText";
+import {
+  formatEpisodeTitle,
+  formatGenreLabel,
+  formatTopicTitle,
+  JUDGMENT_TYPE_LABELS,
+  URGENCY_LABELS,
+  WATCHLIST_STATUS_LABELS
+} from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import { loadUserWatchlist } from "@/app/lib/watchlist";
 import {
@@ -98,16 +105,16 @@ export default async function WatchlistPage({
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>保存</p>
-          <h1>まだ決めていない判断を、期限と状態つきで管理する。</h1>
+          <p className={styles.eyebrow}>あとで見る</p>
+          <h1>迷っている判断を、あとで見返しやすい形で残しておく。</h1>
           <p className={styles.lead}>
             履歴が「採用した判断」を記録するのに対して、この画面は「今は決めないが後で見返す判断」を残す場所です。
-            迷った候補を整理しながら、あとで判断し直せます。
+            期限や状態を見ながら、迷った候補を整理できます。
           </p>
 
           <div className={styles.statRow}>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>進行中</span>
+              <span className={styles.statLabel}>見返し中</span>
               <strong>{activeCount}</strong>
             </article>
             <article className={styles.statCard}>
@@ -195,7 +202,7 @@ export default async function WatchlistPage({
           <div>
             <p className={styles.sectionEyebrow}>保存一覧</p>
             <h2>保存した判断一覧</h2>
-            <p className={styles.sectionLead}>詳細や履歴に戻りながら、あとで見る候補を整理できます。</p>
+            <p className={styles.sectionLead}>詳細や履歴に戻りながら、あとで見返す候補を整理できます。</p>
           </div>
           <span className={styles.sectionCount}>{result.items.length}件</span>
         </div>
@@ -203,7 +210,7 @@ export default async function WatchlistPage({
         {viewer && result.items.length === 0 ? (
           <div className={styles.emptyPanel}>
             <h3>まだ保存した判断はありません</h3>
-            <p>`/decisions` や `/decisions/library` の判断カードから保存するとここに追加されます。</p>
+            <p>今日の判断やライブラリの判断カードから「あとで見る」を押すと、ここに追加されます。</p>
           </div>
         ) : null}
 
@@ -223,8 +230,7 @@ export default async function WatchlistPage({
                   ) : null}
                 </div>
                 <div className={styles.tagRow}>
-                  <span className={styles.tag}>{item.genre ?? "配信作品"}</span>
-                  <span className={styles.tag}>{formatFrameTypeLabel(item.frame_type, "判断タイプ未設定")}</span>
+                  <span className={styles.tag}>{formatGenreLabel(item.genre, "配信作品")}</span>
                 </div>
               </div>
 

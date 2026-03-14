@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { formatFrameTypeLabel, formatGenreLabel } from "@/app/lib/uiText";
 import type { DecisionLibrarySort, DecisionLibraryUrgency } from "@/src/lib/decisionLibrary";
 import { track } from "@/src/lib/analytics";
 import type { JudgmentType } from "@/src/lib/judgmentCards";
@@ -26,8 +27,8 @@ type LibraryControlsProps = {
 
 const JUDGMENT_TYPE_LABELS: Array<{ value: JudgmentType | null; label: string }> = [
   { value: null, label: "すべて" },
-  { value: "use_now", label: "今使う" },
-  { value: "watch", label: "様子を見る" },
+  { value: "use_now", label: "今すぐ見る" },
+  { value: "watch", label: "あとで判断" },
   { value: "skip", label: "見送る" }
 ];
 
@@ -210,14 +211,14 @@ export default function LibraryControls({
             <option value="">すべてのジャンル</option>
             {options.genres.map((item) => (
               <option key={item} value={item}>
-                {item}
+                {formatGenreLabel(item, item)}
               </option>
             ))}
           </select>
         </label>
 
         <label className={styles.selectLabel}>
-          <span>判断タイプ</span>
+          <span>比較のしかた</span>
           <select
             value={frameType ?? ""}
             onChange={(event) => {
@@ -227,10 +228,10 @@ export default function LibraryControls({
             }}
             className={styles.select}
           >
-            <option value="">すべての判断タイプ</option>
+            <option value="">すべての比較のしかた</option>
             {options.frameTypes.map((item) => (
               <option key={item} value={item}>
-                {item}
+                {formatFrameTypeLabel(item, item)}
               </option>
             ))}
           </select>

@@ -8,7 +8,13 @@ import TrackedLink from "@/app/components/TrackedLink";
 import WatchlistControls from "@/app/components/WatchlistControls";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { loadPublishedEpisodeById } from "@/app/lib/episodes";
-import { formatEpisodeTitle, formatFrameTypeLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS } from "@/app/lib/uiText";
+import {
+  formatEpisodeTitle,
+  formatFrameTypeLabel,
+  formatGenreLabel,
+  formatTopicTitle,
+  JUDGMENT_TYPE_LABELS
+} from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./page.module.css";
 
@@ -28,6 +34,10 @@ const formatDateTime = (value: string | null): string => {
     minute: "2-digit",
     hour12: false
   });
+};
+
+const formatLanguageLabel = (value: string): string => {
+  return value.toLowerCase() === "ja" ? "日本語" : value.toLowerCase() === "en" ? "英語" : value.toUpperCase();
 };
 
 export default async function EpisodeDetailPage({
@@ -63,8 +73,8 @@ export default async function EpisodeDetailPage({
               <p className={styles.eyebrow}>詳細</p>
               <h1>{formatEpisodeTitle(episode.title)}</h1>
               <div className={styles.metaRow}>
-                <span>{episode.lang.toUpperCase()}</span>
-                <span>{episode.genre ?? "配信作品"}</span>
+                <span>{formatLanguageLabel(episode.lang)}</span>
+                <span>{formatGenreLabel(episode.genre, "配信作品")}</span>
                 <span>{formatDateTime(episode.published_at ?? episode.created_at)}</span>
               </div>
 

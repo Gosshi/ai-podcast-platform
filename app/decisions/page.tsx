@@ -9,7 +9,7 @@ import { syncUserAlerts } from "@/app/lib/alerts";
 import { loadDecisionDashboardCards } from "@/app/lib/decisions";
 import { loadDecisionHistory } from "@/app/lib/decisionHistory";
 import { buildOnboardingPath } from "@/app/lib/onboarding";
-import { formatEpisodeTitle, formatFrameTypeLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS } from "@/app/lib/uiText";
+import { formatEpisodeTitle, formatGenreLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import { pickTodayDecisionCards } from "@/src/lib/decisionDashboard";
 import { buildPersonalDecisionHint } from "@/src/lib/decisionProfile";
@@ -135,7 +135,7 @@ export default async function DecisionsPage() {
             <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`]}`.trim()}>
               {JUDGMENT_TYPE_LABELS[card.judgment_type]}
             </span>
-            <span className={styles.genreTag}>{formatFrameTypeLabel(card.frame_type, "判断タイプ未設定")}</span>
+            <span className={styles.genreTag}>{formatGenreLabel(card.genre, "配信作品")}</span>
           </div>
           <h3>{formatTopicTitle(card.topic_title)}</h3>
           <p className={styles.summary}>{card.judgment_summary}</p>
@@ -234,10 +234,10 @@ export default async function DecisionsPage() {
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>今日の判断</p>
           <h1>今日の判断</h1>
-          <p className={styles.lead}>AIが、今日見るもの・続けるもの・見送るものを提案します。</p>
+          <p className={styles.lead}>今日のおすすめ判断を、好みや履歴をもとにまとめています。</p>
           <div className={styles.heroMeta}>
             <span className={styles.heroBadge}>{isPaid ? "有料プラン" : "無料プラン"}</span>
-            <span>{isPaid ? "好みと履歴を反映した提案を確認できます" : "まずは要点だけ軽く確認できます"}</span>
+            <span>{isPaid ? "見直しタイミングや傾向まで含めて確認できます" : "まずは要点から軽く確認できます"}</span>
           </div>
           <div className={styles.heroActions}>
             {viewer?.needsOnboarding || !viewer ? (
@@ -263,7 +263,7 @@ export default async function DecisionsPage() {
                 source: "decision_dashboard_hero_library_link"
               }}
             >
-              保存を見る
+              ライブラリを見る
             </TrackedLink>
           </div>
         </div>
@@ -324,7 +324,7 @@ export default async function DecisionsPage() {
                     </span>
                   </div>
                   <div className={styles.recommendationMetaRow}>
-                    <span className={styles.genreTag}>{formatFrameTypeLabel(recommendation.card.frame_type, "判断タイプ未設定")}</span>
+                    <span className={styles.genreTag}>{formatGenreLabel(recommendation.card.genre, "配信作品")}</span>
                     <span className={styles.recommendationEpisodeLabel}>
                       {formatEpisodeTitle(recommendation.card.episode_title)}
                     </span>
