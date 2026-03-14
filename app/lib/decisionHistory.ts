@@ -113,7 +113,7 @@ const createEmptyDecisionProfile = (): DecisionProfile => ({
     },
     watch: {
       key: "watch",
-      label: "監視",
+      label: "あとで判断",
       count: 0,
       successCount: 0,
       regretCount: 0,

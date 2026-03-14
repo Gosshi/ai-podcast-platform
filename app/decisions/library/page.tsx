@@ -12,7 +12,14 @@ import {
   FREE_LIBRARY_CARD_LIMIT,
   loadDecisionLibrary
 } from "@/app/lib/decisionLibrary";
-import { formatEpisodeTitle, formatFrameTypeLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS, URGENCY_LABELS } from "@/app/lib/uiText";
+import {
+  formatEpisodeTitle,
+  formatGenreLabel,
+  formatTopicTitle,
+  JUDGMENT_TYPE_LABELS,
+  URGENCY_LABELS,
+  WATCHLIST_STATUS_LABELS
+} from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import {
   DECISION_LIBRARY_SORTS,
@@ -181,7 +188,7 @@ export default async function DecisionLibraryPage({
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>保存</p>
+          <p className={styles.eyebrow}>ライブラリ</p>
           <h1>あとで見返したい判断メモを、まとめて探せます。</h1>
           <p className={styles.lead}>
             ジャンル、見直しタイミング、見送るかどうかといった軸で、過去の判断メモを一覧できます。気になった候補の
@@ -190,23 +197,8 @@ export default async function DecisionLibraryPage({
 
           <div className={styles.heroMeta}>
             <span className={styles.heroBadge}>{isPaid ? "有料プラン" : "無料プラン"}</span>
-            <span>{isPaid ? `全${result.totalCount}件を検索` : `直近カードを最大${FREE_LIBRARY_CARD_LIMIT}件まで表示`}</span>
-            <span>{query ? `検索中: ${query}` : "すべて表示"}</span>
-          </div>
-
-          <div className={styles.statRow}>
-            <div className={styles.statCard}>
-              <span className={styles.statLabel}>表示中</span>
-              <strong>{result.cards.length}</strong>
-            </div>
-            <div className={styles.statCard}>
-              <span className={styles.statLabel}>一致件数</span>
-              <strong>{result.totalCount}</strong>
-            </div>
-            <div className={styles.statCard}>
-              <span className={styles.statLabel}>表示範囲</span>
-              <strong>{isPaid ? "全件" : "最近の一部"}</strong>
-            </div>
+            <span>{isPaid ? `${result.totalCount}件から探せます` : `直近カードを最大${FREE_LIBRARY_CARD_LIMIT}件まで表示`}</span>
+            <span>{query ? `「${query}」で絞り込み中` : "すべての判断メモを表示"}</span>
           </div>
 
           {viewer?.needsOnboarding ? (
@@ -263,7 +255,6 @@ export default async function DecisionLibraryPage({
                 <span className={styles.personalizationChip}>
                   重視すること: {DECISION_PRIORITY_LABELS[result.personalization.decisionPriority]}
                 </span>
-                <span className={styles.personalizationChip}>並び順: {result.personalization.defaultSort}</span>
               </div>
             </div>
           ) : null}
@@ -317,14 +308,12 @@ export default async function DecisionLibraryPage({
             </p>
           </div>
           <span className={styles.sectionCount}>
-            {isPaid && result.totalPages > 1
-              ? `${result.currentPage} / ${result.totalPages} page`
-              : `${result.cards.length} cards`}
+            {isPaid && result.totalPages > 1 ? `${result.currentPage} / ${result.totalPages} ページ` : `${result.cards.length}件`}
           </span>
         </div>
 
         {result.cards.length === 0 ? (
-          <p className={styles.emptyText}>条件に一致する judgment card はありません。</p>
+          <p className={styles.emptyText}>条件に一致する判断メモはありません。</p>
         ) : (
           <div className={styles.grid}>
             {result.cards.map((card) => (
@@ -339,10 +328,9 @@ export default async function DecisionLibraryPage({
                     </span>
                   </div>
                   <div className={styles.tagRow}>
-                    <span className={styles.tag}>{card.genre ?? "配信作品"}</span>
-                    <span className={styles.tag}>{formatFrameTypeLabel(card.frame_type, "判断タイプ未設定")}</span>
+                    <span className={styles.tag}>{formatGenreLabel(card.genre, "配信作品")}</span>
                     {card.is_saved ? <span className={styles.tag}>履歴あり</span> : null}
-                    {card.watchlist_status ? <span className={styles.tag}>{card.watchlist_status}</span> : null}
+                    {card.watchlist_status ? <span className={styles.tag}>{WATCHLIST_STATUS_LABELS[card.watchlist_status]}</span> : null}
                   </div>
                 </div>
 
@@ -504,8 +492,7 @@ export default async function DecisionLibraryPage({
               <span className={styles.paginationGhost} />
             )}
             <span className={styles.paginationLabel}>
-              Page {result.currentPage} / {result.totalPages}
-              
+              {result.currentPage} / {result.totalPages} ページ
             </span>
             {result.currentPage < result.totalPages ? (
               <Link className={styles.secondaryLink} href={buildPageHref(activeFilters, result.currentPage + 1)}>

@@ -14,7 +14,7 @@ import {
   formatDecisionReplayDateTime,
   loadDecisionReplay
 } from "@/app/lib/decisionReplay";
-import { formatFrameTypeLabel, formatTopicTitle } from "@/app/lib/uiText";
+import { formatFrameTypeLabel, formatGenreLabel, formatTopicTitle } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./page.module.css";
 
@@ -105,10 +105,10 @@ export default async function DecisionReplayPage({
 
               <div className={styles.badgeRow}>
                 <span className={`${styles.badge} ${styles[`badge_${replay.judgment_type}`]}`.trim()}>
-                  判断: {DECISION_TYPE_LABELS[replay.judgment_type]}
+                  おすすめ: {DECISION_TYPE_LABELS[replay.judgment_type]}
                 </span>
                 <span className={`${styles.badge} ${styles[`badge_${replay.decision_type}`]}`.trim()}>
-                  保存: {DECISION_TYPE_LABELS[replay.decision_type]}
+                  保存時: {DECISION_TYPE_LABELS[replay.decision_type]}
                 </span>
                 <span className={styles.outcomeBadge}>{formatDecisionOutcomeLabel(replay.outcome)}</span>
               </div>
@@ -138,10 +138,10 @@ export default async function DecisionReplayPage({
               </div>
               <div>
                 <dt>ジャンル</dt>
-                <dd>{replay.genre ?? "-"}</dd>
+                <dd>{formatGenreLabel(replay.genre, "-")}</dd>
               </div>
               <div>
-                <dt>判断タイプ</dt>
+                <dt>比較のしかた</dt>
                 <dd>{formatFrameTypeLabel(replay.frame_type, "-")}</dd>
               </div>
               <div>
@@ -153,7 +153,7 @@ export default async function DecisionReplayPage({
                 <dd>{formatDecisionReplayDateTime(replay.created_at)}</dd>
               </div>
               <div>
-                <dt>Outcome 更新日</dt>
+                <dt>結果の更新日</dt>
                 <dd>{replay.outcome_updated_at ? formatDecisionReplayDateTime(replay.outcome_updated_at) : "未記録"}</dd>
               </div>
             </dl>

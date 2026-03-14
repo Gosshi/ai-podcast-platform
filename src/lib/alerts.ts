@@ -280,7 +280,7 @@ export const buildWatchlistDueSoonAlerts = (
           title: `保存中の「${item.topic_title}」を見直すタイミングです`,
           summary:
             item.status === "watching"
-              ? "様子を見ている判断です。期限前に詳細と保存一覧を見直してください。"
+              ? "見直し待ちの判断です。期限前に詳細と保存一覧を見直してください。"
               : "保存した判断です。期限が来る前に保存一覧から再訪してください。",
           urgency: resolveUrgencyFromHours(hoursUntilDue),
           due_at: item.deadline_at,
@@ -380,7 +380,7 @@ export const buildWeeklyDigestReadyAlerts = (
       episode_id: null,
       title,
       summary: options.isPaid
-        ? `今日見る ${digest.counts.use_now} / 様子を見る ${digest.counts.watch} / 見送る ${digest.counts.skip} を週まとめで確認できます。`
+        ? `今すぐ見る ${digest.counts.use_now} / あとで判断 ${digest.counts.watch} / 見送る ${digest.counts.skip} を週まとめで確認できます。`
         : "無料版では一部プレビューまで表示します。有料版で全体を確認できます。",
       urgency: "low",
       due_at: digest.windowEnd,

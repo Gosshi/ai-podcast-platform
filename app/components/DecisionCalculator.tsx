@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import TrackedLink from "@/app/components/TrackedLink";
+import { formatFrameTypeLabel } from "@/app/lib/uiText";
 import {
   describeDecisionCalculatorThresholds,
   evaluateDecisionCalculator,
@@ -49,7 +50,7 @@ const copy = {
     resultLabel: "再判定結果",
     reasonLabel: "理由",
     metricLabel: "計算結果",
-    emptyState: "数字を入れると、今使う / 監視 / 見送り を即時に再判定します。"
+    emptyState: "数字を入れると、今使う / あとで判断 / 見送り を即時に再判定します。"
   },
   en: {
     title: "Re-run with Your Numbers",
@@ -182,7 +183,7 @@ export default function DecisionCalculator({
       <section className={styles.panel}>
         <div className={styles.header}>
           <div>
-            <p className={styles.eyebrow}>{availability.frame}</p>
+            <p className={styles.eyebrow}>{formatFrameTypeLabel(availability.frame, availability.frame)}</p>
             <h5>{text.upgradeTitle}</h5>
           </div>
           <TrackedLink
@@ -252,7 +253,7 @@ export default function DecisionCalculator({
     <section className={styles.panel}>
       <div className={styles.header}>
         <div>
-          <p className={styles.eyebrow}>{availability.frame}</p>
+          <p className={styles.eyebrow}>{formatFrameTypeLabel(availability.frame, availability.frame)}</p>
           <h5>{text.title}</h5>
         </div>
         <button type="button" className={styles.toggleButton} onClick={handleToggle}>

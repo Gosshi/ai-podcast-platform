@@ -151,7 +151,7 @@ const resolveJudgmentTypeScore = (
       return {
         score: hasDeadline ? 34 : 20,
         urgencyLevel: hasDeadline ? "high" : "medium",
-        tag: hasDeadline ? "期限つきで監視" : "条件変化を監視"
+        tag: hasDeadline ? "期限つきで見直し" : "条件が動いたら見直し"
       };
     case "skip":
       return {

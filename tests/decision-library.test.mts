@@ -182,8 +182,8 @@ test("personalizeDecisionLibraryCards boosts genre, subscription, and decision p
 
   assert.equal(personalized[0]?.id, "pref-1");
   assert.ok((personalized[0]?.personalization_score ?? 0) > (personalized[1]?.personalization_score ?? 0));
-  assert.ok(personalized[0]?.personalization_reasons.includes("Tech interest"));
-  assert.ok(personalized[0]?.personalization_reasons.includes("ChatGPT active"));
+  assert.ok(personalized[0]?.personalization_reasons.includes("テックの興味に一致"));
+  assert.ok(personalized[0]?.personalization_reasons.includes("ChatGPTを利用中"));
 });
 
 test("buildDecisionLibraryPersonalizationSummary exposes the lightweight initial view context", () => {

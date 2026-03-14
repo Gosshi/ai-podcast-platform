@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { track } from "@/src/lib/analytics";
+import { formatFrameTypeLabel, formatGenreLabel } from "@/app/lib/uiText";
 import {
   type WatchlistSort,
   type WatchlistStatus,
@@ -28,8 +29,8 @@ type WatchlistFiltersProps = {
 const STATUS_OPTIONS: Array<{ value: WatchlistStatus | null; label: string }> = [
   { value: null, label: "すべて" },
   { value: "saved", label: "あとで見る" },
-  { value: "watching", label: "様子を見る" },
-  { value: "archived", label: "保管中" }
+  { value: "watching", label: "見直し待ち" },
+  { value: "archived", label: "非表示" }
 ];
 
 const URGENCY_OPTIONS: Array<{ value: WatchlistUrgency | null; label: string }> = [
@@ -162,14 +163,14 @@ export default function WatchlistFilters({
             <option value="">すべてのジャンル</option>
             {options.genres.map((item) => (
               <option key={item} value={item}>
-                {item}
+                {formatGenreLabel(item, item)}
               </option>
             ))}
           </select>
         </label>
 
         <label className={styles.selectLabel}>
-          <span>判断タイプ</span>
+          <span>比較のしかた</span>
           <select
             value={frameType ?? ""}
             className={styles.select}
@@ -180,10 +181,10 @@ export default function WatchlistFilters({
               updateFilters("frameType", nextValue);
             }}
           >
-            <option value="">すべての判断タイプ</option>
+            <option value="">すべての比較のしかた</option>
             {options.frameTypes.map((item) => (
               <option key={item} value={item}>
-                {item}
+                {formatFrameTypeLabel(item, item)}
               </option>
             ))}
           </select>

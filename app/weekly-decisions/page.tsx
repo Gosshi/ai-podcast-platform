@@ -2,7 +2,7 @@ import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
 import TrackedLink from "@/app/components/TrackedLink";
-import { formatEpisodeTitle, formatFrameTypeLabel, formatTopicTitle } from "@/app/lib/uiText";
+import { formatEpisodeTitle, formatFrameTypeLabel, formatGenreLabel, formatTopicTitle } from "@/app/lib/uiText";
 import { loadWeeklyDecisionDigest } from "@/app/lib/weeklyDecisionDigest";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./page.module.css";
@@ -10,14 +10,14 @@ import styles from "./page.module.css";
 export const dynamic = "force-dynamic";
 
 const JUDGMENT_TYPE_LABELS = {
-  use_now: "今週の今日見る",
-  watch: "今週の様子を見る",
-  skip: "今週の見送る"
+  use_now: "今週の今すぐ見る",
+  watch: "今週のあとで判断",
+  skip: "今週の見送り"
 } as const;
 
 const JUDGMENT_TYPE_BADGES = {
-  use_now: "今日見る",
-  watch: "様子を見る",
+  use_now: "今すぐ見る",
+  watch: "あとで判断",
   skip: "見送る"
 } as const;
 
@@ -70,21 +70,21 @@ export default async function WeeklyDecisionsPage() {
           <p className={styles.eyebrow}>週ごとのまとめ</p>
           <h1>毎日追えなくても、週単位で「今どう判断するか」を回収できる。</h1>
           <p className={styles.lead}>
-            直近7日間の判断を `今使う / 様子を見る / 見送る` ごとにまとめて、今週の傾向を一画面で振り返れます。
+            直近7日間の判断を「今すぐ見る / あとで判断 / 見送る」ごとにまとめて、今週の傾向を一画面で振り返れます。
           </p>
           <div className={styles.heroMeta}>
             <span className={styles.heroBadge}>{isPaid ? "有料版" : "無料版"}</span>
             <span className={styles.stat}>{windowLabel}</span>
-            <span className={styles.stat}>使う {digest.counts.use_now}件</span>
-            <span className={styles.stat}>監視 {digest.counts.watch}件</span>
+            <span className={styles.stat}>今すぐ見る {digest.counts.use_now}件</span>
+            <span className={styles.stat}>あとで判断 {digest.counts.watch}件</span>
             <span className={styles.stat}>見送り {digest.counts.skip}件</span>
           </div>
           <div className={styles.breakdownRow}>
             {digest.genreBreakdown.slice(0, 3).map((item) => (
-              <span key={`genre-${item.key}`}>ジャンル: {item.key} {item.count}</span>
+              <span key={`genre-${item.key}`}>ジャンル: {formatGenreLabel(item.key, item.key)} {item.count}</span>
             ))}
             {digest.frameTypeBreakdown.slice(0, 3).map((item) => (
-              <span key={`frame-${item.key}`}>判断タイプ: {formatFrameTypeLabel(item.key)} {item.count}</span>
+              <span key={`frame-${item.key}`}>比較のしかた: {formatFrameTypeLabel(item.key)} {item.count}</span>
             ))}
           </div>
         </div>
@@ -158,7 +158,7 @@ export default async function WeeklyDecisionsPage() {
                       <span className={`${styles.badge} ${styles[`badge_${item.judgment_type}`]}`.trim()}>
                         {JUDGMENT_TYPE_BADGES[item.judgment_type]}
                       </span>
-                      <span className={styles.genreTag}>{item.genre ?? "配信作品"}</span>
+                      <span className={styles.genreTag}>{formatGenreLabel(item.genre, "配信作品")}</span>
                     </div>
                     <h3>{formatTopicTitle(item.topic_title)}</h3>
                     <p>{item.judgment_summary}</p>

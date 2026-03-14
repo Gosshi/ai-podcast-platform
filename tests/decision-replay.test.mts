@@ -91,7 +91,7 @@ test("buildDecisionReplayInsights returns caution for regretful watch pattern", 
 
   const insights = buildDecisionReplayInsights(replay, profile);
   assert.equal(insights.length > 0, true);
-  assert.equal(insights.some((insight) => insight.title.includes("watch")), true);
+  assert.equal(insights.some((insight) => insight.title.includes("あとで判断") || insight.title.includes("保留")), true);
   assert.equal(insights.some((insight) => insight.tone === "caution"), true);
 });
 
@@ -113,7 +113,7 @@ test("buildDecisionReplayInsights falls back to data-light insight when history 
     {
       key: "data-light",
       title: "まだ強い傾向は出ていません",
-      body: "この replay は profile と recommendation を育てるための基礎データになります。履歴が増えるほど、より具体的な学びを返しやすくなります。",
+      body: "この振り返りは傾向とおすすめを育てるための基礎データになります。履歴が増えるほど、より具体的な学びを返しやすくなります。",
       tone: "neutral"
     }
   ]);
@@ -130,7 +130,7 @@ test("buildDecisionReplayInsights asks for outcome when replay is still unresolv
     {
       key: "outcome-pending",
       title: "まだ結果は記録されていません",
-      body: "Outcome を残すと、この replay が profile learning と next best decision の改善に返り始めます。",
+      body: "結果を記録すると、この振り返りが次のおすすめ改善にも活き始めます。",
       tone: "neutral"
     }
   ]);

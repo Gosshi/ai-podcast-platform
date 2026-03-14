@@ -8,6 +8,7 @@ import DecisionCalculator from "@/app/components/DecisionCalculator";
 import MemberControls from "@/app/components/MemberControls";
 import { isWithinFreeAccessWindow } from "@/app/lib/contentAccess";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
+import { formatFrameTypeLabel } from "@/app/lib/uiText";
 import { getMessages } from "@/src/lib/i18n/messages";
 import type { Locale } from "@/src/lib/i18n/locale";
 import { useLocale } from "@/src/lib/i18n/useLocale";
@@ -87,6 +88,23 @@ const resolveJudgmentTypeClassName = (value: "use_now" | "watch" | "skip"): stri
   if (value === "use_now") return styles.judgmentTypeUseNow;
   if (value === "skip") return styles.judgmentTypeSkip;
   return styles.judgmentTypeWatch;
+};
+
+const resolveLanguageLabel = (lang: "ja" | "en", locale: Locale): string => {
+  if (lang === "ja") {
+    return locale === "ja" ? "日本語" : "Japanese";
+  }
+
+  return locale === "ja" ? "英語" : "English";
+};
+
+const resolveEpisodeStatusLabel = (
+  status: EpisodeRow["status"],
+  t: ReturnType<typeof getMessages>["episodes"]
+): string => {
+  if (status === "published") return t.statusPublished;
+  if (status === "ready") return t.statusReady;
+  return t.statusPending;
 };
 
 const stripLangSuffix = (value: string | null): string => {
@@ -587,7 +605,7 @@ export default function EpisodesView({
                           }`.trim()}
                         >
                           <div className={styles.episodeMetaRow}>
-                            <span className={styles.langBadge}>{episode.lang.toUpperCase()}</span>
+                            <span className={styles.langBadge}>{resolveLanguageLabel(episode.lang, locale)}</span>
                             <span className={styles.statusBadge}>{statusLabel}</span>
                             {episode.judgment_card_count > 0 ? (
                               <span className={styles.cardBadge}>
@@ -643,10 +661,10 @@ export default function EpisodesView({
               <div className={styles.detailBody}>
                 <h3>{selectedEpisode.title ?? t.untitled}</h3>
                 <p>
-                  {t.language}: {selectedEpisode.lang.toUpperCase()}
+                  {t.language}: {resolveLanguageLabel(selectedEpisode.lang, locale)}
                 </p>
                 <p>
-                  {t.status}: {selectedEpisode.status}
+                  {t.status}: {resolveEpisodeStatusLabel(selectedEpisode.status, t)}
                 </p>
 
                 <section className={styles.judgmentSection}>
@@ -683,7 +701,7 @@ export default function EpisodesView({
                               >
                                 {resolveJudgmentTypeLabel(card.judgment_type, t)}
                               </span>
-                              {card.frame_type ? <span className={styles.metaPill}>{card.frame_type}</span> : null}
+                              {card.frame_type ? <span className={styles.metaPill}>{formatFrameTypeLabel(card.frame_type, card.frame_type)}</span> : null}
                             </div>
                           </div>
                           <p>{card.judgment_summary}</p>

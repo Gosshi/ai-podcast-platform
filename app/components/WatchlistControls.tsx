@@ -44,13 +44,13 @@ type WatchlistApiResponse = WatchlistApiSuccess | WatchlistApiFailure;
 
 const STATUS_BUTTONS: Array<{ status: WatchlistStatus; label: string }> = [
   { status: "saved", label: "あとで見る" },
-  { status: "watching", label: "様子を見る" }
+  { status: "watching", label: "見直し待ち" }
 ];
 
 const STATUS_HINTS: Record<WatchlistStatus, string> = {
   saved: "今は決めずに、あとで見返す候補として残します。",
-  watching: "期限や条件変化を追いながら再訪する候補です。",
-  archived: "今回は保留を閉じ、一覧には残したまま静かに保管します。"
+  watching: "条件が揃うまで見直し待ちとして残します。",
+  archived: "一覧から外して静かに保管します。"
 };
 
 const buildErrorMessage = (error: string, limit?: number): string => {
@@ -147,61 +147,23 @@ export default function WatchlistControls({
         action_name: nextStatus,
         previous_status: previousStatus ?? undefined
       });
-      track("watchlist_add", {
-        ...analyticsProps,
-        watchlist_status: payload.item.status ?? previousStatus ?? undefined,
-        previous_status: previousStatus ?? undefined,
-        action: itemId ? "status_update" : "create"
-      });
+      if (nextStatus === "archived") {
+        track("watchlist_remove", {
+          ...analyticsProps,
+          previous_status: previousStatus ?? undefined,
+          watchlist_item_id: payload.item.id
+        });
+      } else {
+        track("watchlist_add", {
+          ...analyticsProps,
+          watchlist_status: payload.item.status ?? previousStatus ?? undefined,
+          previous_status: previousStatus ?? undefined,
+          action: itemId ? "status_update" : "create"
+        });
+      }
       router.refresh();
     } catch {
       setError("あとで見るの更新に失敗しました。時間をおいて再度お試しください。");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const removeItem = async () => {
-    if (!viewer) {
-      router.push("/account");
-      return;
-    }
-
-    if (!itemId) {
-      setStatus(null);
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/watchlist/${itemId}`, {
-        method: "DELETE"
-      });
-      const payload = (await response.json().catch(() => null)) as WatchlistApiResponse | null;
-
-      if (!response.ok || !payload || !payload.ok) {
-        setError("あとで見るから外せませんでした。");
-        return;
-      }
-
-      const previousStatus = status;
-      setItemId(null);
-      setStatus(null);
-      track("decision_action_click", {
-        ...analyticsProps,
-        action_name: "remove_watchlist",
-        previous_status: previousStatus ?? undefined
-      });
-      track("watchlist_remove", {
-        ...analyticsProps,
-        previous_status: previousStatus ?? undefined,
-        watchlist_item_id: itemId
-      });
-      router.refresh();
-    } catch {
-      setError("あとで見るから外せませんでした。");
     } finally {
       setIsSubmitting(false);
     }
@@ -224,35 +186,61 @@ export default function WatchlistControls({
   return (
     <div className={`${styles.shell} ${compact ? styles.shellCompact : ""}`.trim()}>
       <div className={styles.row}>
-        {STATUS_BUTTONS.map((item) => (
-          <button
-            key={item.status}
-            type="button"
-            className={`${styles.button} ${status === item.status ? styles.buttonActive : ""}`.trim()}
-            onClick={() => void upsertStatus(item.status)}
-            disabled={isSubmitting}
-          >
-            {item.label}
-          </button>
-        ))}
-        {itemId ? (
-          <button
-            type="button"
-            className={`${styles.button} ${status === "archived" ? styles.buttonMutedActive : styles.buttonMuted}`.trim()}
-            onClick={() => void upsertStatus("archived")}
-            disabled={isSubmitting}
-          >
-            非表示
-          </button>
-        ) : null}
-        {itemId ? (
-          <button type="button" className={styles.buttonDanger} onClick={() => void removeItem()} disabled={isSubmitting}>
-            外す
-          </button>
-        ) : null}
+        {compact ? (
+          <>
+            <button
+              type="button"
+              className={`${styles.button} ${
+                status === "saved" || status === "watching" ? styles.buttonActive : ""
+              }`.trim()}
+              onClick={() => void upsertStatus("saved")}
+              disabled={isSubmitting}
+            >
+              あとで見る
+            </button>
+            <button
+              type="button"
+              className={`${styles.button} ${status === "archived" ? styles.buttonMutedActive : styles.buttonMuted}`.trim()}
+              onClick={() => void upsertStatus(status === "archived" ? "saved" : "archived")}
+              disabled={isSubmitting}
+            >
+              {status === "archived" ? "表示に戻す" : "非表示"}
+            </button>
+          </>
+        ) : (
+          <>
+            {STATUS_BUTTONS.map((item) => (
+              <button
+                key={item.status}
+                type="button"
+                className={`${styles.button} ${status === item.status ? styles.buttonActive : ""}`.trim()}
+                onClick={() => void upsertStatus(item.status)}
+                disabled={isSubmitting}
+              >
+                {item.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`${styles.button} ${status === "archived" ? styles.buttonMutedActive : styles.buttonMuted}`.trim()}
+              onClick={() => void upsertStatus("archived")}
+              disabled={isSubmitting}
+            >
+              非表示
+            </button>
+          </>
+        )}
       </div>
 
-      {!compact ? <p className={styles.hint}>{status ? STATUS_HINTS[status] : STATUS_HINTS.saved}</p> : null}
+      {!compact ? (
+        <p className={styles.hint}>
+          {status === "archived"
+            ? STATUS_HINTS.archived
+            : status
+              ? STATUS_HINTS[status]
+              : STATUS_HINTS.saved}
+        </p>
+      ) : null}
       {error ? <p className={styles.error}>{error}</p> : null}
     </div>
   );

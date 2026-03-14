@@ -97,24 +97,24 @@ export default async function AccountPage({
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <p className={styles.eyebrow}>アカウント</p>
-            <h1>プランと請求を、自分で把握して管理できる状態にする。</h1>
+            <h1>プランと請求を、迷わず確認して管理する。</h1>
             <p className={styles.lead}>
               現在のプラン、購読ステータス、次回更新日、支払い状態を一画面で確認できます。購読中は
               支払い設定 から更新や解約も進められます。
             </p>
             {subscription === "success" && viewer?.isPaid ? (
               <p className={`${styles.statusMessage} ${styles.success}`}>
-                有料会員への切り替えが完了しました。判断カード全文、判断期限、監視ポイント、アーカイブが使えます。
+                有料会員への切り替えが完了しました。判断カード全文、判断期限、見直しポイント、アーカイブが使えます。
               </p>
             ) : null}
             {subscription === "success" && !viewer?.isPaid ? (
               <p className={`${styles.statusMessage} ${styles.info}`}>
-                Checkout は完了しています。Stripe webhook の反映中は数秒かかることがあります。ページを再読み込みすると最新状態を確認できます。
+                購入手続きは完了しています。反映まで数秒かかることがあるため、少し待ってから再読み込みすると最新状態を確認できます。
               </p>
             ) : null}
             {subscription === "cancel" ? (
               <p className={`${styles.statusMessage} ${styles.cancel}`}>
-                Checkout はキャンセルされました。無料版のまま判断サマリーを確認できます。必要になった時点で再開できます。
+                購入手続きはキャンセルされました。無料版のまま判断の要点を確認でき、必要になった時点で再開できます。
               </p>
             ) : null}
           </div>
@@ -196,7 +196,7 @@ export default async function AccountPage({
           <div className={styles.featureGrid}>
             <article className={styles.featureCard}>
               <h3>判断カード全文</h3>
-              <p>summary だけでなく、行動指針、期限、監視ポイントまでそのまま確認できます。</p>
+              <p>判断の要点だけでなく、行動指針、期限、見直しポイントまで確認できます。</p>
             </article>
             <article className={styles.featureCard}>
               <h3>詳しい解説</h3>
