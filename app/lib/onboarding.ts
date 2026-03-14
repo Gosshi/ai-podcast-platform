@@ -10,3 +10,8 @@ export const buildOnboardingPath = (nextPath: string): string => {
   const safeNextPath = resolveSafeNextPath(nextPath);
   return `/onboarding?next=${encodeURIComponent(safeNextPath)}`;
 };
+
+export const buildAccountEntryPath = (nextPath: string): string => {
+  const safeNextPath = resolveSafeNextPath(nextPath);
+  return `/account?next=${encodeURIComponent(safeNextPath)}`;
+};

@@ -97,41 +97,24 @@ export default async function WatchlistPage({
         error: null
       };
 
-  const activeCount = result.items.filter((item) => item.status === "saved" || item.status === "watching").length;
-
   return (
     <main className={styles.page}>
       <AnalyticsPageView page="/watchlist" pageEventName="watchlist_view" />
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>あとで見る</p>
-          <h1>迷っている判断を、あとで見返しやすい形で残しておく。</h1>
+          <p className={styles.eyebrow}>保存</p>
+          <h1>迷った判断を保存して、見直す順番を整える。</h1>
           <p className={styles.lead}>
-            履歴が「採用した判断」を記録するのに対して、この画面は「今は決めないが後で見返す判断」を残す場所です。
-            期限や状態を見ながら、迷った候補を整理できます。
+            履歴が「採用した判断」を残すのに対して、この画面は「まだ決めきらない判断」を保存しておく場所です。
+            あとから迷わず見直せるよう、保存中の候補だけをまとめています。
           </p>
-
-          <div className={styles.statRow}>
-            <article className={styles.statCard}>
-              <span className={styles.statLabel}>見返し中</span>
-              <strong>{activeCount}</strong>
-            </article>
-            <article className={styles.statCard}>
-              <span className={styles.statLabel}>合計</span>
-              <strong>{result.items.length}</strong>
-            </article>
-            <article className={styles.statCard}>
-              <span className={styles.statLabel}>プラン</span>
-              <strong>{isPaid ? "有料版" : "無料版"}</strong>
-            </article>
-          </div>
 
           <p className={styles.limitText}>
             {viewer
               ? isPaid
                 ? "有料版では保存件数の上限なく、期限つきで見直せます。"
-                : `無料版では進行中の候補を最大${FREE_WATCHLIST_LIMIT}件まで保存できます。`
+                : `無料版では保存できる候補は最大${FREE_WATCHLIST_LIMIT}件までです。`
               : "ログインすると判断カードを保存して、ここで一覧管理できます。"}
           </p>
         </div>
@@ -201,16 +184,15 @@ export default async function WatchlistPage({
         <div className={styles.sectionHeading}>
           <div>
             <p className={styles.sectionEyebrow}>保存一覧</p>
-            <h2>保存した判断一覧</h2>
-            <p className={styles.sectionLead}>詳細や履歴に戻りながら、あとで見返す候補を整理できます。</p>
+            <h2>保存した判断</h2>
+            <p className={styles.sectionLead}>詳細や履歴に戻りながら、見直したい候補だけを整理できます。</p>
           </div>
-          <span className={styles.sectionCount}>{result.items.length}件</span>
         </div>
 
         {viewer && result.items.length === 0 ? (
           <div className={styles.emptyPanel}>
             <h3>まだ保存した判断はありません</h3>
-            <p>今日の判断やライブラリの判断カードから「あとで見る」を押すと、ここに追加されます。</p>
+            <p>今日の判断や詳細画面で「保存」を押すと、ここに追加されます。</p>
           </div>
         ) : null}
 

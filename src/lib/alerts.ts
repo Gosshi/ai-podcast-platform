@@ -280,7 +280,7 @@ export const buildWatchlistDueSoonAlerts = (
           title: `保存中の「${item.topic_title}」を見直すタイミングです`,
           summary:
             item.status === "watching"
-              ? "見直し待ちの判断です。期限前に詳細と保存一覧を見直してください。"
+              ? "保存している判断です。期限前に詳細と保存一覧を見直してください。"
               : "保存した判断です。期限が来る前に保存一覧から再訪してください。",
           urgency: resolveUrgencyFromHours(hoursUntilDue),
           due_at: item.deadline_at,

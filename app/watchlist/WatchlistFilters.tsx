@@ -28,9 +28,8 @@ type WatchlistFiltersProps = {
 
 const STATUS_OPTIONS: Array<{ value: WatchlistStatus | null; label: string }> = [
   { value: null, label: "すべて" },
-  { value: "saved", label: "あとで見る" },
-  { value: "watching", label: "見直し待ち" },
-  { value: "archived", label: "非表示" }
+  { value: "saved", label: "保存" },
+  { value: "archived", label: "見送る" }
 ];
 
 const URGENCY_OPTIONS: Array<{ value: WatchlistUrgency | null; label: string }> = [

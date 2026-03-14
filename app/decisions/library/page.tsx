@@ -188,17 +188,17 @@ export default async function DecisionLibraryPage({
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>ライブラリ</p>
-          <h1>あとで見返したい判断メモを、まとめて探せます。</h1>
+          <p className={styles.eyebrow}>保存から探す</p>
+          <h1>保存の候補になりそうな判断を、まとめて探せます。</h1>
           <p className={styles.lead}>
-            ジャンル、見直しタイミング、見送るかどうかといった軸で、過去の判断メモを一覧できます。気になった候補の
-            再訪や比較に使う画面です。
+            ジャンルや見直しタイミングごとに、過去の判断メモを探せます。気になった候補を見つけて、保存する前の比較に
+            使う画面です。
           </p>
 
           <div className={styles.heroMeta}>
             <span className={styles.heroBadge}>{isPaid ? "有料プラン" : "無料プラン"}</span>
-            <span>{isPaid ? `${result.totalCount}件から探せます` : `直近カードを最大${FREE_LIBRARY_CARD_LIMIT}件まで表示`}</span>
-            <span>{query ? `「${query}」で絞り込み中` : "すべての判断メモを表示"}</span>
+            <span>{isPaid ? "保存候補をまとめて探せます" : `直近カードを最大${FREE_LIBRARY_CARD_LIMIT}件まで表示`}</span>
+            <span>{query ? `「${query}」に近い判断を表示中` : "気になる判断を探して保存できます"}</span>
           </div>
 
           {viewer?.needsOnboarding ? (
@@ -271,17 +271,17 @@ export default async function DecisionLibraryPage({
 
       <LibraryControls initialFilters={activeFilters} defaultSort={defaultSort} options={result.options} isPaid={isPaid} />
 
-      {result.error ? <p className={styles.errorText}>ライブラリの読み込みに失敗しました: {result.error}</p> : null}
+      {result.error ? <p className={styles.errorText}>保存候補の読み込みに失敗しました: {result.error}</p> : null}
 
       {!isPaid && result.previewLimited ? (
         <section className={styles.noticePanel}>
           <div>
             <p className={styles.sectionEyebrow}>表示上限</p>
-            <h2>無料版は最近の判断メモを一部だけ表示します</h2>
+            <h2>無料版は最近の判断だけを一部表示します</h2>
             <p>
               {result.searchPreviewLimited
-                ? `現在の検索結果は ${result.totalCount} 件ありますが、無料版では最初の ${result.cards.length} 件だけ表示します。`
-                : `現在の一致件数は ${result.totalCount} 件です。無料版では直近カードを最大 ${FREE_LIBRARY_CARD_LIMIT} 件まで表示します。`}
+                ? `この条件に合う判断はまだありますが、無料版では最初の ${result.cards.length} 件だけ表示します。`
+                : `無料版では直近カードを最大 ${FREE_LIBRARY_CARD_LIMIT} 件まで表示します。`}
             </p>
           </div>
           <TrackedLink
@@ -302,14 +302,11 @@ export default async function DecisionLibraryPage({
         <div className={styles.sectionHeading}>
           <div>
             <p className={styles.sectionEyebrow}>検索結果</p>
-            <h2>検索して見返せる判断メモ</h2>
+            <h2>保存前に比較できる判断メモ</h2>
             <p className={styles.sectionLead}>
               エピソード一覧から探し直さなくても、判断の内容から見返せます。
             </p>
           </div>
-          <span className={styles.sectionCount}>
-            {isPaid && result.totalPages > 1 ? `${result.currentPage} / ${result.totalPages} ページ` : `${result.cards.length}件`}
-          </span>
         </div>
 
         {result.cards.length === 0 ? (

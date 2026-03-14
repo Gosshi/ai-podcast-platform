@@ -42,27 +42,22 @@ type WatchlistApiFailure = {
 
 type WatchlistApiResponse = WatchlistApiSuccess | WatchlistApiFailure;
 
-const STATUS_BUTTONS: Array<{ status: WatchlistStatus; label: string }> = [
-  { status: "saved", label: "あとで見る" },
-  { status: "watching", label: "見直し待ち" }
-];
-
 const STATUS_HINTS: Record<WatchlistStatus, string> = {
-  saved: "今は決めずに、あとで見返す候補として残します。",
-  watching: "条件が揃うまで見直し待ちとして残します。",
-  archived: "一覧から外して静かに保管します。"
+  saved: "迷った候補として保存し、あとで見直せるようにします。",
+  watching: "迷った候補として保存し、あとで見直せるようにします。",
+  archived: "今回は見送りとして整理します。"
 };
 
 const buildErrorMessage = (error: string, limit?: number): string => {
   if (error === "watchlist_limit_reached") {
-    return `無料版のあとで見るは${limit ?? 5}件までです。続ける場合は有料会員へ切り替えてください。`;
+    return `無料版で保存できるのは${limit ?? 5}件までです。続ける場合は有料会員へ切り替えてください。`;
   }
 
   if (error === "unauthorized") {
-    return "あとで見るを使うにはログインが必要です。";
+    return "保存するにはログインが必要です。";
   }
 
-  return "あとで見るの更新に失敗しました。時間をおいて再度お試しください。";
+  return "保存状態の更新に失敗しました。時間をおいて再度お試しください。";
 };
 
 export default function WatchlistControls({
@@ -163,7 +158,7 @@ export default function WatchlistControls({
       }
       router.refresh();
     } catch {
-      setError("あとで見るの更新に失敗しました。時間をおいて再度お試しください。");
+      setError("保存状態の更新に失敗しました。時間をおいて再度お試しください。");
     } finally {
       setIsSubmitting(false);
     }
@@ -196,7 +191,7 @@ export default function WatchlistControls({
               onClick={() => void upsertStatus("saved")}
               disabled={isSubmitting}
             >
-              あとで見る
+              保存
             </button>
             <button
               type="button"
@@ -204,29 +199,28 @@ export default function WatchlistControls({
               onClick={() => void upsertStatus(status === "archived" ? "saved" : "archived")}
               disabled={isSubmitting}
             >
-              {status === "archived" ? "表示に戻す" : "非表示"}
+              {status === "archived" ? "保存に戻す" : "見送る"}
             </button>
           </>
         ) : (
           <>
-            {STATUS_BUTTONS.map((item) => (
-              <button
-                key={item.status}
-                type="button"
-                className={`${styles.button} ${status === item.status ? styles.buttonActive : ""}`.trim()}
-                onClick={() => void upsertStatus(item.status)}
-                disabled={isSubmitting}
-              >
-                {item.label}
-              </button>
-            ))}
+            <button
+              type="button"
+              className={`${styles.button} ${
+                status === "saved" || status === "watching" ? styles.buttonActive : ""
+              }`.trim()}
+              onClick={() => void upsertStatus("saved")}
+              disabled={isSubmitting}
+            >
+              保存
+            </button>
             <button
               type="button"
               className={`${styles.button} ${status === "archived" ? styles.buttonMutedActive : styles.buttonMuted}`.trim()}
-              onClick={() => void upsertStatus("archived")}
+              onClick={() => void upsertStatus(status === "archived" ? "saved" : "archived")}
               disabled={isSubmitting}
             >
-              非表示
+              {status === "archived" ? "保存に戻す" : "見送る"}
             </button>
           </>
         )}

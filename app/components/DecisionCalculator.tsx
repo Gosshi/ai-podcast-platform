@@ -38,8 +38,8 @@ type FieldDefinition = {
 
 const copy = {
   ja: {
-    title: "あなたの数字で再判定",
-    subtitle: "AIの判断フレームで、あなたのコスト感に合わせて即時計算します。",
+    title: "再判定",
+    subtitle: "自分の時間や費用で入れ直して、もう一度判断できます。",
     expand: "開く",
     collapse: "閉じる",
     upgradeTitle: "有料会員で再判定",

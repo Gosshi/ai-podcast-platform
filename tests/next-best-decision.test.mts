@@ -135,7 +135,7 @@ test("rankNextBestDecisions adds paid-only personal reasons from the decision pr
   assert.equal(paidRecommendation.reason_tags.includes("あなた向け"), true);
   assert.equal(paidRecommendation.reason_tags.includes("後悔防止"), true);
   assert.equal(
-    paidRecommendation.reason_tags.some((tag) => tag === "あなたはこのタイプで後悔しやすい" || tag === "後悔しやすい条件に近い"),
+    paidRecommendation.reason_tags.some((tag) => tag === "この比較では後悔しやすい傾向" || tag === "後悔しやすい条件に近い"),
     true
   );
   assert.equal(paidRecommendation.priority_score > freeRecommendation.priority_score, true);

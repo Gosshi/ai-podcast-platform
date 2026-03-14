@@ -224,11 +224,11 @@ const resolvePersonalizationScore = (
   if (frameStat?.count && frameStat.count >= 3) {
     if (frameStat.regretRate >= 50 && frameStat.regretCount >= 2) {
       result.score += 28;
-      pushReasonTag(result.reasonTags, "あなたはこのタイプで後悔しやすい");
+      pushReasonTag(result.reasonTags, "この比較では後悔しやすい傾向");
       pushReasonTag(result.reasonTags, "後悔防止");
     } else if (frameStat.successRate >= 67 && frameStat.successCount >= 2) {
       result.score += 14;
-      pushReasonTag(result.reasonTags, "得意なフレーム");
+      pushReasonTag(result.reasonTags, "相性がよい比較");
     }
   }
 
