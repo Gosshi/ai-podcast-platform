@@ -22,6 +22,78 @@
 5. Supabase ローカル設定を確認: `supabase status`
 6. Migration 適用: `supabase db reset --local --yes`
 
+## Local Demo Seed
+- ローカル検証用データは [`supabase/seed.sql`](supabase/seed.sql) にあります
+- `supabase/config.toml` の `sql_paths` に登録しているため、`supabase db reset --local --yes` 時に自動投入されます
+- 追加で demo data だけ再投入したい場合は `npm run seed:demo` を使えます
+
+### Demo Data Includes
+- `episodes`: 5件、公開日を分散、`tech / games / streaming / anime / movies`
+- `episode_judgment_cards`: 15件、`use_now / watch / skip` と複数 `frame_type`、deadline 有無を混在
+- `user_preferences`: free / paid の2ユーザー分を投入済み
+- `user_decisions`: replay / profile / next best decision が成立する件数を投入済み
+- `user_watchlist_items`: `saved / watching / archived` を投入済み
+- `subscriptions`: `FREE` と `PAID(active)` を投入済み
+- `user_alerts`: `/alerts` 表示時に seed 済み history / watchlist / digest から自動同期されます
+
+### Local Verification Flow
+1. `supabase start`
+2. `supabase db reset --local --yes`
+3. `npm run seed:demo`
+4. `npm run dev -- --hostname 0.0.0.0`
+5. [`http://127.0.0.1:3000/dev/demo-login`](http://127.0.0.1:3000/dev/demo-login) を開く
+6. `FREE` または `PAID` の demo login を押す
+7. ログイン後に `/account` へ戻るので、そのまま主要画面を確認する
+
+### Demo Users
+- `demo-free@local.test`: free gating、preview、件数制限、archive lock の確認用
+- `demo-paid@local.test`: personal hint、full library、alerts、replay、profile、next best decision の確認用
+- seed 上の password は両方とも `local-demo-pass`
+- 開発中は `/dev/demo-login` が最短です。必要なら password grant や Magic Link でも入れます
+
+### Recommended Screen Order
+1. `/account`
+   free / paid バッジ、プラン名、status、preference の差分を確認
+2. `/decisions`
+   next best decision、judgment card、free の locked panel、paid の personal hint を確認
+3. `/decisions/library`
+   genre / frame / urgency filter、free preview 制限、paid の全件アクセスを確認
+4. `/history`
+   outcome 混在、replay 導線、paid の Personal Decision Profile を確認
+5. `/history/replay/<decision_id>`
+   judgment / outcome / insight の読み返しを確認
+6. `/watchlist`
+   `saved / watching / archived` と episode / history / replay への戻り導線を確認
+7. `/alerts`
+   `deadline_due_soon / outcome_reminder / weekly_digest_ready / watchlist_due_soon` を確認
+
+### Free / Paid Quick Checks
+- free:
+  `/decisions` と `/episodes` で locked panel が出る
+- free:
+  `/decisions/library` は recent preview まで、`/history` は10件上限表示、`/watchlist` は active 5件上限文言が出る
+- free:
+  8日以上前の episode は archive lock される
+- paid:
+  `/decisions` で personal hint、`/history` で full profile、`/alerts` で full inbox、`/watchlist` で urgency が見える
+- paid:
+  older archive と replay insight まで確認できる
+
+### Analytics Spot Check
+- `/decisions` を開く: `page_view`, `decisions_view`, `judgment_card_impression`
+- `/decisions/library` で search / filter / sort: `library_search`, `library_filter_change`, `library_sort_change`
+- `/history` から replay を開く: `decision_replay_from_history_click`, `decision_replay_view`
+- `/watchlist` の link を押す: `watchlist_card_click`
+- `/alerts` を開く: `alerts_view`, `alert_impression`
+
+```sql
+select event_name, count(*) as events
+from public.analytics_events
+where created_at >= now() - interval '1 day'
+group by 1
+order by 2 desc, 1 asc;
+```
+
 ## Paid Membership MVP
 - 会員状態は `profiles` と `subscriptions` で管理します
 - `free` / `paid` 判定は `subscriptions.status` が `trialing | active | past_due` かどうかで決まります
