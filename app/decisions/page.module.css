@@ -1,19 +1,19 @@
 .page {
   width: min(1120px, calc(100vw - 2rem));
   margin: 0 auto;
-  padding: 2rem 0 4rem;
+  padding: 1.4rem 0 4rem;
 }
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.95fr);
-  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.85fr);
+  gap: 1rem;
   align-items: start;
 }
 
 .heroCopy {
-  padding: 2rem;
-  border-radius: 28px;
+  padding: 1.4rem 1.5rem;
+  border-radius: 24px;
   background:
     radial-gradient(circle at top right, rgba(249, 115, 22, 0.18), transparent 30%),
     linear-gradient(145deg, #fff7ed 0%, #ffffff 52%, #f8fafc 100%);
@@ -40,8 +40,8 @@
 }
 
 .heroCopy h1 {
-  font-size: clamp(2rem, 4vw, 3.35rem);
-  line-height: 1.05;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  line-height: 1.12;
 }
 
 .lead,
@@ -70,10 +70,14 @@
 }
 
 .heroActions {
-  margin-top: 1rem;
+  margin-top: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
-.heroLink {
+.heroLink,
+.secondaryHeroLink {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -84,6 +88,12 @@
   font-weight: 800;
   background: #0f172a;
   color: #f8fafc;
+}
+
+.secondaryHeroLink {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
 }
 
 .heroBadge,
@@ -108,7 +118,7 @@
 }
 
 .paywallBanner {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
   padding: 1.25rem 1.4rem;
   border-radius: 24px;
   background: linear-gradient(120deg, #111827 0%, #1e293b 100%);
@@ -135,12 +145,24 @@
   white-space: nowrap;
 }
 
+.onboardingPrompt {
+  margin-top: 1rem;
+  padding: 1.1rem 1.2rem;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  border: 1px solid rgba(34, 197, 94, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .section {
   margin-top: 1.75rem;
 }
 
 .recommendationSection {
-  margin-top: 1.75rem;
+  margin-top: 1rem;
   padding: 1.4rem;
   border-radius: 28px;
   background:
@@ -525,6 +547,11 @@
     grid-template-columns: 1fr;
   }
 
+  .onboardingPrompt {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .recommendationGrid,
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -538,6 +565,7 @@
   }
 
   .heroCopy,
+  .onboardingPrompt,
   .card,
   .paywallBanner,
   .recommendationCard,

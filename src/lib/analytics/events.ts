@@ -1,6 +1,11 @@
 export const ANALYTICS_EVENT_NAMES = [
   "page_view",
+  "landing_view",
+  "landing_cta_click",
+  "onboarding_entry_click",
+  "nav_click",
   "decisions_view",
+  "decisions_hero_impression",
   "alerts_view",
   "library_view",
   "watchlist_view",
@@ -59,6 +64,7 @@ export const ANALYTICS_EVENT_NAMES = [
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];
 
 export const ANALYTICS_PAGE_NAMES = [
+  "/",
   "/decisions",
   "/alerts",
   "/decisions/library",

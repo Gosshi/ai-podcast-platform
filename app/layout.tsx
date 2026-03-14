@@ -3,8 +3,8 @@ import AppNavigation from "@/app/components/AppNavigation";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Podcast Platform",
-  description: "Staging environment for AI podcast platform"
+  title: "視聴判断ガイド",
+  description: "配信作品やサブスクの迷いを、短い判断メモで整理するサービス"
 };
 
 export default function RootLayout({

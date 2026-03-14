@@ -526,7 +526,7 @@ export default function EpisodesView({
         </div>
       </header>
 
-      <MemberControls viewer={viewer} analyticsSource="/episodes" />
+      <MemberControls viewer={viewer} analyticsSource="/episodes" variant="compact" />
 
       {loadError ? (
         <p className={styles.errorText}>

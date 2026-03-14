@@ -34,25 +34,25 @@ const STEP_TITLES = [
     id: "interest_topics",
     eyebrow: "Step 1",
     title: "興味ジャンルを選ぶ",
-    description: "Decision Engine が cold start で外さないための基本シグナルです。複数選択できます。"
+    description: "まずは、ふだん気になりやすいジャンルを教えてください。複数選べます。"
   },
   {
     id: "active_subscriptions",
     eyebrow: "Step 2",
     title: "使っているサービスを教える",
-    description: "今すぐ使える候補か、加入前提の候補かを切り分けるために使います。"
+    description: "今すぐ見られるかどうかを判断しやすくするために使います。"
   },
   {
     id: "decision_priority",
     eyebrow: "Step 3",
     title: "判断で何を優先するかを決める",
-    description: "お金、時間、新規発見、後悔回避のどれを優先したいかを explicit signal として保存します。"
+    description: "お金、時間、新しい出会い、後悔しにくさのどれを重視するかを決めます。"
   },
   {
     id: "time_and_budget",
     eyebrow: "Step 4",
     title: "使える時間を教える",
-    description: "毎日の時間帯と予算感度を入れて、ranking / hints / alerts に渡せる基盤を完成させます。"
+    description: "使える時間と予算感覚を入れて、無理のないおすすめに整えます。"
   }
 ] as const;
 
@@ -65,6 +65,45 @@ const ERROR_MESSAGES: Record<string, string> = {
   daily_available_time_required: "1日に使える時間を選んでください。",
   budget_sensitivity_invalid: "予算感度の値が不正です。もう一度選び直してください。",
   unauthorized: "セッションが切れています。ログインし直してください。"
+};
+
+const INTEREST_TOPIC_HELPERS: Record<InterestTopic, string> = {
+  games: "ゲームや実況まわり",
+  streaming: "配信サービスやサブスク",
+  anime: "アニメ作品",
+  movies: "映画や長編作品",
+  tech: "ガジェットや新サービス"
+};
+
+const ACTIVE_SUBSCRIPTION_HELPERS: Record<ActiveSubscription, string> = {
+  netflix: "Netflixで見ている",
+  prime: "Prime Videoで見ている",
+  disney: "Disney+で見ている",
+  spotify: "Spotifyで聞いている",
+  youtube: "YouTubeをよく使う",
+  chatgpt: "ChatGPTも使っている",
+  other: "その他のサービスを使っている",
+  none: "今は使っていない"
+};
+
+const DECISION_PRIORITY_HELPERS: Record<DecisionPriority, string> = {
+  save_money: "追加課金を抑えたい",
+  save_time: "短時間で外したくない",
+  discover_new: "新しい作品に出会いたい",
+  avoid_regret: "見て後悔する確率を下げたい"
+};
+
+const DAILY_AVAILABLE_TIME_HELPERS: Record<DailyAvailableTime, string> = {
+  under_30m: "スキマ時間で見たい",
+  "30_to_60m": "1話分くらいなら見られる",
+  "1_to_2h": "映画1本くらいなら見られる",
+  over_2h: "まとまった時間を取りやすい"
+};
+
+const BUDGET_HELPERS: Record<BudgetSensitivity, string> = {
+  low: "課金はあまり気にしない",
+  medium: "内容次第で判断したい",
+  high: "追加料金には慎重"
 };
 
 const toggleSelection = <T extends string>(current: T[], value: T, exclusiveValue?: T): T[] => {
@@ -270,7 +309,7 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
         <h2>{currentStep.title}</h2>
         <p>{currentStep.description}</p>
         {!isFirstRun && initialPreferences ? (
-          <span className={styles.savedBadge}>保存済みの設定を更新できます</span>
+          <span className={styles.savedBadge}>保存済みの設定を見直せます</span>
         ) : null}
       </div>
 
@@ -287,7 +326,7 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
               }}
             >
               <strong>{INTEREST_TOPIC_LABELS[topic]}</strong>
-              <span>{topic}</span>
+              <span>{INTEREST_TOPIC_HELPERS[topic]}</span>
             </button>
           ))}
         </div>
@@ -306,7 +345,7 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
               }}
             >
               <strong>{ACTIVE_SUBSCRIPTION_LABELS[subscription]}</strong>
-              <span>{subscription === "none" ? "サブスクなし" : subscription === "other" ? "その他の利用中サービス" : "active subscription"}</span>
+              <span>{ACTIVE_SUBSCRIPTION_HELPERS[subscription]}</span>
             </button>
           ))}
         </div>
@@ -327,7 +366,7 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
                 }}
               >
                 <strong>{DECISION_PRIORITY_LABELS[priority]}</strong>
-                <span>{priority}</span>
+                <span>{DECISION_PRIORITY_HELPERS[priority]}</span>
               </button>
             ))}
           </div>
@@ -350,7 +389,7 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
                   }}
                 >
                   <strong>{DAILY_AVAILABLE_TIME_LABELS[time]}</strong>
-                  <span>{time}</span>
+                  <span>{DAILY_AVAILABLE_TIME_HELPERS[time]}</span>
                 </button>
               ))}
             </div>
@@ -373,7 +412,7 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
                   }}
                 >
                   <strong>{BUDGET_SENSITIVITY_LABELS[budgetValue]}</strong>
-                  <span>{budgetValue}</span>
+                  <span>{BUDGET_HELPERS[budgetValue]}</span>
                 </button>
               ))}
             </div>
@@ -393,7 +432,7 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
           </button>
         ) : (
           <button type="button" className={styles.primaryButton} onClick={handleSubmit} disabled={!canContinue || isPending}>
-            {isPending ? "保存中..." : isFirstRun ? "Onboarding を完了" : "設定を更新"}
+            {isPending ? "保存中..." : isFirstRun ? "設定を完了する" : "設定を更新"}
           </button>
         )}
       </div>

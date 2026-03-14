@@ -116,9 +116,10 @@ export default async function DecisionReplayPage({
 
             <MemberControls
               viewer={viewer}
-              title="Replay Access"
-              copy="free は replay preview まで、paid は当時の判断理由と insight まで振り返れます。"
+              title="プラン"
+              copy="無料版は振り返りの要点まで、有料版は当時の判断理由まで見返せます。"
               analyticsSource={pagePath}
+              variant="compact"
             />
           </section>
 

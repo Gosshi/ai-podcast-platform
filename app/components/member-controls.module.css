@@ -12,6 +12,20 @@
   gap: 0.25rem;
 }
 
+.compactHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.compactBody {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1rem;
+}
+
 .eyebrow {
   margin: 0;
   font-size: 0.74rem;
@@ -91,6 +105,21 @@
   color: #475569;
 }
 
+.compactLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f172a;
+  text-decoration: none;
+  border: 1px solid #cbd5e1;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -147,6 +176,11 @@
 }
 
 @media (max-width: 560px) {
+  .compactBody {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .detailGrid {
     grid-template-columns: 1fr;
   }

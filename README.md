@@ -8,6 +8,27 @@
 - 対象: 忙しい社会人 / サブスク整理層 / エンタメに時間を使いすぎたくない人
 - 判断モデル: [Decision Framework Models](docs/decision-framework.md)
 
+## First-Time UX
+- ランディングページの目的:
+  `/` は初見ユーザー向けの入口です。「何のサービスか」「何ができるか」「何をすればいいか」を最短で伝えます。
+- サービス説明:
+  配信作品とサブスクの迷いを、短い判断メモで整理するサービスです。
+- ナビゲーション方針:
+  グローバルナビは `Home / Decisions / Library / History / Account` に絞り、初回利用で役割が分かる構成にします。
+- 初回導線:
+  まず `/` で概要を見る
+  次に `/decisions` でおすすめを試す
+  好みを入れたい場合は `/onboarding` へ進む
+  プランやログインは `/account` に集約する
+- MEMBERSHIP 表示:
+  詳細な会員管理は `/account` に集約し、他ページでは最小限の free / paid 情報だけを表示します。
+- 用語整理:
+  `judgment card` → 判断メモ
+  `replay` → 振り返り
+  `watchlist` → あとで見る
+  `next best decision` → 今日のおすすめ
+  `personal decision profile` → あなたの傾向
+
 ## Stack
 - Next.js (App Router)
 - TypeScript
@@ -52,19 +73,21 @@
 - 開発中は `/dev/demo-login` が最短です。必要なら password grant や Magic Link でも入れます
 
 ### Recommended Screen Order
-1. `/account`
-   free / paid バッジ、プラン名、status、preference の差分を確認
-2. `/decisions`
-   next best decision、judgment card、free の locked panel、paid の personal hint を確認
-3. `/decisions/library`
+1. `/`
+   サービス説明、判断メモサンプル、`はじめる / 好みを設定する / デモを見る` の導線を確認
+2. `/account`
+   free / paid バッジ、プラン名、status、好み設定導線を確認
+3. `/decisions`
+   今日のおすすめ、判断メモ、好み設定プロンプト、free の locked panel、paid の personal hint を確認
+4. `/decisions/library`
    genre / frame / urgency filter、free preview 制限、paid の全件アクセスを確認
-4. `/history`
+5. `/history`
    outcome 混在、replay 導線、paid の Personal Decision Profile を確認
-5. `/history/replay/<decision_id>`
+6. `/history/replay/<decision_id>`
    judgment / outcome / insight の読み返しを確認
-6. `/watchlist`
+7. `/watchlist`
    `saved / watching / archived` と episode / history / replay への戻り導線を確認
-7. `/alerts`
+8. `/alerts`
    `deadline_due_soon / outcome_reminder / weekly_digest_ready / watchlist_due_soon` を確認
 
 ### Free / Paid Quick Checks
@@ -80,7 +103,12 @@
   older archive と replay insight まで確認できる
 
 ### Analytics Spot Check
+- `/` を開く: `page_view`, `landing_view`
+- `/` の CTA を押す: `landing_cta_click`
+- `/` または `/decisions` から onboarding に入る: `onboarding_entry_click`
+- グローバルナビを押す: `nav_click`
 - `/decisions` を開く: `page_view`, `decisions_view`, `judgment_card_impression`
+- `/decisions` のヒーロー表示: `decisions_hero_impression`
 - `/decisions/library` で search / filter / sort: `library_search`, `library_filter_change`, `library_sort_change`
 - `/history` から replay を開く: `decision_replay_from_history_click`, `decision_replay_view`
 - `/watchlist` の link を押す: `watchlist_card_click`
@@ -98,7 +126,7 @@ order by 2 desc, 1 asc;
 - 会員状態は `profiles` と `subscriptions` で管理します
 - `free` / `paid` 判定は `subscriptions.status` が `trialing | active | past_due` かどうかで決まります
 - `/account` ではプラン名、購読ステータス、次回更新日、支払い状態を見やすく表示します
-- `/onboarding` と `user_preferences` で explicit preference を保存し、cold start 時の personalisation seed を作ります
+- `/onboarding` と `user_preferences` で好みを保存し、初回表示のおすすめを整えます
 - `/episodes` は無料版では最新プレビューのみ、有料版では判断カード・DeepDive全文・アーカイブを表示します
 - 判断カードは `episode_judgment_cards` に構造化保存され、`write-script-ja` / `expand-script-ja` / `polish-script-ja` の各 step で再抽出・同期されます
 - `episode_judgment_cards` は weekly summary / 再判定ツール / 履歴分析の共通データソースです
@@ -118,11 +146,12 @@ order by 2 desc, 1 asc;
 
 ## User Onboarding And Preference Storage
 - purpose:
-  - `user_preferences` は初回の cold start を補う explicit signal です
-  - `Personal Decision Profile` は `user_decisions` から学習する implicit signal です
-  - 両者は競合させず、ranking / hints / alerts / digest personalisation を補完する前提で分離します
+  - `user_preferences` は最初に好みを伝えるための設定です
+  - `Personal Decision Profile` は `user_decisions` から見える利用傾向です
+  - 両者を合わせて、おすすめの並びや補足を整えます
 - onboarding flow:
-  - 初回ログイン後または preference 未設定時、`/decisions` と auth callback から `/onboarding` に誘導します
+  - 初回ログイン直後は auth callback から `/onboarding` に誘導します
+  - その後も、`/` `/decisions` `/decisions/library` から自然に `/onboarding` へ入れます
   - step は `interest_topics -> active_subscriptions -> decision_priority -> daily_available_time (+ optional budget_sensitivity)` の 4 段です
   - 完了後は `next` つきで元画面に戻し、デフォルトは `/decisions` に戻します
 - stored fields:

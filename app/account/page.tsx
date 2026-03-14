@@ -178,7 +178,7 @@ export default async function AccountPage({
             </article>
             <article className={styles.statCard}>
               <span className={styles.statLabel}>DeepDive</span>
-              <strong className={styles.statValue}>{viewer?.isPaid ? "完全版を表示" : "短い preview を表示"}</strong>
+              <strong className={styles.statValue}>{viewer?.isPaid ? "詳しい解説を表示" : "短いプレビューを表示"}</strong>
             </article>
           </div>
         </section>
@@ -198,16 +198,16 @@ export default async function AccountPage({
               <p>summary だけでなく、行動指針、期限、監視ポイントまでそのまま確認できます。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>DeepDive 完全版</h3>
-              <p>各テーマの深い判断と条件分岐を、プレビュー省略なしで追えます。</p>
+              <h3>詳しい解説</h3>
+              <p>各テーマの背景や判断理由を、途中で省略されずに追えます。</p>
             </article>
             <article className={styles.featureCard}>
               <h3>アーカイブと管理</h3>
               <p>過去エピソードをさかのぼりつつ、支払い方法や解約も Billing Portal で自分で管理できます。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>Personal Decision Profile</h3>
-              <p>履歴から frame / genre / outcome の傾向を集計し、paid は judgment card に personal hint を返します。</p>
+              <h3>あなたの傾向</h3>
+              <p>履歴から好みの傾向を見つけて、次に見る候補の補足として返します。</p>
             </article>
           </div>
 
@@ -237,7 +237,7 @@ export default async function AccountPage({
               <p className={styles.eyebrow}>Preference Setup</p>
               <h2>Onboarding と判断嗜好の設定</h2>
               <p className={styles.sectionLead}>
-                explicit preference は cold start の補助、Personal Decision Profile は履歴から学習した implicit signal です。両者は競合させず、ranking と hints を補完する前提で分離しています。
+                最初に設定した好みと、使いながらたまる履歴の両方を使って、おすすめの並びや補足を整えます。
               </p>
             </div>
 
@@ -289,10 +289,10 @@ export default async function AccountPage({
 
             <div className={styles.ctaRow}>
               <Link href={buildOnboardingPath("/account")} className={styles.primaryLink}>
-                {viewer.needsOnboarding ? "Preferences を設定" : "Preferences を見直す"}
+                {viewer.needsOnboarding ? "好みを設定する" : "好みを見直す"}
               </Link>
               <Link href="/decisions" className={styles.secondaryLink}>
-                Decisions を見る
+                おすすめを見る
               </Link>
             </div>
           </section>

@@ -149,9 +149,10 @@ export default async function WatchlistPage({
 
         <MemberControls
           viewer={viewer}
-          title="Watchlist Access"
-          copy="判断を採用する前の保留状態を持ち、decision workflow と alerts の基盤にします。"
+          title="プラン"
+          copy="迷った候補を残して、あとで見返しやすくします。"
           analyticsSource="/watchlist"
+          variant="compact"
         />
       </section>
 

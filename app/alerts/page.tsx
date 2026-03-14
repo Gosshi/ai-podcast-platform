@@ -58,9 +58,10 @@ export default async function AlertsPage() {
 
         <MemberControls
           viewer={viewer}
-          title="Delivery Surface"
-          copy="free は件数制限つき preview。paid は full alerts と weekly digest, outcome reminder をまとめて確認できます。"
+          title="プラン"
+          copy="無料版は一部のお知らせまで。有料版はまとめて見直せます。"
           analyticsSource="/alerts"
+          variant="compact"
         />
       </section>
 

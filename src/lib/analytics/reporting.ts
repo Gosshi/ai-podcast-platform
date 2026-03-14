@@ -53,7 +53,12 @@ const FUNNEL_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: string }
 
 const ENGAGEMENT_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: string }> = [
   { eventName: "page_view", label: "Page Views" },
+  { eventName: "landing_view", label: "Landing Views" },
+  { eventName: "landing_cta_click", label: "Landing CTA Clicks" },
+  { eventName: "onboarding_entry_click", label: "Onboarding Entry Clicks" },
+  { eventName: "nav_click", label: "Navigation Clicks" },
   { eventName: "alerts_view", label: "Alerts Views" },
+  { eventName: "decisions_hero_impression", label: "Decisions Hero Impressions" },
   { eventName: "onboarding_start", label: "Onboarding Starts" },
   { eventName: "onboarding_step_complete", label: "Onboarding Step Completions" },
   { eventName: "onboarding_complete", label: "Onboarding Completions" },

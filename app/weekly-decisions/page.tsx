@@ -90,9 +90,10 @@ export default async function WeeklyDecisionsPage() {
 
         <MemberControls
           viewer={viewer}
-          title="Digest Access"
-          copy="無料版は週次 digest の一部 preview まで。有料会員になると全件と deadline を含む判断一覧を確認できます。"
+          title="プラン"
+          copy="無料版は週次まとめの一部まで。有料版は全件と見直しタイミングまで確認できます。"
           analyticsSource="/weekly-decisions"
+          variant="compact"
         />
       </section>
 

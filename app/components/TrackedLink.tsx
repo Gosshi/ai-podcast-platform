@@ -7,6 +7,10 @@ import { track, type AnalyticsEventName, type AnalyticsTrackProperties } from "@
 type TrackedLinkProps = ComponentProps<typeof Link> & {
   eventName: AnalyticsEventName;
   eventProperties?: AnalyticsTrackProperties;
+  additionalEvents?: Array<{
+    eventName: AnalyticsEventName;
+    eventProperties?: AnalyticsTrackProperties;
+  }>;
 };
 
 const shouldTrackNavigationClick = (event: MouseEvent<HTMLAnchorElement>): boolean => {
@@ -16,6 +20,7 @@ const shouldTrackNavigationClick = (event: MouseEvent<HTMLAnchorElement>): boole
 export default function TrackedLink({
   eventName,
   eventProperties,
+  additionalEvents,
   onClick,
   ...props
 }: TrackedLinkProps) {
@@ -27,9 +32,11 @@ export default function TrackedLink({
 
         if (shouldTrackNavigationClick(event)) {
           track(eventName, eventProperties ?? {});
+          additionalEvents?.forEach((entry) => {
+            track(entry.eventName, entry.eventProperties ?? {});
+          });
         }
       }}
     />
   );
 }
-

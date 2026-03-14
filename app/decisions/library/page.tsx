@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
@@ -126,10 +125,7 @@ export default async function DecisionLibraryPage({
 }) {
   const resolvedSearchParams = (await searchParams) ?? {};
   const viewer = await getViewerFromCookies();
-
-  if (viewer?.needsOnboarding) {
-    redirect(buildOnboardingPath("/decisions/library"));
-  }
+  const onboardingPath = buildOnboardingPath("/decisions/library");
 
   const query = toSingleValue(resolvedSearchParams.q).trim().replace(/\s+/g, " ");
   const genre = toSingleValue(resolvedSearchParams.genre).trim() || null;
@@ -196,18 +192,17 @@ export default async function DecisionLibraryPage({
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>Decision Library</p>
-          <h1>Judgment Cards を、検索・再訪・比較できる判断資産に変える。</h1>
+          <p className={styles.eyebrow}>Library</p>
+          <h1>あとで見返したい判断メモを、まとめて探せます。</h1>
           <p className={styles.lead}>
-            `episode_judgment_cards` を横断して、topic / summary / frame / genre / urgency から判断を引き直せます。
-            Replay、Saved Decisions、Alerts に接続するための library surface です。
+            ジャンル、見直しタイミング、見送るかどうかといった軸で、過去の判断メモを一覧できます。気になった候補の
+            再訪や比較に使う画面です。
           </p>
 
           <div className={styles.heroMeta}>
-            <span className={styles.heroBadge}>{isPaid ? "PAID" : "FREE"}</span>
-            <span>{isPaid ? `全${result.totalCount}件を検索` : `直近カードを最大${FREE_LIBRARY_CARD_LIMIT}件 preview`}</span>
-            <span>{query ? `query: ${query}` : "query: all"}</span>
-            <span>{`sort: ${sort}`}</span>
+            <span className={styles.heroBadge}>{isPaid ? "有料プラン" : "無料プラン"}</span>
+            <span>{isPaid ? `全${result.totalCount}件を検索` : `直近カードを最大${FREE_LIBRARY_CARD_LIMIT}件まで表示`}</span>
+            <span>{query ? `検索中: ${query}` : "すべて表示"}</span>
           </div>
 
           <div className={styles.statRow}>
@@ -225,17 +220,49 @@ export default async function DecisionLibraryPage({
             </div>
           </div>
 
+          {viewer?.needsOnboarding ? (
+            <div className={styles.personalizationPanel}>
+              <p className={styles.sectionEyebrow}>Setup</p>
+              <h2>好みを入れておくと、最初の並び順が分かりやすくなります。</h2>
+              <p className={styles.personalizationLead}>
+                よく見るジャンルや使っているサービスを入れると、最初に見たい候補が上に出やすくなります。
+              </p>
+              <TrackedLink
+                href={onboardingPath}
+                className={styles.primaryLink}
+                eventName="nav_click"
+                eventProperties={{
+                  page: "/decisions/library",
+                  source: "library_onboarding_prompt",
+                  destination: onboardingPath
+                }}
+                additionalEvents={[
+                  {
+                    eventName: "onboarding_entry_click",
+                    eventProperties: {
+                      page: "/decisions/library",
+                      source: "library_prompt",
+                      destination: onboardingPath
+                    }
+                  }
+                ]}
+              >
+                好みを設定する
+              </TrackedLink>
+            </div>
+          ) : null}
+
           {result.personalization && !hasExplicitSort && isInitialView ? (
             <div className={styles.personalizationPanel}>
-              <p className={styles.sectionEyebrow}>Preference-aware Start</p>
-              <h2>初期表示は onboarding preferences を軽く反映しています</h2>
+              <p className={styles.sectionEyebrow}>Personalized Start</p>
+              <h2>最初の並びはあなたの好みを少し反映しています</h2>
               <p className={styles.personalizationLead}>
                 {result.personalization.interestTopics.length > 0
                   ? `${result.personalization.interestTopics
                       .slice(0, 2)
                       .map((topic) => INTEREST_TOPIC_LABELS[topic])
                       .join(" / ")} 系を少し上位にしています。`
-                  : "interest topic に沿ったカードを少し上位にしています。"}{" "}
+                  : "好みに近いカードを少し上位にしています。"}{" "}
                 {result.personalization.activeSubscriptions.length > 0
                   ? `${result.personalization.activeSubscriptions
                       .slice(0, 2)
@@ -245,9 +272,9 @@ export default async function DecisionLibraryPage({
               </p>
               <div className={styles.personalizationMeta}>
                 <span className={styles.personalizationChip}>
-                  Priority: {DECISION_PRIORITY_LABELS[result.personalization.decisionPriority]}
+                  重視すること: {DECISION_PRIORITY_LABELS[result.personalization.decisionPriority]}
                 </span>
-                <span className={styles.personalizationChip}>Default sort: {result.personalization.defaultSort}</span>
+                <span className={styles.personalizationChip}>並び順: {result.personalization.defaultSort}</span>
               </div>
             </div>
           ) : null}
@@ -255,25 +282,26 @@ export default async function DecisionLibraryPage({
 
         <MemberControls
           viewer={viewer}
-          title="Library Access"
-          copy="free は最新カードの一部 preview と要約検索まで。paid は全件検索、deadline / action / watch points の再訪まで使えます。"
+          title="プラン"
+          copy="無料版は最近の要点まで、有料版は全件検索と詳しい見直しまで使えます。"
           analyticsSource="/decisions/library"
+          variant="compact"
         />
       </section>
 
       <LibraryControls initialFilters={activeFilters} defaultSort={defaultSort} options={result.options} isPaid={isPaid} />
 
-      {result.error ? <p className={styles.errorText}>decision library の読み込みに失敗しました: {result.error}</p> : null}
+      {result.error ? <p className={styles.errorText}>ライブラリの読み込みに失敗しました: {result.error}</p> : null}
 
       {!isPaid && result.previewLimited ? (
         <section className={styles.noticePanel}>
           <div>
             <p className={styles.sectionEyebrow}>Preview Limit</p>
-            <h2>free は最近のカードを一部だけ表示します</h2>
+            <h2>無料版は最近の判断メモを一部だけ表示します</h2>
             <p>
               {result.searchPreviewLimited
-                ? `現在の検索結果は ${result.totalCount} 件ありますが、free では最初の ${result.cards.length} 件だけ表示します。`
-                : `現在の一致件数は ${result.totalCount} 件です。free では直近カードを最大 ${FREE_LIBRARY_CARD_LIMIT} 件まで表示します。`}
+                ? `現在の検索結果は ${result.totalCount} 件ありますが、無料版では最初の ${result.cards.length} 件だけ表示します。`
+                : `現在の一致件数は ${result.totalCount} 件です。無料版では直近カードを最大 ${FREE_LIBRARY_CARD_LIMIT} 件まで表示します。`}
             </p>
           </div>
           <TrackedLink
@@ -285,7 +313,7 @@ export default async function DecisionLibraryPage({
               source: "decision_library_preview_limit"
             }}
           >
-            Upgrade
+            プランを見る
           </TrackedLink>
         </section>
       ) : null}
@@ -293,10 +321,10 @@ export default async function DecisionLibraryPage({
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionEyebrow}>Library Results</p>
-            <h2>検索して再訪できる Judgment Cards</h2>
+            <p className={styles.sectionEyebrow}>Results</p>
+            <h2>検索して見返せる判断メモ</h2>
             <p className={styles.sectionLead}>
-              episode を起点にせず、判断軸からカードを探して compare できます。
+              エピソード一覧から探し直さなくても、判断の内容から見返せます。
             </p>
           </div>
           <span className={styles.sectionCount}>
