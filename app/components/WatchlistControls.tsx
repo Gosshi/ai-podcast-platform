@@ -43,8 +43,8 @@ type WatchlistApiFailure = {
 type WatchlistApiResponse = WatchlistApiSuccess | WatchlistApiFailure;
 
 const STATUS_BUTTONS: Array<{ status: WatchlistStatus; label: string }> = [
-  { status: "saved", label: "Save" },
-  { status: "watching", label: "Watch" }
+  { status: "saved", label: "あとで見る" },
+  { status: "watching", label: "様子を見る" }
 ];
 
 const STATUS_HINTS: Record<WatchlistStatus, string> = {
@@ -55,14 +55,14 @@ const STATUS_HINTS: Record<WatchlistStatus, string> = {
 
 const buildErrorMessage = (error: string, limit?: number): string => {
   if (error === "watchlist_limit_reached") {
-    return `無料版の Watchlist は${limit ?? 5}件までです。続ける場合は有料会員へ切り替えてください。`;
+    return `無料版のあとで見るは${limit ?? 5}件までです。続ける場合は有料会員へ切り替えてください。`;
   }
 
   if (error === "unauthorized") {
-    return "Watchlist を使うにはログインが必要です。";
+    return "あとで見るを使うにはログインが必要です。";
   }
 
-  return "Watchlist の更新に失敗しました。時間をおいて再度お試しください。";
+  return "あとで見るの更新に失敗しました。時間をおいて再度お試しください。";
 };
 
 export default function WatchlistControls({
@@ -106,7 +106,7 @@ export default function WatchlistControls({
     }
 
     if (!judgmentCardId) {
-      setError("対象の judgment card が見つかりません。");
+      setError("対象の判断カードが見つかりません。");
       return;
     }
 
@@ -150,7 +150,7 @@ export default function WatchlistControls({
       });
       router.refresh();
     } catch {
-      setError("Watchlist の更新に失敗しました。時間をおいて再度お試しください。");
+      setError("あとで見るの更新に失敗しました。時間をおいて再度お試しください。");
     } finally {
       setIsSubmitting(false);
     }
@@ -177,7 +177,7 @@ export default function WatchlistControls({
       const payload = (await response.json().catch(() => null)) as WatchlistApiResponse | null;
 
       if (!response.ok || !payload || !payload.ok) {
-        setError("Watchlist からの削除に失敗しました。");
+        setError("あとで見るから外せませんでした。");
         return;
       }
 
@@ -191,7 +191,7 @@ export default function WatchlistControls({
       });
       router.refresh();
     } catch {
-      setError("Watchlist からの削除に失敗しました。");
+      setError("あとで見るから外せませんでした。");
     } finally {
       setIsSubmitting(false);
     }
@@ -205,7 +205,7 @@ export default function WatchlistControls({
           className={`${styles.button} ${styles.buttonGhost}`.trim()}
           onClick={() => router.push("/account")}
         >
-          ログインして Save / Watch
+          ログインしてあとで見る
         </button>
       </div>
     );
@@ -232,12 +232,12 @@ export default function WatchlistControls({
             onClick={() => void upsertStatus("archived")}
             disabled={isSubmitting}
           >
-            Archive
+            保管する
           </button>
         ) : null}
         {itemId ? (
           <button type="button" className={styles.buttonDanger} onClick={() => void removeItem()} disabled={isSubmitting}>
-            Remove
+            外す
           </button>
         ) : null}
       </div>

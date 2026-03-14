@@ -1,6 +1,7 @@
 # ai-podcast-platform
 
-個人の時間とお金の最適化を支援する、意思決定支援型 AI Podcast Platform です。
+今日見るもの、続けるもの、見送るものを決めるためのサービスです。
+エンタメ視聴とサブスクの迷いを、AIと履歴で整理します。
 
 ## Product Concept
 - ブランド: `15分で、今日の“時間単価と支出効率”を決めるニュース`
@@ -12,18 +13,18 @@
 - ランディングページの目的:
   `/` は初見ユーザー向けの入口です。「何のサービスか」「何ができるか」「何をすればいいか」を最短で伝えます。
 - サービス説明:
-  配信作品とサブスクの迷いを、短い判断メモで整理するサービスです。
+  AIが、あなたの好みや過去の判断をもとに、今日のおすすめ判断を提案します。迷った判断を保存し、結果を振り返り、次の判断をより良くできます。
 - ナビゲーション方針:
   グローバルナビは `Home / Decisions / Library / History / Account` に絞り、初回利用で役割が分かる構成にします。
 - 初回導線:
   まず `/` で概要を見る
-  次に `/decisions` でおすすめを試す
   好みを入れたい場合は `/onboarding` へ進む
+  完了後は `/decisions` に戻って今日の判断を見る
   プランやログインは `/account` に集約する
 - MEMBERSHIP 表示:
   詳細な会員管理は `/account` に集約し、他ページでは最小限の free / paid 情報だけを表示します。
 - 用語整理:
-  `judgment card` → 判断メモ
+  `judgment card` → 判断カード
   `replay` → 振り返り
   `watchlist` → あとで見る
   `next best decision` → 今日のおすすめ
@@ -74,11 +75,11 @@
 
 ### Recommended Screen Order
 1. `/`
-   サービス説明、判断メモサンプル、`はじめる / 好みを設定する / デモを見る` の導線を確認
+   サービス説明、判断カードサンプル、`はじめる / 好みを設定する / 判断を見る` の導線を確認
 2. `/account`
    free / paid バッジ、プラン名、status、好み設定導線を確認
 3. `/decisions`
-   今日のおすすめ、判断メモ、好み設定プロンプト、free の locked panel、paid の personal hint を確認
+   今日のおすすめ、判断カード、好み設定プロンプト、free の locked panel、paid の personal hint を確認
 4. `/decisions/library`
    genre / frame / urgency filter、free preview 制限、paid の全件アクセスを確認
 5. `/history`
@@ -108,7 +109,7 @@
 - `/` または `/decisions` から onboarding に入る: `onboarding_entry_click`
 - グローバルナビを押す: `nav_click`
 - `/decisions` を開く: `page_view`, `decisions_view`, `judgment_card_impression`
-- `/decisions` のヒーロー表示: `decisions_hero_impression`
+- `/decisions` の冒頭説明表示: `decisions_intro_impression`
 - `/decisions/library` で search / filter / sort: `library_search`, `library_filter_change`, `library_sort_change`
 - `/history` から replay を開く: `decision_replay_from_history_click`, `decision_replay_view`
 - `/watchlist` の link を押す: `watchlist_card_click`
