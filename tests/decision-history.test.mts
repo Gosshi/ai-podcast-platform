@@ -7,6 +7,7 @@ import {
   FREE_DECISION_HISTORY_LIMIT,
   hasReachedDecisionHistoryLimit
 } from "../app/lib/decisionHistory.ts";
+import { resolveJudgmentCardActionState } from "../app/lib/judgmentCardState.ts";
 
 test("free decision history limit is enforced only for non-paid users", () => {
   assert.equal(FREE_DECISION_HISTORY_LIMIT, 10);
@@ -105,4 +106,10 @@ test("attachSavedDecisionState marks saved cards with their outcome", () => {
 
 test("formatDecisionHistoryDate returns localized dates", () => {
   assert.equal(formatDecisionHistoryDate("2026-03-13T00:00:00.000Z"), "2026年3月13日");
+});
+
+test("judgment card action state follows undecided adopted recorded flow", () => {
+  assert.equal(resolveJudgmentCardActionState({ savedDecisionId: null, savedOutcome: null }), "undecided");
+  assert.equal(resolveJudgmentCardActionState({ savedDecisionId: "decision-1", savedOutcome: null }), "adopted");
+  assert.equal(resolveJudgmentCardActionState({ savedDecisionId: "decision-1", savedOutcome: "success" }), "recorded");
 });

@@ -91,6 +91,79 @@
   margin-top: 1rem;
 }
 
+.todaySection,
+.todayCard,
+.todayEmpty {
+  border-radius: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+}
+
+.todaySection {
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 30%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%);
+  padding: 1.35rem;
+}
+
+.todayHeader h2,
+.todayCard h3,
+.todayEmpty h3 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.todayCard,
+.todayEmpty {
+  margin-top: 1rem;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 1.2rem;
+}
+
+.todayMetaRow,
+.todayActions {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.todayMetaRow {
+  margin-bottom: 0.8rem;
+}
+
+.todayType,
+.todayDue {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  border-radius: 999px;
+  padding: 0 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.todayType {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.todayDue {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.todayCard p,
+.todayEmpty p {
+  margin: 0.8rem 0 0;
+  color: #475569;
+  line-height: 1.7;
+}
+
+.todayActions {
+  margin-top: 1rem;
+}
+
 .primaryLink,
 .secondaryLink {
   display: inline-flex;

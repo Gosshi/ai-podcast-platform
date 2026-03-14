@@ -1,0 +1,35 @@
+.panel {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.buttonRow {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.statusLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #f8fafc;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.statusLinkRecorded {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.metaText {
+  margin: 0;
+  color: #475569;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+

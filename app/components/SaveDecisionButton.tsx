@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { buildLoginPath } from "@/app/lib/onboarding";
 import type { ViewerState } from "@/app/lib/viewer";
 import { track } from "@/src/lib/analytics";
@@ -17,6 +17,9 @@ type SaveDecisionButtonProps = {
   genre?: string | null;
   frameType?: string | null;
   judgmentType?: "use_now" | "watch" | "skip";
+  buttonLabel?: string;
+  loginButtonLabel?: string;
+  showHint?: boolean;
 };
 
 type SaveDecisionResponse =
@@ -43,16 +46,19 @@ export default function SaveDecisionButton({
   episodeId,
   genre,
   frameType,
-  judgmentType
+  judgmentType,
+  buttonLabel,
+  loginButtonLabel,
+  showHint = true
 }: SaveDecisionButtonProps) {
   const router = useRouter();
   const [isSaved, setIsSaved] = useState(initialSaved);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (judgmentType !== "use_now") {
-    return null;
-  }
+  useEffect(() => {
+    setIsSaved(initialSaved);
+  }, [initialSaved]);
 
   const onClick = async () => {
     if (!judgmentCardId) {
@@ -89,8 +95,6 @@ export default function SaveDecisionButton({
         const apiError = payload && !payload.ok ? payload.error : "save_failed";
         if (apiError === "history_limit_reached") {
           setError(`無料版の履歴保存は10件までです。続ける場合は有料会員へ切り替えてください。`);
-        } else if (apiError === "decision_history_use_now_only") {
-          setError("履歴に残せるのは、実行した判断だけです。");
         } else if (apiError === "unauthorized") {
           setError("保存するにはログインが必要です。");
         } else {
@@ -119,6 +123,7 @@ export default function SaveDecisionButton({
         frame_type: frameType ?? undefined,
         judgment_type: judgmentType
       });
+      router.refresh();
     } catch {
       setError("判断の保存に失敗しました。時間をおいて再度お試しください。");
     } finally {
@@ -129,13 +134,17 @@ export default function SaveDecisionButton({
   const buttonClassName = `${styles.button} ${isSaved ? styles.buttonSaved : ""} ${
     !viewer ? styles.buttonGhost : ""
   }`.trim();
+  const resolvedButtonLabel = viewer ? buttonLabel ?? "採用する" : loginButtonLabel ?? "ログインして採用する";
+  const savedStateLabel = "結果を記録する";
 
   return (
     <div className={styles.actionRow}>
       <button type="button" className={buttonClassName} onClick={() => void onClick()} disabled={isSubmitting}>
-        {isSubmitting ? "保存中..." : isSaved ? "実行した判断を見る" : viewer ? "採用して履歴に残す" : "ログインして採用する"}
+        {isSubmitting ? "保存中..." : isSaved ? savedStateLabel : resolvedButtonLabel}
       </button>
-      <p className={styles.hint}>{isSaved ? "履歴で結果を更新できます。" : "採用した判断だけを履歴に残せます。"}</p>
+      {showHint ? (
+        <p className={styles.hint}>{isSaved ? "履歴で結果を更新できます。" : "採用した判断をあとで振り返れます。"}</p>
+      ) : null}
       {error ? <p className={styles.error}>{error}</p> : null}
     </div>
   );

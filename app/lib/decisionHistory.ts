@@ -235,7 +235,6 @@ export const loadSavedDecisions = async (
         .from("user_decisions")
         .select("id, judgment_card_id, outcome")
         .eq("user_id", userId)
-        .eq("decision_type", "use_now")
         .in("judgment_card_id", batch);
 
       if (error) {
@@ -298,7 +297,6 @@ export const loadDecisionHistory = async (
       .from("user_decisions")
       .select("id, judgment_card_id, episode_id, decision_type, outcome, created_at, updated_at")
       .eq("user_id", userId)
-      .eq("decision_type", "use_now")
       .order("created_at", { ascending: false })
       .limit(200);
 

@@ -32,6 +32,11 @@
   gap: 0.65rem;
 }
 
+.mobileNav,
+.mobileNavSpacer {
+  display: none;
+}
+
 .link {
   color: #475569;
   text-decoration: none;
@@ -66,5 +71,60 @@
   .nav {
     width: 100%;
     justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    position: static;
+    backdrop-filter: none;
+    background: rgba(250, 249, 244, 0.96);
+  }
+
+  .shell {
+    width: min(100vw, calc(100vw - 1.25rem));
+    min-height: 3.5rem;
+    padding: 0.8rem 0;
+  }
+
+  .nav {
+    display: none;
+  }
+
+  .mobileNav {
+    position: fixed;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    padding: 0.7rem;
+    border-radius: 22px;
+    background: rgba(15, 23, 42, 0.96);
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.24);
+  }
+
+  .mobileLink {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.8rem;
+    border-radius: 16px;
+    color: rgba(226, 232, 240, 0.88);
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 800;
+  }
+
+  .mobileLinkActive {
+    background: #f8fafc;
+    color: #0f172a;
+  }
+
+  .mobileNavSpacer {
+    display: block;
+    height: 5.6rem;
   }
 }

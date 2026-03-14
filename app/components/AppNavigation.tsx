@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/history", label: "履歴" },
   { href: "/account", label: "アカウント" }
 ];
+const MOBILE_NAV_ITEMS = NAV_ITEMS.slice(0, 2);
 
 const isActivePath = (pathname: string, href: string): boolean => {
   if (href === "/saved") {
@@ -62,6 +63,26 @@ export default function AppNavigation() {
           ))}
         </nav>
       </div>
+
+      <nav className={styles.mobileNav} aria-label="Mobile primary">
+        {MOBILE_NAV_ITEMS.map((item) => (
+          <TrackedLink
+            key={item.href}
+            href={item.href}
+            className={`${styles.mobileLink} ${isActivePath(pathname, item.href) ? styles.mobileLinkActive : ""}`.trim()}
+            eventName="nav_click"
+            eventProperties={{
+              page: pathname,
+              source: "mobile_bottom_nav",
+              destination: item.href,
+              label: item.label
+            }}
+          >
+            {item.label}
+          </TrackedLink>
+        ))}
+      </nav>
+      <div className={styles.mobileNavSpacer} />
     </header>
   );
 }
