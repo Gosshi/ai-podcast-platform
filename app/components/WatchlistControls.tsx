@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { buildLoginPath } from "@/app/lib/onboarding";
 import type { ViewerState } from "@/app/lib/viewer";
 import { track } from "@/src/lib/analytics";
 import type { JudgmentType } from "@/src/lib/judgmentCards";
@@ -96,7 +97,7 @@ export default function WatchlistControls({
 
   const upsertStatus = async (nextStatus: WatchlistStatus) => {
     if (!viewer) {
-      router.push("/account");
+      router.push(buildLoginPath(page));
       return;
     }
 
@@ -170,7 +171,7 @@ export default function WatchlistControls({
         <button
           type="button"
           className={`${styles.button} ${styles.buttonGhost}`.trim()}
-          onClick={() => router.push("/account")}
+          onClick={() => router.push(buildLoginPath(page))}
         >
           ログインして保存
         </button>

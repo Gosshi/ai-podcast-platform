@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import DecisionOutcomeSelect from "@/app/components/DecisionOutcomeSelect";
 import MemberControls from "@/app/components/MemberControls";
@@ -14,6 +15,7 @@ import {
 } from "@/app/lib/decisionHistory";
 import { buildDecisionReplayPath } from "@/app/lib/decisionReplay";
 import { formatEpisodeTitle, formatFrameTypeLabel, formatGenreLabel, formatTopicTitle } from "@/app/lib/uiText";
+import { buildLoginPath } from "@/app/lib/onboarding";
 import { EMPTY_DECISION_PROFILE } from "@/src/lib/decisionProfile";
 import {
   buildOutcomeReminderCandidates,
@@ -26,22 +28,11 @@ export const dynamic = "force-dynamic";
 
 export default async function HistoryPage() {
   const viewer = await getViewerFromCookies();
-  const { entries, stats, profile, error } = viewer
-    ? await loadDecisionHistory(viewer.userId)
-    : await Promise.resolve({
-        entries: [],
-        stats: {
-          totalDecisions: 0,
-          resolvedCount: 0,
-          unresolvedCount: 0,
-          successCount: 0,
-          regretCount: 0,
-          neutralCount: 0,
-          successRate: 0
-        },
-        profile: EMPTY_DECISION_PROFILE,
-        error: null
-      });
+  if (!viewer) {
+    redirect(buildLoginPath("/history"));
+  }
+
+  const { entries, stats, profile, error } = await loadDecisionHistory(viewer.userId);
   const visibleEntries = viewer?.isPaid ? entries : entries.slice(0, FREE_DECISION_HISTORY_LIMIT);
   const remainingSlots = viewer?.isPaid ? null : Math.max(FREE_DECISION_HISTORY_LIMIT - stats.totalDecisions, 0);
   const allOutcomeReminders = buildOutcomeReminderCandidates(entries);
@@ -98,28 +89,10 @@ export default async function HistoryPage() {
         />
       </section>
 
-      {!viewer ? (
-        <section className={styles.noticePanel}>
-          <h2>履歴を使うにはログインが必要です</h2>
-          <p>判断カードで「採用して履歴に残す」を押すと履歴に追加されます。ログイン後、この画面で結果を更新できます。</p>
-          <TrackedLink
-            href="/account"
-            className={styles.primaryLink}
-            eventName="subscribe_cta_click"
-            eventProperties={{
-              page: "/history",
-              source: "history_login_notice"
-            }}
-          >
-            アカウントでログイン
-          </TrackedLink>
-        </section>
-      ) : null}
-
-      {!viewer?.isPaid ? (
+      {!viewer.isPaid ? (
         <section className={styles.noticePanel}>
           <h2>無料版は10件まで、有料版は上限なしです</h2>
-          <p>保存件数が上限に達すると、新しい判断は保存できません。継続して見直したい場合は有料版に切り替えてください。</p>
+          <p>有料版では履歴分析まで含めて見直しを続けられます。継続して振り返る場合は有料版に切り替えてください。</p>
           <TrackedLink
             href="/account"
             className={styles.secondaryLink}
@@ -134,9 +107,9 @@ export default async function HistoryPage() {
         </section>
       ) : null}
 
-      {error ? <p className={styles.errorText}>履歴の読み込みに失敗しました: {error}</p> : null}
+      {error ? <p className={styles.errorText}>履歴の読み込みに失敗しました。時間をおいて再度お試しください。</p> : null}
 
-      {viewer && visibleOutcomeReminders.length > 0 ? (
+      {visibleOutcomeReminders.length > 0 ? (
         <OutcomeReminderSection
           reminders={visibleOutcomeReminders}
           hiddenCount={hiddenOutcomeReminderCount}
@@ -145,8 +118,7 @@ export default async function HistoryPage() {
         />
       ) : null}
 
-      {viewer ? (
-        <section className={styles.section}>
+      <section className={styles.section}>
           <div className={styles.sectionHeading}>
             <div>
               <p className={styles.sectionEyebrow}>判断の傾向</p>
@@ -279,11 +251,10 @@ export default async function HistoryPage() {
 
           <p className={styles.profileFootnote}>
             {viewer.isPaid
-              ? "有料版では保存上限なしで傾向を育てられ、判断カードにも補足が返ります。"
-              : `無料版では最大${FREE_DECISION_HISTORY_LIMIT}件まで傾向を更新します。有料版で履歴上限なしになります。`}
+              ? "有料版では履歴上限なしで結果分析を育てられ、次の判断にも補足が返ります。"
+              : `無料版では最大${FREE_DECISION_HISTORY_LIMIT}件まで履歴を分析します。有料版で履歴上限なしになります。`}
           </p>
         </section>
-      ) : null}
 
       <section className={styles.section}>
         <div className={styles.sectionHeading}>

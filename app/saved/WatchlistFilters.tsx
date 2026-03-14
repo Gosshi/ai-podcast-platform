@@ -4,11 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { track } from "@/src/lib/analytics";
 import { formatFrameTypeLabel, formatGenreLabel } from "@/app/lib/uiText";
-import {
-  type WatchlistSort,
-  type WatchlistStatus,
-  type WatchlistUrgency
-} from "@/src/lib/watchlist";
+import { type WatchlistSort, type WatchlistStatus, type WatchlistUrgency } from "@/src/lib/watchlist";
 import styles from "./page.module.css";
 
 type WatchlistFiltersProps = {
@@ -26,12 +22,6 @@ type WatchlistFiltersProps = {
   isPaid: boolean;
 };
 
-const STATUS_OPTIONS: Array<{ value: WatchlistStatus | null; label: string }> = [
-  { value: null, label: "すべて" },
-  { value: "saved", label: "後で考える" },
-  { value: "archived", label: "見送る" }
-];
-
 const URGENCY_OPTIONS: Array<{ value: WatchlistUrgency | null; label: string }> = [
   { value: null, label: "すべて" },
   { value: "overdue", label: "期限切れ" },
@@ -48,7 +38,6 @@ const SORT_LABELS: Record<WatchlistSort, string> = {
 const buildSearchParams = (filters: WatchlistFiltersProps["initialFilters"], isPaid: boolean): string => {
   const params = new URLSearchParams();
 
-  if (filters.status) params.set("status", filters.status);
   if (filters.genre) params.set("genre", filters.genre);
   if (filters.frameType) params.set("frame", filters.frameType);
   if (isPaid && filters.urgency) params.set("urgency", filters.urgency);
@@ -98,7 +87,6 @@ export default function WatchlistFilters({
       source: "watchlist_filters",
       filter_name: filterName,
       filter_value: filterValue,
-      status: nextFilters.status ?? undefined,
       genre: nextFilters.genre ?? undefined,
       frame_type: nextFilters.frameType ?? undefined,
       urgency: nextFilters.urgency ?? undefined,
@@ -127,26 +115,6 @@ export default function WatchlistFilters({
   return (
     <section className={styles.filterPanel}>
       <div className={styles.filterGrid}>
-        <label className={styles.selectLabel}>
-          <span>状態</span>
-          <select
-            value={status ?? ""}
-            className={styles.select}
-            disabled={isPending}
-            onChange={(event) => {
-              const nextValue = (event.target.value || null) as WatchlistStatus | null;
-              setStatus(nextValue);
-              updateFilters("status", nextValue);
-            }}
-          >
-            {STATUS_OPTIONS.map((item) => (
-              <option key={item.label} value={item.value ?? ""}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
         <label className={styles.selectLabel}>
           <span>ジャンル</span>
           <select

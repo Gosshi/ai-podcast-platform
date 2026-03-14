@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
@@ -14,6 +14,7 @@ import {
   formatDecisionReplayDateTime,
   loadDecisionReplay
 } from "@/app/lib/decisionReplay";
+import { buildLoginPath } from "@/app/lib/onboarding";
 import { formatFrameTypeLabel, formatGenreLabel, formatTopicTitle } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./page.module.css";
@@ -27,15 +28,12 @@ export default async function DecisionReplayPage({
 }) {
   const { id } = await params;
   const viewer = await getViewerFromCookies();
+  if (!viewer) {
+    redirect(buildLoginPath(buildDecisionReplayPath(id)));
+  }
+
   const pagePath = buildDecisionReplayPath(id);
-  const replayState = viewer
-    ? await loadDecisionReplay(viewer.userId, id)
-    : await Promise.resolve({
-        replay: null,
-        profile: null,
-        insights: [],
-        error: null
-      });
+  const replayState = await loadDecisionReplay(viewer.userId, id);
   const replay = replayState.replay;
 
   if (viewer && !replay && !replayState.error) {
@@ -70,28 +68,7 @@ export default async function DecisionReplayPage({
         {replay?.episode_id ? <Link href={`/decisions/${replay.episode_id}`}>詳細</Link> : null}
       </div>
 
-      {!viewer ? (
-        <section className={styles.noticePanel}>
-          <p className={styles.eyebrow}>学び</p>
-          <h1>学びを見るにはログインが必要です</h1>
-          <p className={styles.bodyText}>
-            保存済みの判断だけを時系列で見直せるようにしているため、この画面はログイン後に開放されます。
-          </p>
-          <TrackedLink
-            href="/account"
-            className={styles.primaryLink}
-            eventName="subscribe_cta_click"
-            eventProperties={{
-              page: pagePath,
-              source: "decision_replay_login_notice"
-            }}
-          >
-            アカウントでログイン
-          </TrackedLink>
-        </section>
-      ) : null}
-
-      {replayState.error ? <p className={styles.errorText}>学びの読み込みに失敗しました: {replayState.error}</p> : null}
+      {replayState.error ? <p className={styles.errorText}>学びの読み込みに失敗しました。時間をおいて再度お試しください。</p> : null}
 
       {visibleReplay && replay ? (
         <>

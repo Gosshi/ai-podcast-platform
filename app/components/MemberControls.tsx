@@ -12,6 +12,7 @@ import {
   resolvePaymentStateLabel,
   resolvePlanName
 } from "@/app/lib/membership";
+import { buildLoginPath } from "@/app/lib/onboarding";
 import type { ViewerState } from "@/app/lib/viewer";
 import { track } from "@/src/lib/analytics";
 import { createBrowserSupabaseClient } from "@/src/lib/supabase/browserClient";
@@ -54,7 +55,7 @@ const shouldRefreshForAuthEvent = (event: AuthChangeEvent): boolean => {
 export default function MemberControls({
   viewer,
   title = "会員ステータス",
-  copy = "無料版は判断の入口まで。有料会員になると迷いが減り、判断が早くなり、締切を逃しにくくなります。",
+  copy = "無料版はタイトルとかんたんな説明まで。有料会員になると判断理由、次の行動、見直しタイミング、履歴分析が使えます。",
   showBillingPortal = false,
   analyticsSource,
   variant = "full",
@@ -245,12 +246,12 @@ export default function MemberControls({
                 {viewer
                   ? viewer.isPaid
                   ? "結果まで残しながら、自分向けの判断精度を育てられます。"
-                    : "無料版では要点まで確認できます。詳しい設定はアカウントから管理できます。"
-                  : "ログインすると好みの設定、履歴、プラン管理が使えます。"}
+                    : "無料版ではタイトルとかんたんな説明まで確認できます。詳しい設定はアカウントから管理できます。"
+                  : "ログイン後は初回設定に進み、そのまま判断画面へ戻れます。"}
               </p>
             </div>
-            <Link href="/account" className={styles.compactLink}>
-              {viewer ? "アカウントを見る" : "ログイン / アカウント"}
+            <Link href={viewer ? "/account" : buildLoginPath(authRedirectPath)} className={styles.compactLink}>
+              {viewer ? "アカウントを見る" : "ログイン"}
             </Link>
           </div>
         </>
@@ -305,7 +306,7 @@ export default function MemberControls({
           {viewer?.isPaid ? (
             <p className={styles.hint}>締切を逃しにくくなり、迷いを減らしながら判断を早く進められます。</p>
           ) : (
-            <p className={styles.hint}>無料版では要点まで。有料会員になると結果まで含めて判断の精度を育てられます。</p>
+            <p className={styles.hint}>無料版はタイトルとかんたんな説明まで。有料会員で判断理由、次の行動、見直しタイミング、履歴分析が使えます。</p>
           )}
 
           {viewer ? (
@@ -354,7 +355,7 @@ export default function MemberControls({
                   メールでログイン
                 </button>
               </div>
-              <p className={styles.hint}>ログインすると、プラン確認とプラン管理ができます。</p>
+              <p className={styles.hint}>ログイン後は初回設定に進み、そのまま判断画面へ戻れます。</p>
             </form>
           )}
 

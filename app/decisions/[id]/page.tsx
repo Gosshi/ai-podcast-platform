@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import DecisionCalculator from "@/app/components/DecisionCalculator";
 import MemberControls from "@/app/components/MemberControls";
@@ -7,6 +7,7 @@ import SaveDecisionButton from "@/app/components/SaveDecisionButton";
 import TrackedLink from "@/app/components/TrackedLink";
 import WatchlistControls from "@/app/components/WatchlistControls";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
+import { buildLoginPath } from "@/app/lib/onboarding";
 import { loadPublishedEpisodeById } from "@/app/lib/episodes";
 import {
   formatEpisodeTitle,
@@ -47,10 +48,14 @@ export default async function EpisodeDetailPage({
 }) {
   const { id } = await params;
   const viewer = await getViewerFromCookies();
+  if (!viewer) {
+    redirect(buildLoginPath(`/decisions/${id}`));
+  }
+
   const { episode, error } = await loadPublishedEpisodeById({
     episodeId: id,
-    isPaid: viewer?.isPaid ?? false,
-    userId: viewer?.userId
+    isPaid: viewer.isPaid,
+    userId: viewer.userId
   });
 
   if (!episode && !error) {
@@ -88,7 +93,7 @@ export default async function EpisodeDetailPage({
             <MemberControls
               viewer={viewer}
               title="プラン"
-              copy="無料版は要点まで、有料版は理由や見直しタイミングまで見られます。"
+              copy="無料版はタイトルとかんたんな説明まで。有料版は判断理由、次の行動、見直しタイミングまで見られます。"
               analyticsSource={`/decisions/${id}`}
               variant="compact"
             />
@@ -143,7 +148,7 @@ export default async function EpisodeDetailPage({
                     </div>
                     <DecisionCalculator
                       card={card}
-                      isPaid={viewer?.isPaid ?? false}
+                      isPaid={viewer.isPaid}
                       locale="ja"
                       analyticsPage={`/decisions/${id}`}
                       analyticsSource="episode_detail_card"
@@ -159,42 +164,45 @@ export default async function EpisodeDetailPage({
                       frameType={card.frame_type}
                       judgmentType={card.judgment_type}
                     />
-                    <dl className={styles.metaList}>
-                      {card.action_text ? (
-                        <div>
-                          <dt>次の行動</dt>
-                          <dd>{card.action_text}</dd>
-                        </div>
-                      ) : null}
-                      <div>
-                        <dt>理由</dt>
-                        <dd>{card.judgment_summary}</dd>
-                      </div>
-                      {card.deadline_at ? (
-                        <div>
-                          <dt>見直しタイミング</dt>
-                          <dd>{formatDateTime(card.deadline_at)}</dd>
-                        </div>
-                      ) : null}
-                    </dl>
-                    {card.watch_points.length > 0 ? (
-                      <ul className={styles.detailList}>
-                        {card.watch_points.map((point) => (
-                          <li key={point}>{point}</li>
-                        ))}
-                      </ul>
-                    ) : null}
-                    {formatThresholdHighlights(card.threshold_json).length > 0 ? (
-                      <ul className={styles.detailList}>
-                        {formatThresholdHighlights(card.threshold_json).map((item) => (
-                          <li key={item}>{item}</li>
-                        ))}
-                      </ul>
-                    ) : null}
-                    {!viewer?.isPaid ? (
+                    {viewer.isPaid ? (
+                      <>
+                        <dl className={styles.metaList}>
+                          {card.action_text ? (
+                            <div>
+                              <dt>次の行動</dt>
+                              <dd>{card.action_text}</dd>
+                            </div>
+                          ) : null}
+                          <div>
+                            <dt>判断理由</dt>
+                            <dd>{card.judgment_summary}</dd>
+                          </div>
+                          {card.deadline_at ? (
+                            <div>
+                              <dt>見直しタイミング</dt>
+                              <dd>{formatDateTime(card.deadline_at)}</dd>
+                            </div>
+                          ) : null}
+                        </dl>
+                        {card.watch_points.length > 0 ? (
+                          <ul className={styles.detailList}>
+                            {card.watch_points.map((point) => (
+                              <li key={point}>{point}</li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        {formatThresholdHighlights(card.threshold_json).length > 0 ? (
+                          <ul className={styles.detailList}>
+                            {formatThresholdHighlights(card.threshold_json).map((item) => (
+                              <li key={item}>{item}</li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </>
+                    ) : (
                       <div className={styles.lockedBlock}>
-                        <strong>この先は有料会員向け</strong>
-                        <p>理由、次の行動、見直しタイミングの詳細を開放します。</p>
+                        <strong>無料版はタイトルとかんたんな説明までです</strong>
+                        <p>有料版で判断理由、次の行動、見直しタイミングを確認できます。</p>
                         <TrackedLink
                           href="/account"
                           eventName="judgment_card_locked_cta_click"
@@ -211,7 +219,7 @@ export default async function EpisodeDetailPage({
                           有料で判断詳細を開放
                         </TrackedLink>
                       </div>
-                    ) : null}
+                    )}
                   </article>
                 ))}
               </div>
@@ -219,7 +227,7 @@ export default async function EpisodeDetailPage({
 
             {episode.judgment_cards_preview_limited ? (
               <p className={styles.lockedText}>
-                無料版では要点まで表示し、次の行動や期限などは有料会員向けに制限しています。
+                無料版ではタイトルとかんたんな説明まで表示し、判断理由や見直しタイミングは有料会員向けに制限しています。
               </p>
             ) : null}
 
@@ -232,7 +240,7 @@ export default async function EpisodeDetailPage({
 
           <section className={styles.section}>
             <div className={styles.sectionHeading}>
-              <h2>{episode.full_script ? "詳しい内容" : "プレビュー"}</h2>
+              <h2>{episode.full_script ? "詳しい内容" : "概要"}</h2>
               <span>{episode.full_script ? "有料版" : "無料版"}</span>
             </div>
 

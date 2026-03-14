@@ -51,7 +51,7 @@ const resolveClickEvents = (alertType: AlertType): ("alert_click" | "weekly_dige
 export default function AlertsInbox({
   alerts,
   page,
-  title = "お知らせ",
+  title = "通知",
   lead = "期限が近いものや見直したい判断を、ここからまとめて開き直せます。",
   emptyTitle = "今はお知らせがありません",
   emptyCopy = "見直しタイミングが来た判断や週次まとめがあると、ここに表示されます。",

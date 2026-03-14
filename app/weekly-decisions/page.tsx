@@ -1,7 +1,9 @@
+import { redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
 import TrackedLink from "@/app/components/TrackedLink";
+import { buildLoginPath } from "@/app/lib/onboarding";
 import { formatEpisodeTitle, formatFrameTypeLabel, formatGenreLabel, formatTopicTitle } from "@/app/lib/uiText";
 import { loadWeeklyDecisionDigest } from "@/app/lib/weeklyDecisionDigest";
 import { getViewerFromCookies } from "@/app/lib/viewer";
@@ -51,6 +53,10 @@ const formatDeadline = (value: string | null): string => {
 
 export default async function WeeklyDecisionsPage() {
   const viewer = await getViewerFromCookies();
+  if (!viewer) {
+    redirect(buildLoginPath("/weekly-decisions"));
+  }
+
   const isPaid = viewer?.isPaid ?? false;
   const { digest, error } = await loadWeeklyDecisionDigest({ isPaid });
   const windowLabel = formatWindowLabel(digest.windowStart, digest.windowEnd);
@@ -98,14 +104,14 @@ export default async function WeeklyDecisionsPage() {
         />
       </section>
 
-      {error ? <p className={styles.errorText}>週ごとのまとめの読み込みに失敗しました: {error}</p> : null}
+      {error ? <p className={styles.errorText}>週ごとのまとめの読み込みに失敗しました。時間をおいて再度お試しください。</p> : null}
 
       {!isPaid && digest.previewLimited ? (
         <section className={styles.paywallBanner}>
           <div>
-            <p className={styles.eyebrow}>プレビュー</p>
+            <p className={styles.eyebrow}>無料版</p>
             <h2>無料版はカテゴリごとに一部だけ表示します</h2>
-            <p>有料会員になると今週の全件と期限付きの判断一覧をまとめて確認できます。</p>
+            <p>有料会員になると今週の全件に加えて、判断理由、次の行動、見直しタイミングまで確認できます。</p>
           </div>
           <TrackedLink
             href="/account"
@@ -163,10 +169,12 @@ export default async function WeeklyDecisionsPage() {
                     <h3>{formatTopicTitle(item.topic_title)}</h3>
                     <p>{item.judgment_summary}</p>
                     <dl className={styles.metaList}>
-                      <div>
-                        <dt>見直しタイミング</dt>
-                        <dd>{isPaid ? formatDeadline(item.deadline_at) : "有料会員で表示"}</dd>
-                      </div>
+                      {isPaid ? (
+                        <div>
+                          <dt>見直しタイミング</dt>
+                          <dd>{formatDeadline(item.deadline_at)}</dd>
+                        </div>
+                      ) : null}
                       <div>
                         <dt>詳細</dt>
                         <dd>{formatEpisodeTitle(item.episode_title)}</dd>

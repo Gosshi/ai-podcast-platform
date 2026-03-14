@@ -69,6 +69,8 @@ type EpisodeLookupRow = {
   published_at: string | null;
 };
 
+const SUPABASE_BATCH_SIZE = 80;
+
 export const FREE_DECISION_HISTORY_LIMIT = 10;
 export const UNRESOLVED_OUTCOME_LABEL = "未記録";
 export const DECISION_TYPE_LABELS = JUDGMENT_TYPE_LABELS;
@@ -225,20 +227,27 @@ export const loadSavedDecisions = async (
   try {
     const { createServiceRoleClient } = await import("./supabaseClients");
     const supabase = createServiceRoleClient();
-    const { data, error } = await supabase
-      .from("user_decisions")
-      .select("id, judgment_card_id, outcome")
-      .eq("user_id", userId)
-      .in("judgment_card_id", judgmentCardIds);
+    const rows: SavedDecisionRecord[] = [];
 
-    if (error) {
-      return {
-        savedDecisions: new Map<string, SavedDecisionRecord>(),
-        error: error.message
-      };
+    for (let index = 0; index < judgmentCardIds.length; index += SUPABASE_BATCH_SIZE) {
+      const batch = judgmentCardIds.slice(index, index + SUPABASE_BATCH_SIZE);
+      const { data, error } = await supabase
+        .from("user_decisions")
+        .select("id, judgment_card_id, outcome")
+        .eq("user_id", userId)
+        .eq("decision_type", "use_now")
+        .in("judgment_card_id", batch);
+
+      if (error) {
+        return {
+          savedDecisions: new Map<string, SavedDecisionRecord>(),
+          error: error.message
+        };
+      }
+
+      rows.push(...((data as SavedDecisionRecord[] | null) ?? []));
     }
 
-    const rows = (data as SavedDecisionRecord[] | null) ?? [];
     return {
       savedDecisions: rows.reduce((map, row) => {
         map.set(row.judgment_card_id, row);
@@ -289,6 +298,7 @@ export const loadDecisionHistory = async (
       .from("user_decisions")
       .select("id, judgment_card_id, episode_id, decision_type, outcome, created_at, updated_at")
       .eq("user_id", userId)
+      .eq("decision_type", "use_now")
       .order("created_at", { ascending: false })
       .limit(200);
 
@@ -305,17 +315,41 @@ export const loadDecisionHistory = async (
     const judgmentCardIds = Array.from(new Set(decisions.map((decision) => decision.judgment_card_id)));
     const episodeIds = Array.from(new Set(decisions.map((decision) => decision.episode_id)));
 
+    const batchSelect = async <T>(
+      ids: string[],
+      queryBuilder: (batch: string[]) => PromiseLike<{ data: unknown; error: { message: string } | null }>
+    ): Promise<{ data: T[]; error: { message: string } | null }> => {
+      if (ids.length === 0) {
+        return { data: [], error: null };
+      }
+
+      const rows: T[] = [];
+
+      for (let index = 0; index < ids.length; index += SUPABASE_BATCH_SIZE) {
+        const batch = ids.slice(index, index + SUPABASE_BATCH_SIZE);
+        const { data, error } = await queryBuilder(batch);
+
+        if (error) {
+          return { data: [], error };
+        }
+
+        rows.push(...(((data as T[] | null) ?? [])));
+      }
+
+      return { data: rows, error: null };
+    };
+
     const [{ data: judgmentCardsData, error: judgmentCardsError }, { data: episodesData, error: episodesError }] =
       await Promise.all([
-        judgmentCardIds.length > 0
-          ? supabase
-              .from("episode_judgment_cards")
-              .select("id, topic_title, frame_type, genre, threshold_json, deadline_at")
-              .in("id", judgmentCardIds)
-          : Promise.resolve({ data: [], error: null }),
-        episodeIds.length > 0
-          ? supabase.from("episodes").select("id, title, published_at").in("id", episodeIds)
-          : Promise.resolve({ data: [], error: null })
+        batchSelect<DecisionCardLookupRow>(judgmentCardIds, (batch) =>
+          supabase
+            .from("episode_judgment_cards")
+            .select("id, topic_title, frame_type, genre, threshold_json, deadline_at")
+            .in("id", batch)
+        ),
+        batchSelect<EpisodeLookupRow>(episodeIds, (batch) =>
+          supabase.from("episodes").select("id, title, published_at").in("id", batch)
+        )
       ]);
 
     if (judgmentCardsError) {

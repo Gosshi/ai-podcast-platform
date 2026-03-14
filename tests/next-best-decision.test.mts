@@ -250,6 +250,6 @@ test("rankNextBestDecisions falls back cleanly when cards have no deadlines", ()
   })[0];
 
   assert.equal(recommendation.deadline_label, "期限未設定");
-  assert.equal(recommendation.recommended_action, "今回は見送り、他の候補を優先する");
+  assert.equal(recommendation.recommended_action, "今回は見送る、他の候補を優先する");
   assert.equal(recommendation.urgency_level, "low");
 });

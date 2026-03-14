@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { buildLoginPath } from "@/app/lib/onboarding";
 import type { ViewerState } from "@/app/lib/viewer";
 import { track } from "@/src/lib/analytics";
 import styles from "./decision-history-controls.module.css";
@@ -49,6 +50,10 @@ export default function SaveDecisionButton({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  if (judgmentType !== "use_now") {
+    return null;
+  }
+
   const onClick = async () => {
     if (!judgmentCardId) {
       setError("保存対象の判断が見つかりません。");
@@ -56,7 +61,7 @@ export default function SaveDecisionButton({
     }
 
     if (!viewer) {
-      router.push("/account");
+      router.push(buildLoginPath(page ?? "/decisions"));
       return;
     }
 
@@ -84,6 +89,8 @@ export default function SaveDecisionButton({
         const apiError = payload && !payload.ok ? payload.error : "save_failed";
         if (apiError === "history_limit_reached") {
           setError(`無料版の履歴保存は10件までです。続ける場合は有料会員へ切り替えてください。`);
+        } else if (apiError === "decision_history_use_now_only") {
+          setError("履歴に残せるのは、実行した判断だけです。");
         } else if (apiError === "unauthorized") {
           setError("保存するにはログインが必要です。");
         } else {

@@ -92,5 +92,5 @@ test("threshold summaries reflect default frame rules", () => {
   });
 
   assert.equal(summary?.frame, "Frame B");
-  assert.match(summary?.summary ?? "", /600\/時間以下なら今使う/);
+  assert.match(summary?.summary ?? "", /600\/時間以下なら採用/);
 });

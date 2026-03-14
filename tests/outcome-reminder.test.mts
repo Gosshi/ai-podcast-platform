@@ -75,7 +75,7 @@ test("buildOutcomeReminderCandidates returns only unresolved decisions that pass
   );
   assert.equal(reminders[0]?.days_past_deadline, 1);
   assert.equal(formatOutcomeReminderTiming(reminders[0]!), "期限から1日経過");
-  assert.equal(formatOutcomeReminderTiming(reminders[1]!), "保存から4日経過");
+  assert.equal(formatOutcomeReminderTiming(reminders[1]!), "採用から4日経過");
 });
 
 test("limitOutcomeReminderCandidates keeps free plan capped and paid plan unlimited", () => {

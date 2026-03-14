@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import AlertsInbox from "@/app/components/AlertsInbox";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
 import NotificationPreferencesForm from "@/app/components/NotificationPreferencesForm";
-import { syncUserAlerts } from "@/app/lib/alerts";
-import { buildOnboardingPath, resolveSafeNextPath } from "@/app/lib/onboarding";
+import { resolveAlertsErrorMessage, syncUserAlerts } from "@/app/lib/alerts";
+import { buildLoginPath, buildOnboardingPath, resolveSafeNextPath } from "@/app/lib/onboarding";
 import {
   formatMembershipDate,
   resolveMembershipBadgeLabel,
@@ -68,6 +69,12 @@ export default async function AccountPage({
 }) {
   const viewer = await getViewerFromCookies();
   const params = await searchParams;
+  const authRedirectPath = resolveSafeNextPath(readParam(params.next), "/decisions");
+
+  if (!viewer) {
+    redirect(buildLoginPath(authRedirectPath === "/decisions" ? "/account" : authRedirectPath));
+  }
+
   const alertState = viewer
     ? await syncUserAlerts(viewer)
     : {
@@ -76,7 +83,6 @@ export default async function AccountPage({
         error: null
       };
   const subscription = readParam(params.subscription);
-  const authRedirectPath = resolveSafeNextPath(readParam(params.next), "/decisions");
   const membershipBadge = resolveMembershipBadgeLabel(viewer?.isPaid ?? false);
   const planName = resolvePlanName(viewer?.planType ?? null, viewer?.isPaid ?? false);
   const membershipStatus = resolveMembershipStatusLabel(
@@ -138,7 +144,7 @@ export default async function AccountPage({
             showViewAllLink={alertState.alerts.length > 4}
           />
         ) : null}
-        {alertState.error ? <p className={styles.sectionLead}>お知らせの読み込みに失敗しました。再読み込みしてください。</p> : null}
+        {alertState.error ? <p className={styles.sectionLead}>{resolveAlertsErrorMessage(alertState.error)}</p> : null}
 
         <section className={styles.section}>
           <div>
@@ -177,11 +183,11 @@ export default async function AccountPage({
             </article>
             <article className={styles.statCard}>
               <span className={styles.statLabel}>判断カード</span>
-              <strong className={styles.statValue}>{viewer?.isPaid ? "全文を表示" : "プレビューまで"}</strong>
+              <strong className={styles.statValue}>{viewer?.isPaid ? "判断理由まで表示" : "タイトル / かんたんな説明"}</strong>
             </article>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>詳しい解説</span>
-              <strong className={styles.statValue}>{viewer?.isPaid ? "詳しい解説を表示" : "短いプレビューを表示"}</strong>
+              <span className={styles.statLabel}>履歴分析</span>
+              <strong className={styles.statValue}>{viewer?.isPaid ? "利用可能" : "有料版で利用可能"}</strong>
             </article>
           </div>
         </section>
@@ -195,26 +201,26 @@ export default async function AccountPage({
 
           <div className={styles.featureGrid}>
             <article className={styles.featureCard}>
-              <h3>締切を逃しにくくなる</h3>
-              <p>見直しタイミングが分かるので、後回しにした判断を放置しにくくなります。</p>
+              <h3>判断理由まで確認できる</h3>
+              <p>無料版のタイトルとかんたんな説明に加えて、判断理由まで確認できます。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>迷いが減る</h3>
-              <p>理由と次の行動まで見えるので、その場で止まらずに判断できます。</p>
+              <h3>次の行動が明確になる</h3>
+              <p>その場で迷わないように、次の行動まで確認できます。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>判断が早くなる</h3>
-              <p>結果と履歴がたまるほど、自分に合う判断パターンを再利用しやすくなります。</p>
+              <h3>見直しタイミングが分かる</h3>
+              <p>後で考える判断を、いつ見直すかまで揃えて確認できます。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>次の判断が整う</h3>
-              <p>履歴から好みの傾向を見つけて、次のおすすめに補足として返します。</p>
+              <h3>履歴分析が使える</h3>
+              <p>採用した判断の結果を分析して、次のおすすめに活かせます。</p>
             </article>
           </div>
 
           <ul className={styles.list}>
-            <li>無料版は判断サマリーの入口まで。有料版は「どう動くか」を決める材料まで開放します。</li>
-            <li>有料版では履歴から傾向を見つけて、次の判断に活かせます。</li>
+            <li>無料版は判断タイトルとかんたんな説明まで確認できます。</li>
+            <li>有料版では判断理由、次の行動、見直しタイミング、履歴分析を使えます。</li>
             <li>支払い方法の変更や解約も、この画面から進められます。</li>
             <li>反映中でもアカウント画面から状態確認を続けられます。</li>
           </ul>

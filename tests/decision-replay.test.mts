@@ -113,7 +113,7 @@ test("buildDecisionReplayInsights falls back to data-light insight when history 
     {
       key: "data-light",
       title: "まだ強い傾向は出ていません",
-      body: "この振り返りは傾向とおすすめを育てるための基礎データになります。履歴が増えるほど、より具体的な学びを返しやすくなります。",
+      body: "この見直しは傾向とおすすめを育てるための基礎データになります。履歴が増えるほど、より具体的な学びを返しやすくなります。",
       tone: "neutral"
     }
   ]);
@@ -130,7 +130,7 @@ test("buildDecisionReplayInsights asks for outcome when replay is still unresolv
     {
       key: "outcome-pending",
       title: "まだ結果は記録されていません",
-      body: "結果を記録すると、この振り返りが次のおすすめ改善にも活き始めます。",
+      body: "結果を記録すると、この学びが次のおすすめ改善にも活き始めます。",
       tone: "neutral"
     }
   ]);

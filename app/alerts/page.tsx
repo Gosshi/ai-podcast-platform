@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import AlertsInbox from "@/app/components/AlertsInbox";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
-import { syncUserAlerts } from "@/app/lib/alerts";
+import { resolveAlertsErrorMessage, syncUserAlerts } from "@/app/lib/alerts";
+import { buildLoginPath } from "@/app/lib/onboarding";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./page.module.css";
 
@@ -10,13 +12,11 @@ export const dynamic = "force-dynamic";
 
 export default async function AlertsPage() {
   const viewer = await getViewerFromCookies();
-  const alertState = viewer
-    ? await syncUserAlerts(viewer)
-    : {
-        alerts: [],
-        preferences: null,
-        error: null
-      };
+  if (!viewer) {
+    redirect(buildLoginPath("/alerts"));
+  }
+
+  const alertState = await syncUserAlerts(viewer);
   const unreadCount = alertState.alerts.filter((alert) => !alert.isRead).length;
 
   return (
@@ -25,7 +25,7 @@ export default async function AlertsPage() {
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>お知らせ</p>
+          <p className={styles.eyebrow}>通知</p>
           <h1>アプリを閉じていても、次に見直す判断を失わない。</h1>
           <p className={styles.lead}>
             期限が近い判断、保存した候補、結果の記録、週ごとのまとめを一箇所にまとめています。
@@ -59,34 +59,20 @@ export default async function AlertsPage() {
         <MemberControls
           viewer={viewer}
           title="プラン"
-          copy="無料版は一部のお知らせまで。有料版はまとめて見直せます。"
+          copy="無料版は通知の要点まで。有料版は判断理由や見直しタイミングに沿ってまとめて確認できます。"
           analyticsSource="/alerts"
           variant="compact"
         />
       </section>
 
-      {!viewer ? (
-        <section className={styles.noticePanel}>
-          <h2>お知らせを見るにはログインが必要です</h2>
-          <p>判断カード、保存、履歴がたまると見直したい項目をここに表示します。</p>
-          <div className={styles.linkRow}>
-            <Link href="/account" className={styles.primaryLink}>
-              アカウント
-            </Link>
-          </div>
-        </section>
-      ) : null}
+      {alertState.error ? <p className={styles.errorText}>{resolveAlertsErrorMessage(alertState.error)}</p> : null}
 
-      {alertState.error ? <p className={styles.errorText}>お知らせの同期に失敗しました: {alertState.error}</p> : null}
-
-      {viewer ? (
-        <AlertsInbox
-          alerts={alertState.alerts}
-          page="/alerts"
-          title="お知らせ一覧"
-          lead="見直したい項目をまとめて確認できます。"
-        />
-      ) : null}
+      <AlertsInbox
+        alerts={alertState.alerts}
+        page="/alerts"
+        title="通知一覧"
+        lead="見直したい項目をまとめて確認できます。"
+      />
     </main>
   );
 }

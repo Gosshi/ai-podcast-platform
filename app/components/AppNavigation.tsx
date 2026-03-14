@@ -6,6 +6,7 @@ import styles from "./app-navigation.module.css";
 
 const NAV_ITEMS = [
   { href: "/decisions", label: "今日の判断" },
+  { href: "/alerts", label: "通知" },
   { href: "/saved", label: "保存" },
   { href: "/history", label: "履歴" },
   { href: "/account", label: "アカウント" }
