@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "seed:demo": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/seed-demo-data.mts",
     "lint": "next lint",
     "test": "node --experimental-strip-types --experimental-specifier-resolution=node --test tests/**/*.test.mts",
     "quality:check": "node --experimental-strip-types scripts/scriptQualityCheck.mts",
