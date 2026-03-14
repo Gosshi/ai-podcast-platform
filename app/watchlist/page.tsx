@@ -3,14 +3,14 @@ import MemberControls from "@/app/components/MemberControls";
 import TrackedLink from "@/app/components/TrackedLink";
 import WatchlistControls from "@/app/components/WatchlistControls";
 import { buildDecisionReplayPath } from "@/app/lib/decisionReplay";
+import { formatEpisodeTitle, formatFrameTypeLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS, URGENCY_LABELS, WATCHLIST_STATUS_LABELS } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import { loadUserWatchlist } from "@/app/lib/watchlist";
 import {
   FREE_WATCHLIST_LIMIT,
   isWatchlistSort,
   isWatchlistStatus,
-  isWatchlistUrgency,
-  type WatchlistUrgency
+  isWatchlistUrgency
 } from "@/src/lib/watchlist";
 import WatchlistFilters from "./WatchlistFilters";
 import styles from "./page.module.css";
@@ -18,24 +18,6 @@ import styles from "./page.module.css";
 export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
-
-const JUDGMENT_LABELS = {
-  use_now: "使う",
-  watch: "監視",
-  skip: "見送り"
-} as const;
-
-const STATUS_LABELS = {
-  saved: "Saved",
-  watching: "Watching",
-  archived: "Archived"
-} as const;
-
-const URGENCY_LABELS: Record<WatchlistUrgency, string> = {
-  overdue: "Overdue",
-  due_soon: "Due Soon",
-  no_deadline: "No Deadline"
-};
 
 const toSingleValue = (value: string | string[] | undefined): string => {
   if (Array.isArray(value)) {
@@ -116,34 +98,34 @@ export default async function WatchlistPage({
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>Saved Decisions / Watchlist</p>
+          <p className={styles.eyebrow}>保存</p>
           <h1>まだ決めていない判断を、期限と状態つきで管理する。</h1>
           <p className={styles.lead}>
-            Decision History が「採用した判断」を記録するのに対して、Watchlist は「今は決めないが後で見返す判断」を残す面です。
-            future alerts / replay / workflow へ返すための保留レイヤーとして使います。
+            履歴が「採用した判断」を記録するのに対して、この画面は「今は決めないが後で見返す判断」を残す場所です。
+            迷った候補を整理しながら、あとで判断し直せます。
           </p>
 
           <div className={styles.statRow}>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>Active</span>
+              <span className={styles.statLabel}>進行中</span>
               <strong>{activeCount}</strong>
             </article>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>Total</span>
+              <span className={styles.statLabel}>合計</span>
               <strong>{result.items.length}</strong>
             </article>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>Plan</span>
-              <strong>{isPaid ? "PAID" : "FREE"}</strong>
+              <span className={styles.statLabel}>プラン</span>
+              <strong>{isPaid ? "有料版" : "無料版"}</strong>
             </article>
           </div>
 
           <p className={styles.limitText}>
             {viewer
               ? isPaid
-                ? "paid は Watchlist を無制限で保持し、urgency / deadline まで再訪に使えます。"
-                : `free は active item を最大${FREE_WATCHLIST_LIMIT}件まで保存できます。期限・urgency を本格活用する場合は paid へ切り替えてください。`
-              : "ログインすると Judgment Card を Save / Watch して、ここで一覧管理できます。"}
+                ? "有料版では保存件数の上限なく、期限つきで見直せます。"
+                : `無料版では進行中の候補を最大${FREE_WATCHLIST_LIMIT}件まで保存できます。`
+              : "ログインすると判断カードを保存して、ここで一覧管理できます。"}
           </p>
         </div>
 
@@ -158,8 +140,8 @@ export default async function WatchlistPage({
 
       {!viewer ? (
         <section className={styles.noticePanel}>
-          <h2>Watchlist を使うにはログインが必要です</h2>
-          <p>Judgment Card から Save / Watch すると、この画面で保留中の判断を一覧できます。</p>
+          <h2>保存を使うにはログインが必要です</h2>
+          <p>判断カードを保存すると、この画面であとから見直せます。</p>
           <TrackedLink
             href="/account"
             className={styles.primaryLink}
@@ -169,7 +151,7 @@ export default async function WatchlistPage({
               source: "watchlist_login_notice"
             }}
           >
-            Account でログイン
+            アカウントでログイン
           </TrackedLink>
         </section>
       ) : null}
@@ -190,8 +172,8 @@ export default async function WatchlistPage({
 
       {!isPaid && viewer ? (
         <section className={styles.noticePanel}>
-          <h2>free は件数制限つき、paid は future workflow まで開放</h2>
-          <p>無料版は簡易一覧と保存上限まで。有料会員になると deadline / urgency を使った再訪と将来の alerts 連携を前提に扱えます。</p>
+          <h2>無料版は件数制限つきです</h2>
+          <p>有料版にすると、より多くの候補を保存しながら期限つきで見直せます。</p>
           <TrackedLink
             href="/account"
             className={styles.secondaryLink}
@@ -206,22 +188,22 @@ export default async function WatchlistPage({
         </section>
       ) : null}
 
-      {result.error ? <p className={styles.errorText}>watchlist の読み込みに失敗しました: {result.error}</p> : null}
+      {result.error ? <p className={styles.errorText}>保存一覧の読み込みに失敗しました: {result.error}</p> : null}
 
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionEyebrow}>Watchlist Items</p>
-            <h2>未来の判断として残した Judgment Cards</h2>
-            <p className={styles.sectionLead}>episode / history / replay に戻りながら、saved と watching を切り替えられます。</p>
+            <p className={styles.sectionEyebrow}>保存一覧</p>
+            <h2>保存した判断一覧</h2>
+            <p className={styles.sectionLead}>詳細や履歴に戻りながら、あとで見る候補を整理できます。</p>
           </div>
-          <span className={styles.sectionCount}>{result.items.length} items</span>
+          <span className={styles.sectionCount}>{result.items.length}件</span>
         </div>
 
         {viewer && result.items.length === 0 ? (
           <div className={styles.emptyPanel}>
-            <h3>まだ watchlist は空です</h3>
-            <p>`/decisions` や `/decisions/library` の Judgment Card から Save / Watch を選ぶとここに追加されます。</p>
+            <h3>まだ保存した判断はありません</h3>
+            <p>`/decisions` や `/decisions/library` の判断カードから保存するとここに追加されます。</p>
           </div>
         ) : null}
 
@@ -230,9 +212,9 @@ export default async function WatchlistPage({
             <article key={item.id} className={styles.card}>
               <div className={styles.cardHeader}>
                 <div className={styles.badgeRow}>
-                  <span className={`${styles.badge} ${styles[`status_${item.status}`]}`.trim()}>{STATUS_LABELS[item.status]}</span>
+                  <span className={`${styles.badge} ${styles[`status_${item.status}`]}`.trim()}>{WATCHLIST_STATUS_LABELS[item.status]}</span>
                   <span className={`${styles.badge} ${styles[`judgment_${item.judgment_type}`]}`.trim()}>
-                    {JUDGMENT_LABELS[item.judgment_type]}
+                    {JUDGMENT_TYPE_LABELS[item.judgment_type]}
                   </span>
                   {isPaid ? (
                     <span className={`${styles.badge} ${styles[`urgency_${item.urgency}`]}`.trim()}>
@@ -241,8 +223,8 @@ export default async function WatchlistPage({
                   ) : null}
                 </div>
                 <div className={styles.tagRow}>
-                  <span className={styles.tag}>{item.genre ?? "general"}</span>
-                  <span className={styles.tag}>{item.frame_type ?? "frame unknown"}</span>
+                  <span className={styles.tag}>{item.genre ?? "配信作品"}</span>
+                  <span className={styles.tag}>{formatFrameTypeLabel(item.frame_type, "判断タイプ未設定")}</span>
                 </div>
               </div>
 
@@ -259,21 +241,21 @@ export default async function WatchlistPage({
                   urgency: item.urgency
                 }}
               >
-                {item.topic_title}
+                {formatTopicTitle(item.topic_title)}
               </TrackedLink>
 
               <dl className={styles.metaList}>
                 <div>
-                  <dt>Saved At</dt>
+                  <dt>保存日</dt>
                   <dd>{formatDate(item.created_at, true)}</dd>
                 </div>
                 <div>
-                  <dt>Episode</dt>
-                  <dd>{item.episode_title ?? "Untitled episode"}</dd>
+                  <dt>詳細</dt>
+                  <dd>{formatEpisodeTitle(item.episode_title)}</dd>
                 </div>
                 <div>
-                  <dt>Deadline</dt>
-                  <dd>{isPaid ? formatDate(item.deadline_at, true) : "paid で表示"}</dd>
+                  <dt>期限</dt>
+                  <dd>{isPaid ? formatDate(item.deadline_at, true) : "有料版で表示"}</dd>
                 </div>
               </dl>
 
@@ -304,7 +286,7 @@ export default async function WatchlistPage({
                     urgency: item.urgency
                   }}
                 >
-                  Episode
+                  詳細
                 </TrackedLink>
                 <TrackedLink
                   href="/history"
@@ -319,7 +301,7 @@ export default async function WatchlistPage({
                     urgency: item.urgency
                   }}
                 >
-                  History
+                  履歴
                 </TrackedLink>
                 {item.history_decision_id ? (
                   <TrackedLink
@@ -335,7 +317,7 @@ export default async function WatchlistPage({
                       urgency: item.urgency
                     }}
                   >
-                    Replay
+                    振り返り
                   </TrackedLink>
                 ) : null}
               </div>

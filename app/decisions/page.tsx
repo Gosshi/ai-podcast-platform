@@ -8,28 +8,16 @@ import WatchlistControls from "@/app/components/WatchlistControls";
 import { syncUserAlerts } from "@/app/lib/alerts";
 import { loadDecisionDashboardCards } from "@/app/lib/decisions";
 import { loadDecisionHistory } from "@/app/lib/decisionHistory";
-import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { buildOnboardingPath } from "@/app/lib/onboarding";
+import { formatEpisodeTitle, formatFrameTypeLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
-import { groupDecisionDashboardCards, pickTodayDecisionCards } from "@/src/lib/decisionDashboard";
+import { pickTodayDecisionCards } from "@/src/lib/decisionDashboard";
 import { buildPersonalDecisionHint } from "@/src/lib/decisionProfile";
 import { rankNextBestDecisions } from "@/src/lib/nextBestDecision";
 import { buildOutcomeReminderCandidates, limitOutcomeReminderCandidates } from "@/src/lib/outcomeReminder";
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
-
-const JUDGMENT_TYPE_LABELS = {
-  use_now: "今日見る",
-  watch: "続けるか見極める",
-  skip: "見送り"
-} as const;
-
-const JUDGMENT_TYPE_DESCRIPTIONS = {
-  use_now: "今日先に見たい候補",
-  watch: "続けるか様子を見る候補",
-  skip: "今は見送る候補"
-} as const;
 
 const URGENCY_LEVEL_LABELS = {
   critical: "最優先",
@@ -107,15 +95,12 @@ export default async function DecisionsPage() {
     profile: personalProfile,
     preferenceProfile: viewer?.preferenceProfile
   });
+  const featuredDecisions = nextBestDecisions.slice(0, 3);
   const todayCards = pickTodayDecisionCards(cards);
-  const groupedCards = groupDecisionDashboardCards(cards);
-  const todayLabel = formatDecisionDate(todayCards[0]?.episode_published_at ?? null);
+  const allDecisionCards = todayCards.length > 0 ? todayCards : cards;
+  const todayLabel = formatDecisionDate(allDecisionCards[0]?.episode_published_at ?? null);
 
-  const renderDecisionCard = (
-    card: (typeof cards)[number],
-    secondaryMetaLabel: string,
-    secondaryMetaValue: string
-  ) => {
+  const renderDecisionCard = (card: (typeof cards)[number]) => {
     const personalHint = isPaid && personalProfile ? buildPersonalDecisionHint({ card, profile: personalProfile }) : null;
 
     return (
@@ -150,53 +135,40 @@ export default async function DecisionsPage() {
             <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`]}`.trim()}>
               {JUDGMENT_TYPE_LABELS[card.judgment_type]}
             </span>
-            <span className={styles.genreTag}>{card.genre ?? "配信作品"}</span>
+            <span className={styles.genreTag}>{formatFrameTypeLabel(card.frame_type, "判断タイプ未設定")}</span>
           </div>
-          <h3>{card.topic_title}</h3>
+          <h3>{formatTopicTitle(card.topic_title)}</h3>
           <p className={styles.summary}>{card.judgment_summary}</p>
+          <dl className={styles.metaList}>
+            <div>
+              <dt>次にすると良いこと</dt>
+              <dd>{card.action_text ?? "気になったら詳細を開いて確認する"}</dd>
+            </div>
+            <div>
+              <dt>期限</dt>
+              <dd>{card.deadline_at ? formatDeadline(card.deadline_at) : "期限なし"}</dd>
+            </div>
+            <div>
+              <dt>あなた向け補足</dt>
+              <dd>{personalHint?.text ?? "気分や使える時間に合うかを先に確認すると迷いにくくなります。"}</dd>
+            </div>
+            <div>
+              <dt>詳細</dt>
+              <dd>{formatEpisodeTitle(card.episode_title)}</dd>
+            </div>
+          </dl>
           {personalHint ? (
             <div className={`${styles.personalHint} ${styles[`personalHint_${personalHint.tone}`]}`.trim()}>
               <span className={styles.personalHintLabel}>あなた向けの補足</span>
               <p>{personalHint.text}</p>
             </div>
           ) : null}
-          <dl className={styles.metaList}>
-            {isPaid && card.action_text ? (
-              <div>
-                <dt>次の行動</dt>
-                <dd>{card.action_text}</dd>
-              </div>
-            ) : null}
-            {isPaid && card.deadline_at ? (
-              <div>
-                <dt>期限</dt>
-                <dd>{formatDeadline(card.deadline_at)}</dd>
-              </div>
-            ) : null}
-            <div>
-              <dt>{secondaryMetaLabel}</dt>
-              <dd>{secondaryMetaValue}</dd>
-            </div>
-          </dl>
-          {isPaid && card.watch_points.length > 0 ? (
-            <ul className={styles.detailList}>
-              {card.watch_points.map((point) => (
-                <li key={point}>{point}</li>
-              ))}
-            </ul>
-          ) : null}
-          {isPaid && formatThresholdHighlights(card.threshold_json).length > 0 ? (
-            <ul className={styles.detailList}>
-              {formatThresholdHighlights(card.threshold_json).map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          ) : null}
+          <p className={styles.episodeLinkText}>詳細を見る</p>
         </TrackedLink>
         {!isPaid ? (
           <div className={styles.lockedPanel}>
-            <strong>この先は有料プラン向け</strong>
-            <p>次の行動、期限、監視ポイント、判断基準まで確認できます。</p>
+            <strong>有料版では判断の背景まで確認できます</strong>
+            <p>次の行動や見直しの目安を、より詳しく確認できます。</p>
             <TrackedLink
               href="/account"
               className={styles.paywallLink}
@@ -260,7 +232,7 @@ export default async function DecisionsPage() {
           }}
         />
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>Decisions</p>
+          <p className={styles.eyebrow}>今日の判断</p>
           <h1>今日の判断</h1>
           <p className={styles.lead}>AIが、今日見るもの・続けるもの・見送るものを提案します。</p>
           <div className={styles.heroMeta}>
@@ -291,7 +263,7 @@ export default async function DecisionsPage() {
                 source: "decision_dashboard_hero_library_link"
               }}
             >
-              ライブラリを見る
+              保存を見る
             </TrackedLink>
           </div>
         </div>
@@ -301,23 +273,21 @@ export default async function DecisionsPage() {
         <div className={styles.recommendationHeader}>
           <div>
             <p className={styles.sectionEyebrow}>今日のおすすめ</p>
-            <h2>{isPaid ? "今日のおすすめ" : "まず見ておきたい判断"}</h2>
+            <h2>今日のおすすめ判断</h2>
             <p className={styles.sectionCaption}>
-              {isPaid
-                ? "期限やあなたの過去の傾向を踏まえて、先に見ておきたい候補を並べています。"
-                : "まず見る優先度が高い候補を、分かりやすい順で並べています。"}
+              まず最初に見ておきたい判断だけを上にまとめています。
             </p>
           </div>
           <div className={styles.countRow}>
-            <span>{isPaid ? `${nextBestDecisions.length}件を表示` : "無料版のおすすめ"}</span>
+            <span>最大3件</span>
           </div>
         </div>
 
-        {nextBestDecisions.length === 0 ? (
+        {featuredDecisions.length === 0 ? (
           <p className={styles.emptyText}>今すぐおすすめできる判断カードはまだありません。</p>
         ) : (
           <div className={styles.recommendationGrid}>
-            {nextBestDecisions.map((recommendation) => (
+            {featuredDecisions.map((recommendation) => (
               <article key={recommendation.card.id} className={styles.recommendationCard}>
                 <AnalyticsEventOnRender
                   eventName="next_best_decision_impression"
@@ -354,12 +324,12 @@ export default async function DecisionsPage() {
                     </span>
                   </div>
                   <div className={styles.recommendationMetaRow}>
-                    <span className={styles.genreTag}>{recommendation.card.genre ?? "配信作品"}</span>
+                    <span className={styles.genreTag}>{formatFrameTypeLabel(recommendation.card.frame_type, "判断タイプ未設定")}</span>
                     <span className={styles.recommendationEpisodeLabel}>
-                      {recommendation.card.episode_title ?? "エピソード未設定"}
+                      {formatEpisodeTitle(recommendation.card.episode_title)}
                     </span>
                   </div>
-                  <h3>{recommendation.card.topic_title}</h3>
+                  <h3>{formatTopicTitle(recommendation.card.topic_title)}</h3>
                   <p className={styles.summary}>{recommendation.card.judgment_summary}</p>
                   <dl className={styles.metaList}>
                     <div>
@@ -380,12 +350,32 @@ export default async function DecisionsPage() {
                       <li key={tag}>{tag}</li>
                     ))}
                   </ul>
-                  <p className={styles.episodeLinkText}>エピソードを見る</p>
+                  <p className={styles.episodeLinkText}>詳細を見る</p>
                 </TrackedLink>
               </article>
             ))}
           </div>
         )}
+
+        <details className={styles.expandPanel}>
+          <summary className={styles.expandSummary}>すべての判断を見る</summary>
+          <div className={styles.expandContent}>
+            <div className={styles.sectionHeading}>
+              <div>
+                <p className={styles.sectionEyebrow}>今日の判断一覧</p>
+                <h2>今日の判断一覧</h2>
+                <p className={styles.sectionCaption}>{todayLabel}</p>
+              </div>
+              <span className={styles.sectionCount}>{allDecisionCards.length}件</span>
+            </div>
+
+            {allDecisionCards.length === 0 ? (
+              <p className={styles.emptyText}>判断カードはまだありません。</p>
+            ) : (
+              <div className={styles.grid}>{allDecisionCards.map((card) => renderDecisionCard(card))}</div>
+            )}
+          </div>
+        </details>
 
         {!isPaid ? (
           <div className={styles.recommendationFootnote}>
@@ -414,7 +404,7 @@ export default async function DecisionsPage() {
         <section className={styles.paywallBanner}>
           <div>
             <p className={styles.paywallEyebrow}>無料版</p>
-            <h2>詳しい判断カードは Account から切り替えできます</h2>
+            <h2>詳しい判断カードはアカウントから切り替えできます</h2>
             <p>
               無料版はまず要点を確認するための入口です。有料版にすると、次の一手や見直しタイミングまでまとめて見られます。
             </p>
@@ -437,7 +427,7 @@ export default async function DecisionsPage() {
         <AlertsInbox
           alerts={alertState.alerts.slice(0, 3)}
           page="/decisions"
-          title="見直したい項目"
+          title="お知らせ"
           lead="期限が近いものや、あとで見たい候補をここからすぐ開き直せます。"
           showViewAllLink={alertState.alerts.length > 3}
         />
@@ -451,55 +441,6 @@ export default async function DecisionsPage() {
           page="/decisions"
         />
       ) : null}
-
-      <section className={styles.section}>
-        <div className={styles.sectionHeading}>
-          <div>
-            <p className={styles.sectionEyebrow}>今日の判断</p>
-            <h2>今日の判断</h2>
-            <p className={styles.sectionCaption}>{todayLabel}</p>
-          </div>
-          <div className={styles.countRow}>
-            <span>{JUDGMENT_TYPE_LABELS.use_now} {groupedCards.use_now.length}件</span>
-            <span>{JUDGMENT_TYPE_LABELS.watch} {groupedCards.watch.length}件</span>
-            <span>{JUDGMENT_TYPE_LABELS.skip} {groupedCards.skip.length}件</span>
-          </div>
-        </div>
-
-        {todayCards.length === 0 ? (
-          <p className={styles.emptyText}>判断カードはまだありません。</p>
-        ) : (
-          <div className={styles.grid}>
-            {todayCards.map((card) => renderDecisionCard(card, "元エピソード", card.episode_title ?? "エピソード未設定"))}
-          </div>
-        )}
-      </section>
-
-      {(["use_now", "watch", "skip"] as const).map((judgmentType) => {
-        const sectionCards = groupedCards[judgmentType];
-
-        return (
-          <section key={judgmentType} className={styles.section}>
-            <div className={styles.sectionHeading}>
-              <div>
-                <p className={styles.sectionEyebrow}>{JUDGMENT_TYPE_DESCRIPTIONS[judgmentType]}</p>
-                <h2>{JUDGMENT_TYPE_LABELS[judgmentType]}</h2>
-              </div>
-              <span className={styles.sectionCount}>{sectionCards.length}件</span>
-            </div>
-
-            {sectionCards.length === 0 ? (
-              <p className={styles.emptyText}>この分類の判断はまだありません。</p>
-            ) : (
-              <div className={styles.grid}>
-                {sectionCards.map((card) =>
-                  renderDecisionCard(card, "公開日", formatDecisionDate(card.episode_published_at))
-                )}
-              </div>
-            )}
-          </section>
-        );
-      })}
     </main>
   );
 }

@@ -8,16 +8,11 @@ import TrackedLink from "@/app/components/TrackedLink";
 import WatchlistControls from "@/app/components/WatchlistControls";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { loadPublishedEpisodeById } from "@/app/lib/episodes";
+import { formatEpisodeTitle, formatFrameTypeLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
-
-const JUDGMENT_TYPE_LABELS = {
-  use_now: "使う",
-  watch: "監視",
-  skip: "見送り"
-} as const;
 
 const formatDateTime = (value: string | null): string => {
   if (!value) return "-";
@@ -55,8 +50,8 @@ export default async function EpisodeDetailPage({
   return (
     <main className={styles.page}>
       <div className={styles.backRow}>
-        <Link href="/decisions">Decisions</Link>
-        <Link href="/episodes">Episodes</Link>
+        <Link href="/decisions">今日の判断</Link>
+        <Link href="/episodes">詳細一覧</Link>
       </div>
 
       {error ? <p className={styles.errorText}>エピソードの読み込みに失敗しました: {error}</p> : null}
@@ -65,17 +60,17 @@ export default async function EpisodeDetailPage({
         <>
           <section className={styles.hero}>
             <div className={styles.heroCopy}>
-              <p className={styles.eyebrow}>Episode Detail</p>
-              <h1>{episode.title ?? "Untitled episode"}</h1>
+              <p className={styles.eyebrow}>詳細</p>
+              <h1>{formatEpisodeTitle(episode.title)}</h1>
               <div className={styles.metaRow}>
                 <span>{episode.lang.toUpperCase()}</span>
-                <span>{episode.genre ?? "general"}</span>
+                <span>{episode.genre ?? "配信作品"}</span>
                 <span>{formatDateTime(episode.published_at ?? episode.created_at)}</span>
               </div>
 
               {episode.audio_url ? (
                 <audio className={styles.audio} controls src={episode.audio_url}>
-                  Your browser does not support audio playback.
+                  このブラウザでは音声を再生できません。
                 </audio>
               ) : null}
             </div>
@@ -91,7 +86,7 @@ export default async function EpisodeDetailPage({
 
           <section className={styles.section}>
             <div className={styles.sectionHeading}>
-              <h2>Judgment Cards</h2>
+              <h2>判断カード</h2>
               <span>{episode.judgment_card_count}件</span>
             </div>
 
@@ -117,9 +112,9 @@ export default async function EpisodeDetailPage({
                       <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`]}`.trim()}>
                         {JUDGMENT_TYPE_LABELS[card.judgment_type]}
                       </span>
-                      <span className={styles.topicOrder}>Topic {card.topic_order}</span>
+                      <span className={styles.topicOrder}>{formatFrameTypeLabel(card.frame_type, `判断 ${card.topic_order}`)}</span>
                     </div>
-                    <h3>{card.topic_title}</h3>
+                    <h3>{formatTopicTitle(card.topic_title)}</h3>
                     <p className={styles.summary}>{card.judgment_summary}</p>
                     <div className={styles.cardActions}>
                       <WatchlistControls
@@ -184,7 +179,7 @@ export default async function EpisodeDetailPage({
                     {!viewer?.isPaid ? (
                       <div className={styles.lockedBlock}>
                         <strong>この先は有料会員向け</strong>
-                        <p>次の行動、判断期限、監視ポイント、threshold の詳細を開放します。</p>
+                        <p>次の行動、判断期限、見直しポイントの詳細を開放します。</p>
                         <TrackedLink
                           href="/account"
                           eventName="judgment_card_locked_cta_click"
@@ -209,7 +204,7 @@ export default async function EpisodeDetailPage({
 
             {episode.judgment_cards_preview_limited ? (
               <p className={styles.lockedText}>
-                無料版では judgment summary まで表示し、action / deadline / watch points / threshold は有料会員向けに制限しています。
+                無料版では要点まで表示し、次の行動や期限などは有料会員向けに制限しています。
               </p>
             ) : null}
 
@@ -222,8 +217,8 @@ export default async function EpisodeDetailPage({
 
           <section className={styles.section}>
             <div className={styles.sectionHeading}>
-              <h2>{episode.full_script ? "DeepDive Script" : "Preview Script"}</h2>
-              <span>{episode.full_script ? "Paid" : "Free"}</span>
+              <h2>{episode.full_script ? "詳しい内容" : "プレビュー"}</h2>
+              <span>{episode.full_script ? "有料版" : "無料版"}</span>
             </div>
 
             {episode.full_script ?? episode.preview_text ? (

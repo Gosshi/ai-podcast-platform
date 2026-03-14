@@ -3,6 +3,7 @@ import DecisionOutcomeSelect from "@/app/components/DecisionOutcomeSelect";
 import TrackedLink from "@/app/components/TrackedLink";
 import { DECISION_TYPE_LABELS, formatDecisionHistoryDate } from "@/app/lib/decisionHistory";
 import { buildDecisionReplayPath } from "@/app/lib/decisionReplay";
+import { formatFrameTypeLabel, formatTopicTitle } from "@/app/lib/uiText";
 import {
   formatOutcomeReminderTiming,
   type OutcomeReminderCandidate
@@ -36,10 +37,10 @@ export default function OutcomeReminderSection({
     <section className={styles.section}>
       <div className={styles.header}>
         <div>
-          <p className={styles.eyebrow}>Outcome Reminder</p>
+          <p className={styles.eyebrow}>結果の記録</p>
           <h2>結果を記録してください</h2>
           <p className={styles.lead}>
-            判断して終わりではなく、結果を残して profile / replay / next best decision に学習を返します。
+            判断して終わりではなく、結果を残して次のおすすめや振り返りに活かします。
           </p>
         </div>
         <span className={styles.countBadge}>{reminders.length}件</span>
@@ -68,8 +69,8 @@ export default function OutcomeReminderSection({
 
             <div className={styles.cardHeader}>
               <div>
-                <p className={styles.cardEyebrow}>{reminder.frame_type ?? "Frame 未設定"}</p>
-                <h3>{reminder.topic_title}</h3>
+                <p className={styles.cardEyebrow}>{formatFrameTypeLabel(reminder.frame_type)}</p>
+                <h3>{formatTopicTitle(reminder.topic_title)}</h3>
               </div>
               <span className={`${styles.badge} ${styles[`badge_${reminder.decision_type}`]}`.trim()}>
                 {DECISION_TYPE_LABELS[reminder.decision_type]}
@@ -78,26 +79,26 @@ export default function OutcomeReminderSection({
 
             <dl className={styles.metaGrid}>
               <div>
-                <dt>Saved</dt>
+                <dt>記録日</dt>
                 <dd>{formatDecisionHistoryDate(reminder.created_at)}</dd>
               </div>
               <div>
-                <dt>Status</dt>
+                <dt>状況</dt>
                 <dd>{formatOutcomeReminderTiming(reminder)}</dd>
               </div>
               <div>
-                <dt>Judgment Type</dt>
+                <dt>判断タイプ</dt>
                 <dd>{DECISION_TYPE_LABELS[reminder.decision_type]}</dd>
               </div>
               <div>
-                <dt>Action</dt>
+                <dt>次にすること</dt>
                 <dd>1クリックで結果を残せます</dd>
               </div>
             </dl>
 
             <div className={styles.actionBlock}>
               <div>
-                <p className={styles.actionLabel}>Quick Outcome</p>
+                <p className={styles.actionLabel}>かんたん結果記録</p>
                 <p className={styles.actionCopy}>満足 / 後悔 / 普通 をその場で記録</p>
               </div>
               <DecisionOutcomeSelect
@@ -132,7 +133,7 @@ export default function OutcomeReminderSection({
                   reminder_reason: reminder.reason
                 }}
               >
-                History詳細へ
+                履歴を見る
               </TrackedLink>
               <TrackedLink
                 href={buildDecisionReplayPath(reminder.id)}
@@ -151,7 +152,7 @@ export default function OutcomeReminderSection({
                   reminder_reason: reminder.reason
                 }}
               >
-                Replayを見る
+                振り返りを見る
               </TrackedLink>
             </div>
           </article>
@@ -160,7 +161,7 @@ export default function OutcomeReminderSection({
 
       {!isPaid && hiddenCount > 0 ? (
         <div className={styles.footnote}>
-          <p>free では reminder を {reminders.length} 件まで表示しています。残り {hiddenCount} 件は paid でまとめて確認できます。</p>
+          <p>無料版では {reminders.length} 件まで表示しています。残り {hiddenCount} 件は有料版でまとめて確認できます。</p>
           <TrackedLink
             href="/account"
             className={styles.upgradeLink}
@@ -170,7 +171,7 @@ export default function OutcomeReminderSection({
               source: `${sectionSource}_upgrade`
             }}
           >
-            reminder を全件開放
+            すべて確認する
           </TrackedLink>
         </div>
       ) : null}

@@ -12,6 +12,7 @@ import {
   FREE_LIBRARY_CARD_LIMIT,
   loadDecisionLibrary
 } from "@/app/lib/decisionLibrary";
+import { formatEpisodeTitle, formatFrameTypeLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS, URGENCY_LABELS } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import {
   DECISION_LIBRARY_SORTS,
@@ -28,18 +29,6 @@ import styles from "./page.module.css";
 export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
-
-const JUDGMENT_LABELS: Record<JudgmentType, string> = {
-  use_now: "使う",
-  watch: "監視",
-  skip: "見送り"
-};
-
-const URGENCY_LABELS: Record<DecisionLibraryUrgency, string> = {
-  overdue: "Overdue",
-  due_soon: "Due Soon",
-  no_deadline: "No Deadline"
-};
 
 const toSingleValue = (value: string | string[] | undefined): string => {
   if (Array.isArray(value)) {
@@ -192,7 +181,7 @@ export default async function DecisionLibraryPage({
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>Library</p>
+          <p className={styles.eyebrow}>保存</p>
           <h1>あとで見返したい判断メモを、まとめて探せます。</h1>
           <p className={styles.lead}>
             ジャンル、見直しタイミング、見送るかどうかといった軸で、過去の判断メモを一覧できます。気になった候補の
@@ -207,22 +196,22 @@ export default async function DecisionLibraryPage({
 
           <div className={styles.statRow}>
             <div className={styles.statCard}>
-              <span className={styles.statLabel}>Visible</span>
+              <span className={styles.statLabel}>表示中</span>
               <strong>{result.cards.length}</strong>
             </div>
             <div className={styles.statCard}>
-              <span className={styles.statLabel}>Matched</span>
+              <span className={styles.statLabel}>一致件数</span>
               <strong>{result.totalCount}</strong>
             </div>
             <div className={styles.statCard}>
-              <span className={styles.statLabel}>Scope</span>
-              <strong>{isPaid ? "Full Library" : "Recent Preview"}</strong>
+              <span className={styles.statLabel}>表示範囲</span>
+              <strong>{isPaid ? "全件" : "最近の一部"}</strong>
             </div>
           </div>
 
           {viewer?.needsOnboarding ? (
             <div className={styles.personalizationPanel}>
-              <p className={styles.sectionEyebrow}>Setup</p>
+              <p className={styles.sectionEyebrow}>初回設定</p>
               <h2>好みを入れておくと、最初の並び順が分かりやすくなります。</h2>
               <p className={styles.personalizationLead}>
                 よく見るジャンルや使っているサービスを入れると、最初に見たい候補が上に出やすくなります。
@@ -254,7 +243,7 @@ export default async function DecisionLibraryPage({
 
           {result.personalization && !hasExplicitSort && isInitialView ? (
             <div className={styles.personalizationPanel}>
-              <p className={styles.sectionEyebrow}>Personalized Start</p>
+              <p className={styles.sectionEyebrow}>おすすめ順</p>
               <h2>最初の並びはあなたの好みを少し反映しています</h2>
               <p className={styles.personalizationLead}>
                 {result.personalization.interestTopics.length > 0
@@ -296,7 +285,7 @@ export default async function DecisionLibraryPage({
       {!isPaid && result.previewLimited ? (
         <section className={styles.noticePanel}>
           <div>
-            <p className={styles.sectionEyebrow}>Preview Limit</p>
+            <p className={styles.sectionEyebrow}>表示上限</p>
             <h2>無料版は最近の判断メモを一部だけ表示します</h2>
             <p>
               {result.searchPreviewLimited
@@ -321,7 +310,7 @@ export default async function DecisionLibraryPage({
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionEyebrow}>Results</p>
+            <p className={styles.sectionEyebrow}>検索結果</p>
             <h2>検索して見返せる判断メモ</h2>
             <p className={styles.sectionLead}>
               エピソード一覧から探し直さなくても、判断の内容から見返せます。
@@ -341,23 +330,23 @@ export default async function DecisionLibraryPage({
             {result.cards.map((card) => (
               <article key={card.id} className={styles.card}>
                 <div className={styles.cardHeader}>
-                  <div className={styles.badgeRow}>
-                    <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`]}`.trim()}>
-                      {JUDGMENT_LABELS[card.judgment_type]}
+              <div className={styles.badgeRow}>
+                <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`]}`.trim()}>
+                      {JUDGMENT_TYPE_LABELS[card.judgment_type]}
                     </span>
                     <span className={`${styles.badge} ${styles[`urgency_${card.urgency}`]}`.trim()}>
                       {URGENCY_LABELS[card.urgency]}
                     </span>
                   </div>
                   <div className={styles.tagRow}>
-                    <span className={styles.tag}>{card.genre ?? "general"}</span>
-                    <span className={styles.tag}>{card.frame_type ?? "frame unknown"}</span>
-                    {card.is_saved ? <span className={styles.tag}>in history</span> : null}
+                    <span className={styles.tag}>{card.genre ?? "配信作品"}</span>
+                    <span className={styles.tag}>{formatFrameTypeLabel(card.frame_type, "判断タイプ未設定")}</span>
+                    {card.is_saved ? <span className={styles.tag}>履歴あり</span> : null}
                     {card.watchlist_status ? <span className={styles.tag}>{card.watchlist_status}</span> : null}
                   </div>
                 </div>
 
-                <h3>{card.topic_title}</h3>
+                <h3>{formatTopicTitle(card.topic_title)}</h3>
                 <p className={styles.summary}>{card.judgment_summary}</p>
 
                 {card.personalization_reasons.length > 0 && result.personalization ? (
@@ -372,29 +361,29 @@ export default async function DecisionLibraryPage({
 
                 <dl className={styles.metaList}>
                   <div>
-                    <dt>Created</dt>
+                    <dt>公開日</dt>
                     <dd>{formatDate(card.episode_published_at ?? card.created_at)}</dd>
                   </div>
                   <div>
-                    <dt>Deadline</dt>
+                    <dt>期限</dt>
                     <dd>{isPaid ? formatDeadline(card.deadline_at) : "有料会員で表示"}</dd>
                   </div>
                   <div>
-                    <dt>Episode</dt>
-                    <dd>{card.episode_title ?? "Untitled episode"}</dd>
+                    <dt>詳細</dt>
+                    <dd>{formatEpisodeTitle(card.episode_title)}</dd>
                   </div>
                 </dl>
 
                 {isPaid && card.action_text ? (
                   <div className={styles.detailBlock}>
-                    <span className={styles.detailLabel}>Next Action</span>
+                    <span className={styles.detailLabel}>次にすると良いこと</span>
                     <p>{card.action_text}</p>
                   </div>
                 ) : null}
 
                 {isPaid && card.watch_points.length > 0 ? (
                   <div className={styles.detailBlock}>
-                    <span className={styles.detailLabel}>Watch Points</span>
+                    <span className={styles.detailLabel}>見直しポイント</span>
                     <ul className={styles.detailList}>
                       {card.watch_points.map((point) => (
                         <li key={point}>{point}</li>
@@ -405,8 +394,8 @@ export default async function DecisionLibraryPage({
 
                 {!isPaid ? (
                   <div className={styles.lockedPanel}>
-                    <strong>watch points / deadline / action は有料会員向け</strong>
-                    <p>無料版は summary と最近の preview まで。再訪して使う library としては paid が完全版です。</p>
+                    <strong>詳しい見直し情報は有料会員向けです</strong>
+                    <p>無料版は要点まで、有料版では次にすると良いことや期限も確認できます。</p>
                   </div>
                 ) : null}
 
@@ -455,7 +444,7 @@ export default async function DecisionLibraryPage({
                         sort: activeFilters.sort
                       }}
                     >
-                      Episode
+                      詳細
                     </TrackedLink>
                     <TrackedLink
                       href="/history"
@@ -474,7 +463,7 @@ export default async function DecisionLibraryPage({
                         sort: activeFilters.sort
                       }}
                     >
-                      History
+                      履歴
                     </TrackedLink>
                     {card.saved_decision_id ? (
                       <TrackedLink
@@ -495,7 +484,7 @@ export default async function DecisionLibraryPage({
                           sort: activeFilters.sort
                         }}
                       >
-                        Replay
+                        振り返り
                       </TrackedLink>
                     ) : null}
                   </div>
@@ -509,17 +498,18 @@ export default async function DecisionLibraryPage({
           <div className={styles.pagination}>
             {result.currentPage > 1 ? (
               <Link className={styles.secondaryLink} href={buildPageHref(activeFilters, result.currentPage - 1)}>
-                Previous
+                前へ
               </Link>
             ) : (
               <span className={styles.paginationGhost} />
             )}
             <span className={styles.paginationLabel}>
               Page {result.currentPage} / {result.totalPages}
+              
             </span>
             {result.currentPage < result.totalPages ? (
               <Link className={styles.secondaryLink} href={buildPageHref(activeFilters, result.currentPage + 1)}>
-                Next
+                次へ
               </Link>
             ) : (
               <span className={styles.paginationGhost} />

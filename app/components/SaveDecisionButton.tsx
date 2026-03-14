@@ -93,6 +93,16 @@ export default function SaveDecisionButton({
       }
 
       setIsSaved(true);
+      track("decision_action_click", {
+        page,
+        source,
+        action_name: "save_decision",
+        episode_id: episodeId,
+        judgment_card_id: judgmentCardId,
+        genre: genre ?? undefined,
+        frame_type: frameType ?? undefined,
+        judgment_type: judgmentType
+      });
       track("decision_save", {
         page,
         source,
@@ -116,7 +126,7 @@ export default function SaveDecisionButton({
   return (
     <div className={styles.actionRow}>
       <button type="button" className={buttonClassName} onClick={() => void onClick()} disabled={isSubmitting}>
-        {isSubmitting ? "保存中..." : isSaved ? "保存済み" : viewer ? "この判断を使う" : "ログインして保存"}
+        {isSubmitting ? "保存中..." : isSaved ? "保存済み" : viewer ? "この判断を保存" : "ログインして保存"}
       </button>
       <p className={styles.hint}>{isSaved ? "履歴から結果を更新できます。" : "採用した判断をあとで振り返れます。"}</p>
       {error ? <p className={styles.error}>{error}</p> : null}

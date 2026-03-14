@@ -1,6 +1,7 @@
 export const ANALYTICS_EVENT_NAMES = [
   "page_view",
   "landing_view",
+  "landing_start_click",
   "landing_cta_click",
   "onboarding_entry_click",
   "nav_click",
@@ -28,6 +29,7 @@ export const ANALYTICS_EVENT_NAMES = [
   "decision_calculator_submit",
   "decision_calculator_result_view",
   "decision_save",
+  "decision_action_click",
   "decision_remove",
   "outcome_update",
   "outcome_reminder_impression",

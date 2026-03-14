@@ -146,6 +146,30 @@
   margin-top: 1.25rem;
 }
 
+.expandPanel {
+  margin-top: 1rem;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.88);
+  overflow: hidden;
+}
+
+.expandSummary {
+  cursor: pointer;
+  list-style: none;
+  padding: 1rem 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.expandSummary::-webkit-details-marker {
+  display: none;
+}
+
+.expandContent {
+  padding: 0 1.15rem 1.15rem;
+}
+
 .recommendationSection {
   margin-top: 0.85rem;
   padding: 1.4rem;
@@ -471,8 +495,7 @@
   font-size: 0.78rem;
   font-weight: 700;
   color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
 }
 
 .metaList dd {

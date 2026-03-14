@@ -231,7 +231,7 @@ export default function MemberControls({
       {isCompact ? (
         <>
           <div className={styles.compactHeader}>
-            <p className={styles.eyebrow}>Account</p>
+            <p className={styles.eyebrow}>アカウント</p>
             <span className={`${styles.badge} ${viewer?.isPaid ? styles.badgePaid : styles.badgeFree}`}>
               {resolveMembershipBadgeLabel(viewer?.isPaid ?? false)}
             </span>
@@ -242,20 +242,20 @@ export default function MemberControls({
               <p className={styles.copy}>
                 {viewer
                   ? viewer.isPaid
-                    ? "すべての判断メモと振り返りを利用できます。"
-                    : "無料版では要点まで確認できます。詳細なプラン管理は Account に集約しています。"
+                  ? "すべての判断メモと振り返りを利用できます。"
+                    : "無料版では要点まで確認できます。詳しい設定はアカウントから管理できます。"
                   : "ログインすると好みの設定、履歴、プラン管理が使えます。"}
               </p>
             </div>
             <Link href="/account" className={styles.compactLink}>
-              {viewer ? "Accountを見る" : "ログイン / Account"}
+              {viewer ? "アカウントを見る" : "ログイン / アカウント"}
             </Link>
           </div>
         </>
       ) : (
         <>
           <div className={styles.header}>
-            <p className={styles.eyebrow}>Account</p>
+            <p className={styles.eyebrow}>アカウント</p>
             <h2 className={styles.title}>{title}</h2>
             <p className={styles.copy}>{copy}</p>
           </div>

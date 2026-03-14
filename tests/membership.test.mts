@@ -9,15 +9,15 @@ import {
 } from "../app/lib/membership.ts";
 
 test("membership helpers describe free viewer defaults", () => {
-  assert.equal(resolvePlanName(null, false), "Free");
-  assert.equal(resolveMembershipBadgeLabel(false), "FREE");
+  assert.equal(resolvePlanName(null, false), "無料版");
+  assert.equal(resolveMembershipBadgeLabel(false), "無料版");
   assert.equal(resolveMembershipStatusLabel(null, false), "無料プラン");
   assert.equal(resolvePaymentStateLabel(null), "未登録");
 });
 
 test("membership helpers describe paid subscription states", () => {
-  assert.equal(resolvePlanName("pro_monthly", true), "Pro Monthly");
-  assert.equal(resolveMembershipBadgeLabel(true), "PAID");
+  assert.equal(resolvePlanName("pro_monthly", true), "月額プラン");
+  assert.equal(resolveMembershipBadgeLabel(true), "有料版");
   assert.equal(resolveMembershipStatusLabel("active", false), "利用中");
   assert.equal(resolveMembershipStatusLabel("active", true), "期間終了で解約予定");
   assert.equal(resolvePaymentStateLabel("past_due"), "更新が必要");
