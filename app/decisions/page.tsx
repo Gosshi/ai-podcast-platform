@@ -192,29 +192,29 @@ export default async function DecisionsPage() {
               ))}
             </ul>
           ) : null}
-          {!isPaid ? (
-            <div className={styles.lockedPanel}>
-              <strong>この先は有料会員向け</strong>
-              <p>次の行動、期限、監視ポイント、判断基準を開放します。</p>
-              <TrackedLink
-                href="/account"
-                className={styles.paywallLink}
-                eventName="judgment_card_locked_cta_click"
-                eventProperties={{
-                  page: "/decisions",
-                  source: "decision_dashboard_locked_panel",
-                  episode_id: card.episode_id,
-                  judgment_card_id: card.id,
-                  genre: card.genre ?? undefined,
-                  frame_type: card.frame_type ?? undefined,
-                  judgment_type: card.judgment_type
-                }}
-              >
-                判断詳細を開放
-              </TrackedLink>
-            </div>
-          ) : null}
         </TrackedLink>
+        {!isPaid ? (
+          <div className={styles.lockedPanel}>
+            <strong>この先は有料会員向け</strong>
+            <p>次の行動、期限、監視ポイント、判断基準を開放します。</p>
+            <TrackedLink
+              href="/account"
+              className={styles.paywallLink}
+              eventName="judgment_card_locked_cta_click"
+              eventProperties={{
+                page: "/decisions",
+                source: "decision_dashboard_locked_panel",
+                episode_id: card.episode_id,
+                judgment_card_id: card.id,
+                genre: card.genre ?? undefined,
+                frame_type: card.frame_type ?? undefined,
+                judgment_type: card.judgment_type
+              }}
+            >
+              判断詳細を開放
+            </TrackedLink>
+          </div>
+        ) : null}
         <div className={styles.cardActionRow}>
           <WatchlistControls
             judgmentCardId={card.id}
