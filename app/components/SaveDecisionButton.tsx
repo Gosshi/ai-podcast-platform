@@ -126,9 +126,9 @@ export default function SaveDecisionButton({
   return (
     <div className={styles.actionRow}>
       <button type="button" className={buttonClassName} onClick={() => void onClick()} disabled={isSubmitting}>
-        {isSubmitting ? "保存中..." : isSaved ? "履歴を見る" : viewer ? "履歴に残す" : "ログインして履歴に残す"}
+        {isSubmitting ? "保存中..." : isSaved ? "実行した判断を見る" : viewer ? "採用して履歴に残す" : "ログインして採用する"}
       </button>
-      <p className={styles.hint}>{isSaved ? "履歴から結果を更新できます。" : "採用した判断だけを履歴に残せます。"}</p>
+      <p className={styles.hint}>{isSaved ? "履歴で結果を更新できます。" : "採用した判断だけを履歴に残せます。"}</p>
       {error ? <p className={styles.error}>{error}</p> : null}
     </div>
   );

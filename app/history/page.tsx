@@ -13,7 +13,7 @@ import {
   OUTCOME_LABELS
 } from "@/app/lib/decisionHistory";
 import { buildDecisionReplayPath } from "@/app/lib/decisionReplay";
-import { formatEpisodeTitle, formatFrameTypeLabel, formatTopicTitle } from "@/app/lib/uiText";
+import { formatEpisodeTitle, formatFrameTypeLabel, formatGenreLabel, formatTopicTitle } from "@/app/lib/uiText";
 import { EMPTY_DECISION_PROFILE } from "@/src/lib/decisionProfile";
 import {
   buildOutcomeReminderCandidates,
@@ -54,18 +54,18 @@ export default async function HistoryPage() {
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>履歴</p>
-          <h1>採用した判断と、その結果をあとで振り返れるようにする。</h1>
+          <h1>実行した判断と、その結果をあとで見直せるようにする。</h1>
           <p className={styles.lead}>
-            採用した判断を残し、あとから満足・後悔・普通で結果を更新できます。自分の判断傾向を蓄積して、次回の選び方に活かせます。
+            採用した判断を残し、あとから満足・普通・後悔で結果を更新できます。自分の判断傾向を蓄積して、次回の選び方に活かせます。
           </p>
 
           <div className={styles.statsGrid}>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>成功率</span>
+              <span className={styles.statLabel}>満足率</span>
               <strong className={styles.statValue}>{stats.successRate}%</strong>
             </article>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>判断数</span>
+              <span className={styles.statLabel}>実行数</span>
               <strong className={styles.statValue}>{stats.totalDecisions}</strong>
             </article>
             <article className={styles.statCard}>
@@ -92,7 +92,7 @@ export default async function HistoryPage() {
         <MemberControls
           viewer={viewer}
           title="プラン"
-          copy="保存した判断に結果を残すことで、自分に合う判断の精度を継続的に上げていきます。"
+          copy="実行した判断に結果を残すことで、自分に合う判断の精度を継続的に上げていきます。"
           analyticsSource="/history"
           variant="compact"
         />
@@ -101,7 +101,7 @@ export default async function HistoryPage() {
       {!viewer ? (
         <section className={styles.noticePanel}>
           <h2>履歴を使うにはログインが必要です</h2>
-          <p>判断カードで「履歴に残す」を押すと履歴に追加されます。ログイン後、この画面で結果を更新できます。</p>
+          <p>判断カードで「採用して履歴に残す」を押すと履歴に追加されます。ログイン後、この画面で結果を更新できます。</p>
           <TrackedLink
             href="/account"
             className={styles.primaryLink}
@@ -119,7 +119,7 @@ export default async function HistoryPage() {
       {!viewer?.isPaid ? (
         <section className={styles.noticePanel}>
           <h2>無料版は10件まで、有料版は上限なしです</h2>
-          <p>保存件数が上限に達すると、新しい判断は保存できません。継続して振り返りたい場合は有料版に切り替えてください。</p>
+          <p>保存件数が上限に達すると、新しい判断は保存できません。継続して見直したい場合は有料版に切り替えてください。</p>
           <TrackedLink
             href="/account"
             className={styles.secondaryLink}
@@ -152,7 +152,7 @@ export default async function HistoryPage() {
               <p className={styles.sectionEyebrow}>判断の傾向</p>
               <h2>履歴から見える、あなたの判断傾向</h2>
               <p className={styles.sectionLead}>
-                保存した履歴を集計して、どんな判断が自分に合いやすいかを見やすくします。
+                実行した履歴を集計して、どんな判断が自分に合いやすいかを見やすくします。
               </p>
             </div>
             <span className={styles.sectionCount}>{profile.totalDecisions}件</span>
@@ -259,7 +259,7 @@ export default async function HistoryPage() {
               <h3>あなたの傾向</h3>
               {profile.insights.length === 0 ? (
                 <p className={styles.profileEmpty}>
-                  履歴が5件以上たまると、比較のしかたやジャンル、結果の傾向をここに表示します。
+                  履歴が5件以上たまると、比較のしかたやカテゴリ、結果の傾向をここに表示します。
                 </p>
               ) : (
                 <ul className={styles.insightList}>
@@ -289,14 +289,14 @@ export default async function HistoryPage() {
         <div className={styles.sectionHeading}>
           <div>
             <p className={styles.sectionEyebrow}>履歴一覧</p>
-            <h2>過去の判断</h2>
+            <h2>実行した判断</h2>
           </div>
           <span className={styles.sectionCount}>{visibleEntries.length}件</span>
         </div>
 
         {visibleEntries.length === 0 ? (
           <p className={styles.emptyText}>
-            まだ履歴はありません。今日の判断または詳細画面から保存すると、ここに積み上がります。
+            まだ履歴はありません。今日の判断または詳細画面から採用すると、ここに積み上がります。
           </p>
         ) : (
           <div className={styles.historyList}>
@@ -314,19 +314,19 @@ export default async function HistoryPage() {
 
                 <dl className={styles.metaGrid}>
                   <div>
-                    <dt>タイトル</dt>
+                    <dt>判断</dt>
                     <dd>{formatTopicTitle(entry.topic_title)}</dd>
                   </div>
                   <div>
-                    <dt>比較のしかた</dt>
-                    <dd>{formatFrameTypeLabel(entry.frame_type, "-")}</dd>
+                    <dt>カテゴリ</dt>
+                    <dd>{formatGenreLabel(entry.genre, "-")}</dd>
                   </div>
                   <div>
-                    <dt>記録日</dt>
+                    <dt>採用日</dt>
                     <dd>{formatDecisionHistoryDate(entry.created_at)}</dd>
                   </div>
                   <div>
-                    <dt>詳細</dt>
+                    <dt>出典</dt>
                     <dd>{formatEpisodeTitle(entry.episode_title)}</dd>
                   </div>
                 </dl>
@@ -364,7 +364,7 @@ export default async function HistoryPage() {
                       outcome: entry.outcome
                     }}
                   >
-                    振り返りを見る
+                    学びを見る
                   </TrackedLink>
                 </div>
                 <RemoveDecisionButton

@@ -26,7 +26,7 @@ export default async function AlertsPage() {
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>お知らせ</p>
-          <h1>アプリを閉じていても、次に見るべき判断を失わない。</h1>
+          <h1>アプリを閉じていても、次に見直す判断を失わない。</h1>
           <p className={styles.lead}>
             期限が近い判断、保存した候補、結果の記録、週ごとのまとめを一箇所にまとめています。
           </p>
@@ -48,7 +48,7 @@ export default async function AlertsPage() {
 
           <div className={styles.linkRow}>
             <Link href="/decisions" className={styles.primaryLink}>
-              今日の判断
+              今日のおすすめ
             </Link>
             <Link href="/weekly-decisions" className={styles.secondaryLink}>
               週ごとのまとめ

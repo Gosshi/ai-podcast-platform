@@ -33,20 +33,20 @@ const STEP_TITLES = [
   {
     id: "interest_topics",
     eyebrow: "1 / 4",
-    title: "興味ジャンルを選ぶ",
-    description: "まずは、ふだん気になりやすいジャンルを教えてください。複数選べます。"
+    title: "気になる判断領域を選ぶ",
+    description: "まずは、ふだん迷いやすいテーマを教えてください。複数選べます。"
   },
   {
     id: "active_subscriptions",
     eyebrow: "2 / 4",
     title: "使っているサービスを教える",
-    description: "今すぐ見られるかどうかを判断しやすくするために使います。"
+    description: "いま試せるか、続けるか、見送るかを整理しやすくするために使います。"
   },
   {
     id: "decision_priority",
     eyebrow: "3 / 4",
     title: "判断で何を優先するかを決める",
-    description: "お金、時間、新しい出会い、後悔しにくさのどれを重視するかを決めます。"
+    description: "お金、時間、新しい発見、後悔しにくさのどれを重視するかを決めます。"
   },
   {
     id: "time_and_budget",
@@ -68,35 +68,35 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 const INTEREST_TOPIC_HELPERS: Record<InterestTopic, string> = {
-  games: "ゲームや実況まわり",
-  streaming: "配信サービスやサブスク",
-  anime: "アニメ作品",
-  movies: "映画や長編作品",
+  games: "ゲームやエンタメ判断",
+  streaming: "サブスクや継続判断",
+  anime: "作品選びや視聴判断",
+  movies: "長めのコンテンツ判断",
   tech: "ガジェットや新サービス"
 };
 
 const ACTIVE_SUBSCRIPTION_HELPERS: Record<ActiveSubscription, string> = {
-  netflix: "Netflixで見ている",
-  prime: "Prime Videoで見ている",
-  disney: "Disney+で見ている",
-  spotify: "Spotifyで聞いている",
-  youtube: "YouTubeをよく使う",
-  chatgpt: "ChatGPTも使っている",
+  netflix: "Netflixを使っている",
+  prime: "Prime Videoを使っている",
+  disney: "Disney+を使っている",
+  spotify: "Spotifyを使っている",
+  youtube: "YouTubeを使っている",
+  chatgpt: "ChatGPTを使っている",
   other: "その他のサービスを使っている",
   none: "今は使っていない"
 };
 
 const DECISION_PRIORITY_HELPERS: Record<DecisionPriority, string> = {
   save_money: "追加課金を抑えたい",
-  save_time: "短時間で外したくない",
-  discover_new: "新しい作品に出会いたい",
+  save_time: "短時間で迷いを減らしたい",
+  discover_new: "新しいものを試したい",
   avoid_regret: "見て後悔する確率を下げたい"
 };
 
 const DAILY_AVAILABLE_TIME_HELPERS: Record<DailyAvailableTime, string> = {
-  under_30m: "スキマ時間で見たい",
-  "30_to_60m": "1話分くらいなら見られる",
-  "1_to_2h": "映画1本くらいなら見られる",
+  under_30m: "スキマ時間だけ使える",
+  "30_to_60m": "1つ判断して動ける",
+  "1_to_2h": "しっかり比較する余裕がある",
   over_2h: "まとまった時間を取りやすい"
 };
 

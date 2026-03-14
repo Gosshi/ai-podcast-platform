@@ -85,7 +85,7 @@ export type UserPreferenceSurfaceContext = {
 
 export const INTEREST_TOPIC_LABELS: Record<InterestTopic, string> = {
   games: "ゲーム",
-  streaming: "動画配信",
+  streaming: "サブスク",
   anime: "アニメ",
   movies: "映画",
   tech: "テック"

@@ -131,26 +131,26 @@ export default async function DecisionsPage() {
             <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`]}`.trim()}>
               {JUDGMENT_TYPE_LABELS[card.judgment_type]}
             </span>
-            <span className={styles.genreTag}>{formatGenreLabel(card.genre, "配信作品")}</span>
+            <span className={styles.genreTag}>{formatGenreLabel(card.genre)}</span>
           </div>
           <h3>{formatTopicTitle(card.topic_title)}</h3>
           <p className={styles.summary}>{card.judgment_summary}</p>
           <dl className={styles.metaList}>
             <div>
-              <dt>次にすると良いこと</dt>
+              <dt>理由</dt>
+              <dd>{card.judgment_summary}</dd>
+            </div>
+            <div>
+              <dt>次の行動</dt>
               <dd>{card.action_text ?? "気になったら詳細を開いて確認する"}</dd>
             </div>
             <div>
-              <dt>期限</dt>
-              <dd>{card.deadline_at ? formatDeadline(card.deadline_at) : "期限なし"}</dd>
+              <dt>見直しタイミング</dt>
+              <dd>{card.deadline_at ? formatDeadline(card.deadline_at) : "今週中に見直す"}</dd>
             </div>
             <div>
               <dt>あなた向け補足</dt>
               <dd>{personalHint?.text ?? "気分や使える時間に合うかを先に確認すると迷いにくくなります。"}</dd>
-            </div>
-            <div>
-              <dt>詳細</dt>
-              <dd>{formatEpisodeTitle(card.episode_title)}</dd>
             </div>
           </dl>
           {personalHint ? (
@@ -164,7 +164,7 @@ export default async function DecisionsPage() {
         {!isPaid ? (
           <div className={styles.lockedPanel}>
             <strong>有料版では判断の背景まで確認できます</strong>
-            <p>次の行動や見直しの目安を、より詳しく確認できます。</p>
+            <p>理由、次の行動、見直しタイミングを、より詳しく確認できます。</p>
             <TrackedLink
               href="/account"
               className={styles.paywallLink}
@@ -228,12 +228,12 @@ export default async function DecisionsPage() {
           }}
         />
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>今日の判断</p>
-          <h1>今日の判断</h1>
-          <p className={styles.lead}>今日のおすすめ判断を、好みや履歴をもとにまとめています。</p>
+          <p className={styles.eyebrow}>今日のおすすめ</p>
+          <h1>今日のおすすめ</h1>
+          <p className={styles.lead}>今日の判断を、好みや履歴をもとに短いカードでまとめています。</p>
           <div className={styles.heroMeta}>
             <span className={styles.heroBadge}>{isPaid ? "有料プラン" : "無料プラン"}</span>
-            <span>{isPaid ? "見直しタイミングや傾向まで含めて確認できます" : "まずは要点から軽く確認できます"}</span>
+            <span>{isPaid ? "理由や見直しタイミングまで含めて確認できます" : "まずは要点から軽く確認できます"}</span>
           </div>
           <div className={styles.heroActions}>
             {viewer?.needsOnboarding || !viewer ? (
@@ -259,7 +259,7 @@ export default async function DecisionsPage() {
                 source: "decision_dashboard_hero_watchlist_link"
               }}
             >
-              保存を見る
+              後で考える判断を見る
             </TrackedLink>
           </div>
         </div>
@@ -317,7 +317,7 @@ export default async function DecisionsPage() {
                     </span>
                   </div>
                   <div className={styles.recommendationMetaRow}>
-                    <span className={styles.genreTag}>{formatGenreLabel(recommendation.card.genre, "配信作品")}</span>
+                    <span className={styles.genreTag}>{formatGenreLabel(recommendation.card.genre)}</span>
                     <span className={styles.recommendationEpisodeLabel}>
                       {formatEpisodeTitle(recommendation.card.episode_title)}
                     </span>
@@ -326,7 +326,7 @@ export default async function DecisionsPage() {
                   <p className={styles.summary}>{recommendation.card.judgment_summary}</p>
                   <dl className={styles.metaList}>
                     <div>
-                      <dt>次にすると良いこと</dt>
+                      <dt>次の行動</dt>
                       <dd>{recommendation.recommended_action}</dd>
                     </div>
                     <div>
@@ -355,8 +355,8 @@ export default async function DecisionsPage() {
           <div className={styles.expandContent}>
             <div className={styles.sectionHeading}>
               <div>
-                <p className={styles.sectionEyebrow}>今日の判断一覧</p>
-                <h2>今日の判断一覧</h2>
+                <p className={styles.sectionEyebrow}>一覧</p>
+                <h2>今日のおすすめ一覧</h2>
                 <p className={styles.sectionCaption}>{todayLabel}</p>
               </div>
               <span className={styles.sectionCount}>{allDecisionCards.length}件</span>
@@ -373,7 +373,7 @@ export default async function DecisionsPage() {
         {!isPaid ? (
           <div className={styles.recommendationFootnote}>
             <p className={styles.sectionEyebrow}>プラン</p>
-            <h3>有料版では「なぜこの候補を出したか」まで見えます</h3>
+            <h3>有料版では「なぜこの判断か」まで見えます</h3>
             <p>見直しタイミングやあなたの傾向まで含めて、より納得しやすいおすすめに広がります。</p>
             <TrackedLink
               href="/account"

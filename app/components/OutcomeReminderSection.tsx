@@ -40,7 +40,7 @@ export default function OutcomeReminderSection({
           <p className={styles.eyebrow}>結果の記録</p>
           <h2>結果を記録してください</h2>
           <p className={styles.lead}>
-            判断して終わりではなく、結果を残して次のおすすめや振り返りに活かします。
+            判断して終わりではなく、結果を残して次のおすすめに活かします。
           </p>
         </div>
         <span className={styles.countBadge}>{reminders.length}件</span>
@@ -133,7 +133,7 @@ export default function OutcomeReminderSection({
                   reminder_reason: reminder.reason
                 }}
               >
-                履歴を見る
+                実行した判断を見る
               </TrackedLink>
               <TrackedLink
                 href={buildDecisionReplayPath(reminder.id)}
@@ -152,7 +152,7 @@ export default function OutcomeReminderSection({
                   reminder_reason: reminder.reason
                 }}
               >
-                振り返りを見る
+                学びを見る
               </TrackedLink>
             </div>
           </article>

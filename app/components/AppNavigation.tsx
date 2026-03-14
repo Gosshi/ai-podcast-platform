@@ -44,7 +44,7 @@ export default function AppNavigation() {
             destination: "/"
           }}
         >
-          視聴判断ガイド
+          AI Decision Assistant
         </TrackedLink>
 
         <nav className={styles.nav} aria-label="Primary">

@@ -106,9 +106,9 @@ const SIGNAL_LABELS: Record<ThresholdSignalKey, string> = {
 };
 
 const DECISION_TYPE_LABELS: Record<JudgmentType, string> = {
-  use_now: "今すぐ見る",
-  watch: "あとで判断",
-  skip: "見送り"
+  use_now: "採用",
+  watch: "後で考える",
+  skip: "見送る"
 };
 
 const FRAME_TYPE_LABELS: Record<string, string> = {
@@ -119,15 +119,18 @@ const FRAME_TYPE_LABELS: Record<string, string> = {
 };
 
 const GENRE_LABELS: Record<string, string> = {
-  games: "ゲーム",
-  streaming: "動画配信",
-  anime: "アニメ",
-  movies: "映画",
-  movie: "映画",
-  tech: "テック",
   entertainment: "エンタメ",
-  general: "総合",
-  travel: "旅行"
+  games: "エンタメ",
+  streaming: "サブスク",
+  anime: "エンタメ",
+  movies: "エンタメ",
+  movie: "エンタメ",
+  tech: "テック",
+  tools: "ツール",
+  tool: "ツール",
+  general: "生活",
+  life: "生活",
+  travel: "生活"
 };
 
 export const MIN_PROFILE_HISTORY = 5;
@@ -315,7 +318,7 @@ const buildInsightCandidates = (profile: DecisionProfile): InsightCandidate[] =>
     candidates.push({
       key: `genre-use-now:${useNowGenre.key}`,
       title: `${useNowGenre.label} ではすぐ決めることが多い`,
-      body: `過去${useNowGenre.count}件中${useNowGenre.useNowCount}件で今すぐ見る判断を選んでいます。このジャンルは即断しやすい傾向です。`,
+      body: `過去${useNowGenre.count}件中${useNowGenre.useNowCount}件で採用判断を選んでいます。このカテゴリは即断しやすい傾向です。`,
       tone: "neutral",
       supportingCount: useNowGenre.count,
       score: useNowGenre.useNowRate + useNowGenre.count * 3
@@ -326,8 +329,8 @@ const buildInsightCandidates = (profile: DecisionProfile): InsightCandidate[] =>
   if (watchPattern.count >= MIN_SEGMENT_HISTORY && watchPattern.regretRate >= 40 && watchPattern.regretCount >= 2) {
     candidates.push({
       key: "decision-watch-regret",
-      title: "あとで判断にした項目は後悔しやすい傾向があります",
-      body: `あとで判断を選んだ${watchPattern.count}件のうち${watchPattern.regretCount}件で後悔がありました。保留のままにせず、見直し条件を明確にすると改善しやすくなります。`,
+      title: "後で考えるにした項目は後悔しやすい傾向があります",
+      body: `後で考えるを選んだ${watchPattern.count}件のうち${watchPattern.regretCount}件で後悔がありました。保留のままにせず、見直し条件を明確にすると改善しやすくなります。`,
       tone: "caution",
       supportingCount: watchPattern.count,
       score: watchPattern.regretRate + watchPattern.count * 3
@@ -516,7 +519,7 @@ export const buildPersonalDecisionHint = (params: {
       if (genreStat.useNowRate >= 60 && genreStat.useNowCount >= 2) {
         candidates.push({
           key: `genre-use-now:${genreStat.key}`,
-          text: `${genreStat.label} は今すぐ見る判断が多めです。過去${genreStat.count}件中${genreStat.useNowCount}件で優先して決めています。`,
+          text: `${genreStat.label} は採用判断が多めです。過去${genreStat.count}件中${genreStat.useNowCount}件で優先して決めています。`,
           tone: "neutral",
           supportingCount: genreStat.count,
           score: genreStat.useNowRate + genreStat.count * 3

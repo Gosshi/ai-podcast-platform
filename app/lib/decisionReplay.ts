@@ -117,7 +117,7 @@ const EMPTY_REPLAY_PROFILE: DecisionProfile = {
     },
     watch: {
       key: "watch",
-      label: "あとで判断",
+      label: "後で考える",
       count: 0,
       successCount: 0,
       regretCount: 0,
@@ -135,7 +135,7 @@ const EMPTY_REPLAY_PROFILE: DecisionProfile = {
     },
     skip: {
       key: "skip",
-      label: "見送り",
+      label: "見送る",
       count: 0,
       successCount: 0,
       regretCount: 0,
@@ -260,7 +260,7 @@ export const buildDecisionReplayInsights = (
       {
         key: "outcome-pending",
         title: "まだ結果は記録されていません",
-        body: "結果を記録すると、この振り返りが次のおすすめ改善にも活き始めます。",
+        body: "結果を記録すると、この学びが次のおすすめ改善にも活き始めます。",
         tone: "neutral"
       }
     ];
@@ -286,7 +286,7 @@ export const buildDecisionReplayInsights = (
     candidates.push({
       key: "outcome-regret",
       title: "この判断は後悔として残りました",
-      body: "結果は「後悔」でした。どの条件を軽く見たかを振り返りに残しておくと、次回のおすすめ改善に使いやすくなります。",
+      body: "結果は「後悔」でした。どの条件を軽く見たかを学びとして残しておくと、次回のおすすめ改善に使いやすくなります。",
       tone: "caution",
       score: 60
     });
@@ -296,7 +296,7 @@ export const buildDecisionReplayInsights = (
     if (replay.outcome === "success" && decisionTypeStat.successRate >= 67) {
       candidates.push({
         key: `decision-type-success:${replay.decision_type}`,
-        title: `「${replay.decision_type === "use_now" ? "今すぐ見る" : replay.decision_type === "watch" ? "あとで判断" : "見送り"}」判断は相性が良いかもしれません`,
+        title: `「${replay.decision_type === "use_now" ? "採用" : replay.decision_type === "watch" ? "後で考える" : "見送る"}」判断は相性が良いかもしれません`,
         body: `この判断タイプは履歴${decisionTypeStat.count}件中${decisionTypeStat.successCount}件が満足です。今回も同じ型で良い結果になっています。`,
         tone: "positive",
         score: decisionTypeStat.successRate + decisionTypeStat.count * 4
@@ -306,8 +306,8 @@ export const buildDecisionReplayInsights = (
     if (replay.outcome === "regret" && decisionTypeStat.regretRate >= 50) {
       candidates.push({
         key: `decision-type-regret:${replay.decision_type}`,
-        title: `「${replay.decision_type === "use_now" ? "今すぐ見る" : replay.decision_type === "watch" ? "あとで判断" : "見送り"}」判断は見直し余地がありそうです`,
-        body: `この判断タイプは履歴${decisionTypeStat.count}件中${decisionTypeStat.regretCount}件が後悔です。今回も同じ流れなら、判断前の終了条件を明確にすると振り返りやすくなります。`,
+        title: `「${replay.decision_type === "use_now" ? "採用" : replay.decision_type === "watch" ? "後で考える" : "見送る"}」判断は見直し余地がありそうです`,
+        body: `この判断タイプは履歴${decisionTypeStat.count}件中${decisionTypeStat.regretCount}件が後悔です。今回も同じ流れなら、判断前の終了条件を明確にすると見直しやすくなります。`,
         tone: "caution",
         score: decisionTypeStat.regretRate + decisionTypeStat.count * 4
       });
@@ -319,7 +319,7 @@ export const buildDecisionReplayInsights = (
       candidates.push({
         key: `frame-success:${frameStat.key}`,
         title: `${frameStat.label} は安定して機能している可能性があります`,
-        body: `この比較のしかたは履歴${frameStat.count}件中${frameStat.successCount}件が満足です。今回の振り返りでも同じ流れで噛み合っています。`,
+        body: `この比較のしかたは履歴${frameStat.count}件中${frameStat.successCount}件が満足です。今回の見直しでも同じ流れで噛み合っています。`,
         tone: "positive",
         score: frameStat.successRate + frameStat.count * 3
       });
@@ -340,7 +340,7 @@ export const buildDecisionReplayInsights = (
     candidates.push({
       key: "watch-regret",
       title: "保留を長く続けると後悔に寄りやすいかもしれません",
-      body: "今回は「あとで判断」のまま後悔に着地しました。次回は保留の終了条件か期限を先に決めておくと、放置を減らしやすくなります。",
+      body: "今回は「後で考える」のまま後悔に着地しました。次回は保留の終了条件か期限を先に決めておくと、放置を減らしやすくなります。",
       tone: "caution",
       score: 78
     });
@@ -350,7 +350,7 @@ export const buildDecisionReplayInsights = (
     candidates.push({
       key: "deadline-missing",
       title: "次回は期限を重視したほうが良いかもしれません",
-      body: "この振り返りには明確な期限が残っていません。期限がない判断は、比較や再評価のタイミングを逃しやすくなります。",
+      body: "この学びには明確な期限が残っていません。期限がない判断は、比較や再評価のタイミングを逃しやすくなります。",
       tone: "caution",
       score: 72
     });
@@ -359,7 +359,7 @@ export const buildDecisionReplayInsights = (
   if (replay.deadline_at && replay.outcome === "success") {
     candidates.push({
       key: "deadline-helped",
-      title: "期限がある判断は振り返りやすい傾向です",
+      title: "期限がある判断は見直しやすい傾向です",
       body: "今回は期限を置いたまま満足につながりました。再確認日がある判断は、傾向の学習にも活かしやすくなります。",
       tone: "positive",
       score: 70
@@ -380,7 +380,7 @@ export const buildDecisionReplayInsights = (
     candidates.push({
       key: "watch-points-missing",
       title: "判断条件をもう少し言語化すると良さそうです",
-      body: "この振り返りでは見直しポイントが残っていません。次回は比較観点を2つか3つだけでも残すと、後悔理由を切り分けやすくなります。",
+      body: "この学びでは見直しポイントが残っていません。次回は比較観点を2つか3つだけでも残すと、後悔理由を切り分けやすくなります。",
       tone: "neutral",
       score: 62
     });
@@ -390,7 +390,7 @@ export const buildDecisionReplayInsights = (
     candidates.push({
       key: "data-light",
       title: "まだ強い傾向は出ていません",
-      body: "この振り返りは傾向とおすすめを育てるための基礎データになります。履歴が増えるほど、より具体的な学びを返しやすくなります。",
+      body: "この見直しは傾向とおすすめを育てるための基礎データになります。履歴が増えるほど、より具体的な学びを返しやすくなります。",
       tone: "neutral",
       score: 1
     });

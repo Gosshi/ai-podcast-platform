@@ -86,7 +86,7 @@ const resolveDeadlineInfo = (
   if (daysUntil <= 0) {
     return {
       score: 82,
-      deadlineLabel: isPaid ? deadlineAt ?? "今日が期限" : "今日中に確認",
+      deadlineLabel: isPaid ? deadlineAt ?? "今日が見直し日" : "今日中に確認",
       urgencyLevel: "critical",
       tag: "締切が近い"
     };
@@ -157,7 +157,7 @@ const resolveJudgmentTypeScore = (
       return {
         score: -18,
         urgencyLevel: "low",
-        tag: "見送り候補"
+        tag: "見送る候補"
       };
   }
 };
@@ -184,7 +184,7 @@ const resolveRecommendedAction = (card: NextBestDecisionCardInput): string => {
     case "watch":
       return card.ranking_deadline_at ? "期限までに条件を見直す" : "条件が動いたら再確認する";
     case "skip":
-      return "今回は見送り、他の候補を優先する";
+      return "今回は見送る、他の候補を優先する";
   }
 };
 

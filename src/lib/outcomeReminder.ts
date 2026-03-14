@@ -124,5 +124,5 @@ export const formatOutcomeReminderTiming = (candidate: OutcomeReminderCandidate)
     return `期限から${candidate.days_past_deadline}日経過`;
   }
 
-  return `保存から${candidate.elapsed_days}日経過`;
+  return `採用から${candidate.elapsed_days}日経過`;
 };

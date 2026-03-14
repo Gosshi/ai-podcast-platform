@@ -74,8 +74,8 @@ const INTEREST_TOPIC_GENRE_ALIASES: Record<InterestTopic, string[]> = {
 };
 
 const INTEREST_TOPIC_REASON_LABELS: Record<InterestTopic, string> = {
-  games: "ゲームの興味に一致",
-  streaming: "動画配信の興味に一致",
+  games: "エンタメの興味に一致",
+  streaming: "サブスクの興味に一致",
   anime: "アニメの興味に一致",
   movies: "映画の興味に一致",
   tech: "テックの興味に一致"

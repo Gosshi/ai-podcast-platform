@@ -3,9 +3,9 @@ import AppNavigation from "@/app/components/AppNavigation";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "視聴判断ガイド",
+  title: "AI Decision Assistant",
   description:
-    "エンタメ視聴とサブスクの迷いを、AIと履歴で整理する。今日見るもの、続けるもの、見送るものを決めるためのサービスです。"
+    "日々の判断をAIと履歴で整理するDecision Assistant。短い判断カードで行動、結果、学習のループを回します。"
 };
 
 export default function RootLayout({
