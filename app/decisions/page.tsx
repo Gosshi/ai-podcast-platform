@@ -1,7 +1,6 @@
 import AlertsInbox from "@/app/components/AlertsInbox";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
-import MemberControls from "@/app/components/MemberControls";
 import OutcomeReminderSection from "@/app/components/OutcomeReminderSection";
 import SaveDecisionButton from "@/app/components/SaveDecisionButton";
 import TrackedLink from "@/app/components/TrackedLink";
@@ -21,14 +20,14 @@ import styles from "./page.module.css";
 export const dynamic = "force-dynamic";
 
 const JUDGMENT_TYPE_LABELS = {
-  use_now: "使う",
-  watch: "監視",
+  use_now: "今日見る",
+  watch: "続けるか見極める",
   skip: "見送り"
 } as const;
 
 const JUDGMENT_TYPE_DESCRIPTIONS = {
-  use_now: "今日すぐ使う候補",
-  watch: "条件変化を監視する候補",
+  use_now: "今日先に見たい候補",
+  watch: "続けるか様子を見る候補",
   skip: "今は見送る候補"
 } as const;
 
@@ -67,10 +66,15 @@ const formatDecisionDate = (value: string | null): string => {
   });
 };
 
+const buildAccountEntryPath = (nextPath: string): string => {
+  return `/account?next=${encodeURIComponent(nextPath)}`;
+};
+
 export default async function DecisionsPage() {
   const viewer = await getViewerFromCookies();
   const isPaid = viewer?.isPaid ?? false;
   const onboardingPath = buildOnboardingPath("/decisions");
+  const onboardingEntryHref = viewer ? onboardingPath : buildAccountEntryPath(onboardingPath);
 
   const [{ cards, error }, historyState, alertState] = await Promise.all([
     loadDecisionDashboardCards({ isPaid, userId: viewer?.userId }),
@@ -146,7 +150,7 @@ export default async function DecisionsPage() {
             <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`]}`.trim()}>
               {JUDGMENT_TYPE_LABELS[card.judgment_type]}
             </span>
-            <span className={styles.genreTag}>{card.genre ?? "general"}</span>
+            <span className={styles.genreTag}>{card.genre ?? "配信作品"}</span>
           </div>
           <h3>{card.topic_title}</h3>
           <p className={styles.summary}>{card.judgment_summary}</p>
@@ -247,47 +251,35 @@ export default async function DecisionsPage() {
 
       <section className={styles.hero}>
         <AnalyticsEventOnRender
-          eventName="decisions_hero_impression"
+          eventName="decisions_intro_impression"
           properties={{
             page: "/decisions",
-            source: "decisions_hero",
+            source: "decisions_intro",
             is_paid: isPaid,
             needs_onboarding: Boolean(viewer?.needsOnboarding)
           }}
         />
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>Decisions</p>
-          <h1>今日のおすすめから、そのまま見始められます。</h1>
-          <p className={styles.lead}>
-            まず見るべき作品、少し様子を見たい候補、今回は見送ってよい候補を、短い判断メモでまとめています。
-          </p>
+          <h1>今日の判断</h1>
+          <p className={styles.lead}>AIが、今日見るもの・続けるもの・見送るものを提案します。</p>
           <div className={styles.heroMeta}>
             <span className={styles.heroBadge}>{isPaid ? "有料プラン" : "無料プラン"}</span>
-            <span>{isPaid ? "詳しい理由や次の一手まで確認できます" : "まずは要点だけ軽く確認できます"}</span>
+            <span>{isPaid ? "好みと履歴を反映した提案を確認できます" : "まずは要点だけ軽く確認できます"}</span>
           </div>
           <div className={styles.heroActions}>
-            {viewer?.needsOnboarding ? (
+            {viewer?.needsOnboarding || !viewer ? (
               <TrackedLink
-                href={onboardingPath}
+                href={onboardingEntryHref}
                 className={styles.secondaryHeroLink}
-                eventName="nav_click"
+                eventName="onboarding_entry_click"
                 eventProperties={{
                   page: "/decisions",
-                  source: "decisions_hero_onboarding",
+                  source: "decisions_intro",
                   destination: onboardingPath
                 }}
-                additionalEvents={[
-                  {
-                    eventName: "onboarding_entry_click",
-                    eventProperties: {
-                      page: "/decisions",
-                      source: "decisions_hero",
-                      destination: onboardingPath
-                    }
-                  }
-                ]}
               >
-                好みを設定する
+                {viewer ? "好みを設定する" : "ログインして好みを設定する"}
               </TrackedLink>
             ) : null}
             <TrackedLink
@@ -303,54 +295,12 @@ export default async function DecisionsPage() {
             </TrackedLink>
           </div>
         </div>
-
-        <MemberControls
-          viewer={viewer}
-          title="プラン"
-          copy="無料版は要点まで、有料版は詳しい判断メモまで確認できます。"
-          analyticsSource="/decisions"
-          variant="compact"
-        />
       </section>
-
-      {viewer?.needsOnboarding ? (
-        <section className={styles.onboardingPrompt}>
-          <div>
-            <p className={styles.sectionEyebrow}>Setup</p>
-            <h2>好みを先に入れておくと、おすすめが安定します。</h2>
-            <p className={styles.sectionCaption}>
-              よく見るジャンルや使っているサービスを数問で設定すると、今日のおすすめがあなた向けに整います。
-            </p>
-          </div>
-          <TrackedLink
-            href={onboardingPath}
-            className={styles.heroLink}
-            eventName="nav_click"
-            eventProperties={{
-              page: "/decisions",
-              source: "decisions_onboarding_prompt",
-              destination: onboardingPath
-            }}
-            additionalEvents={[
-              {
-                eventName: "onboarding_entry_click",
-                eventProperties: {
-                  page: "/decisions",
-                  source: "decisions_prompt",
-                  destination: onboardingPath
-                }
-              }
-            ]}
-          >
-            1分で設定する
-          </TrackedLink>
-        </section>
-      ) : null}
 
       <section className={styles.recommendationSection}>
         <div className={styles.recommendationHeader}>
           <div>
-            <p className={styles.sectionEyebrow}>Today&apos;s Pick</p>
+            <p className={styles.sectionEyebrow}>今日のおすすめ</p>
             <h2>{isPaid ? "今日のおすすめ" : "まず見ておきたい判断"}</h2>
             <p className={styles.sectionCaption}>
               {isPaid
@@ -364,7 +314,7 @@ export default async function DecisionsPage() {
         </div>
 
         {nextBestDecisions.length === 0 ? (
-          <p className={styles.emptyText}>今すぐおすすめできる判断メモはまだありません。</p>
+          <p className={styles.emptyText}>今すぐおすすめできる判断カードはまだありません。</p>
         ) : (
           <div className={styles.recommendationGrid}>
             {nextBestDecisions.map((recommendation) => (
@@ -404,9 +354,9 @@ export default async function DecisionsPage() {
                     </span>
                   </div>
                   <div className={styles.recommendationMetaRow}>
-                    <span className={styles.genreTag}>{recommendation.card.genre ?? "general"}</span>
+                    <span className={styles.genreTag}>{recommendation.card.genre ?? "配信作品"}</span>
                     <span className={styles.recommendationEpisodeLabel}>
-                      {recommendation.card.episode_title ?? "Untitled episode"}
+                      {recommendation.card.episode_title ?? "エピソード未設定"}
                     </span>
                   </div>
                   <h3>{recommendation.card.topic_title}</h3>
@@ -439,7 +389,7 @@ export default async function DecisionsPage() {
 
         {!isPaid ? (
           <div className={styles.recommendationFootnote}>
-            <p className={styles.sectionEyebrow}>Upgrade</p>
+            <p className={styles.sectionEyebrow}>プラン</p>
             <h3>有料版では「なぜこの候補を出したか」まで見えます</h3>
             <p>見直しタイミングやあなたの傾向まで含めて、より納得しやすいおすすめに広がります。</p>
             <TrackedLink
@@ -457,14 +407,14 @@ export default async function DecisionsPage() {
         ) : null}
       </section>
 
-      {error ? <p className={styles.errorText}>判断メモの読み込みに失敗しました: {error}</p> : null}
+      {error ? <p className={styles.errorText}>判断カードの読み込みに失敗しました: {error}</p> : null}
       {alertState.error ? <p className={styles.errorText}>お知らせの同期に失敗しました: {alertState.error}</p> : null}
 
       {!isPaid ? (
         <section className={styles.paywallBanner}>
           <div>
-            <p className={styles.paywallEyebrow}>Free Preview</p>
-            <h2>詳しい判断メモは Account から切り替えできます</h2>
+            <p className={styles.paywallEyebrow}>無料版</p>
+            <h2>詳しい判断カードは Account から切り替えできます</h2>
             <p>
               無料版はまず要点を確認するための入口です。有料版にすると、次の一手や見直しタイミングまでまとめて見られます。
             </p>
@@ -505,7 +455,7 @@ export default async function DecisionsPage() {
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionEyebrow}>Today</p>
+            <p className={styles.sectionEyebrow}>今日の判断</p>
             <h2>今日の判断</h2>
             <p className={styles.sectionCaption}>{todayLabel}</p>
           </div>
@@ -517,10 +467,10 @@ export default async function DecisionsPage() {
         </div>
 
         {todayCards.length === 0 ? (
-          <p className={styles.emptyText}>判断メモはまだありません。</p>
+          <p className={styles.emptyText}>判断カードはまだありません。</p>
         ) : (
           <div className={styles.grid}>
-            {todayCards.map((card) => renderDecisionCard(card, "元エピソード", card.episode_title ?? "Untitled episode"))}
+            {todayCards.map((card) => renderDecisionCard(card, "元エピソード", card.episode_title ?? "エピソード未設定"))}
           </div>
         )}
       </section>

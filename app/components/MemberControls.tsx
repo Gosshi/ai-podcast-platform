@@ -24,6 +24,7 @@ type MemberControlsProps = {
   showBillingPortal?: boolean;
   analyticsSource?: string;
   variant?: "full" | "compact";
+  authRedirectPath?: string;
 };
 
 const syncServerSession = async (session: Session | null): Promise<void> => {
@@ -56,7 +57,8 @@ export default function MemberControls({
   copy = "無料版は判断の入口まで。有料会員になると行動指針、期限、監視ポイント、アーカイブが開放されます。",
   showBillingPortal = false,
   analyticsSource,
-  variant = "full"
+  variant = "full",
+  authRedirectPath = "/decisions"
 }: MemberControlsProps) {
   const router = useRouter();
   const [email, setEmail] = useState(viewer?.email ?? "");
@@ -132,7 +134,7 @@ export default function MemberControls({
     const { error: signInError } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent("/decisions")}`
+        emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(authRedirectPath)}`
       }
     });
 
@@ -229,7 +231,7 @@ export default function MemberControls({
       {isCompact ? (
         <>
           <div className={styles.compactHeader}>
-            <p className={styles.eyebrow}>Plan</p>
+            <p className={styles.eyebrow}>Account</p>
             <span className={`${styles.badge} ${viewer?.isPaid ? styles.badgePaid : styles.badgeFree}`}>
               {resolveMembershipBadgeLabel(viewer?.isPaid ?? false)}
             </span>
@@ -246,14 +248,14 @@ export default function MemberControls({
               </p>
             </div>
             <Link href="/account" className={styles.compactLink}>
-              {viewer ? "Accountを見る" : "ログイン / プランを見る"}
+              {viewer ? "Accountを見る" : "ログイン / Account"}
             </Link>
           </div>
         </>
       ) : (
         <>
           <div className={styles.header}>
-            <p className={styles.eyebrow}>Membership</p>
+            <p className={styles.eyebrow}>Account</p>
             <h2 className={styles.title}>{title}</h2>
             <p className={styles.copy}>{copy}</p>
           </div>

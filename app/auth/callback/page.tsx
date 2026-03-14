@@ -41,7 +41,11 @@ const resolvePostAuthDestination = async (next: string): Promise<string> => {
       needsOnboarding?: boolean;
     };
 
-    return payload.needsOnboarding ? buildOnboardingPath(next) : next;
+    if (!payload.needsOnboarding) {
+      return next;
+    }
+
+    return next.startsWith("/onboarding") ? next : buildOnboardingPath(next);
   } catch {
     return next;
   }

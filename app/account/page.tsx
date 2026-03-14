@@ -4,7 +4,7 @@ import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
 import NotificationPreferencesForm from "@/app/components/NotificationPreferencesForm";
 import { syncUserAlerts } from "@/app/lib/alerts";
-import { buildOnboardingPath } from "@/app/lib/onboarding";
+import { buildOnboardingPath, resolveSafeNextPath } from "@/app/lib/onboarding";
 import {
   formatMembershipDate,
   resolveMembershipBadgeLabel,
@@ -29,6 +29,7 @@ import styles from "./page.module.css";
 
 type SearchParams = {
   subscription?: string | string[];
+  next?: string | string[];
 };
 
 const readParam = (value: string | string[] | undefined): string | null => {
@@ -75,6 +76,7 @@ export default async function AccountPage({
         error: null
       };
   const subscription = readParam(params.subscription);
+  const authRedirectPath = resolveSafeNextPath(readParam(params.next), "/decisions");
   const membershipBadge = resolveMembershipBadgeLabel(viewer?.isPaid ?? false);
   const planName = resolvePlanName(viewer?.planType ?? null, viewer?.isPaid ?? false);
   const membershipStatus = resolveMembershipStatusLabel(
@@ -123,6 +125,7 @@ export default async function AccountPage({
             copy="購読の開始、支払い方法の更新、解約確認まで、この画面を起点に迷わず進められるように整えています。"
             showBillingPortal
             analyticsSource="/account"
+            authRedirectPath={authRedirectPath}
           />
         </section>
 

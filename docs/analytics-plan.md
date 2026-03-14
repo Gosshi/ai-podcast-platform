@@ -39,6 +39,7 @@
 - Page:
   - `page_view`
   - `decisions_view`
+  - `decisions_intro_impression`
   - `episodes_view`
   - `history_view`
   - `weekly_digest_view`
@@ -88,7 +89,7 @@
   - compare free users who saw calculator lock vs dashboard paywall
 
 ## Verification
-1. Open `/decisions` and confirm `page_view`, `decisions_view`
+1. Open `/decisions` and confirm `page_view`, `decisions_view`, `decisions_intro_impression`
 2. Inspect a judgment card and confirm `judgment_card_impression`
 3. Open calculator and run a recalculation to confirm calculator events
 4. Save a decision, confirm reminder impression, and quick-submit an outcome

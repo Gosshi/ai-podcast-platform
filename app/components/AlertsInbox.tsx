@@ -51,10 +51,10 @@ const resolveClickEvents = (alertType: AlertType): ("alert_click" | "weekly_dige
 export default function AlertsInbox({
   alerts,
   page,
-  title = "Alerts",
-  lead = "期限、未処理、週次まとめを in-app で受け取れます。",
-  emptyTitle = "今は alert がありません",
-  emptyCopy = "次の deadline、watchlist、outcome reminder、weekly digest が揃うとここに表示されます。",
+  title = "お知らせ",
+  lead = "期限が近いものや振り返りたい判断を、ここからまとめて開き直せます。",
+  emptyTitle = "今はお知らせがありません",
+  emptyCopy = "見直しタイミングが来た判断や週次まとめがあると、ここに表示されます。",
   showViewAllLink = false
 }: AlertsInboxProps) {
   const router = useRouter();
@@ -112,16 +112,16 @@ export default function AlertsInbox({
     <section className={styles.panel}>
       <div className={styles.panelHeader}>
         <div>
-          <p className={styles.eyebrow}>Notifications / Alerts</p>
+          <p className={styles.eyebrow}>Notifications</p>
           <h2>{title}</h2>
           <p className={styles.lead}>{lead}</p>
         </div>
 
         <div className={styles.headerActions}>
-          <span className={styles.countBadge}>{unreadCount} unread</span>
+          <span className={styles.countBadge}>未読 {unreadCount}</span>
           {showViewAllLink ? (
             <Link href="/alerts" className={styles.viewAllLink}>
-              View All
+              すべて見る
             </Link>
           ) : null}
         </div>
@@ -160,14 +160,14 @@ export default function AlertsInbox({
                     <span className={`${styles.badge} ${styles[`urgency_${alert.urgency}`]}`.trim()}>
                       {ALERT_URGENCY_LABELS[alert.urgency]}
                     </span>
-                    {!alert.isRead ? <span className={styles.metaPill}>Unread</span> : null}
-                    {alert.previewLimited ? <span className={styles.metaPill}>Preview</span> : null}
+                    {!alert.isRead ? <span className={styles.metaPill}>未読</span> : null}
+                    {alert.previewLimited ? <span className={styles.metaPill}>一部表示</span> : null}
                   </div>
                   <h3>{alert.title}</h3>
                 </div>
 
                 <div className={styles.metaRow}>
-                  <span className={styles.metaPill}>Due {formatDueAt(alert.dueAt)}</span>
+                  <span className={styles.metaPill}>見直し: {formatDueAt(alert.dueAt)}</span>
                 </div>
               </div>
 

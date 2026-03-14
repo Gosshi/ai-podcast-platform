@@ -4,7 +4,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "視聴判断ガイド",
-  description: "配信作品やサブスクの迷いを、短い判断メモで整理するサービス"
+  description:
+    "エンタメ視聴とサブスクの迷いを、AIと履歴で整理する。今日見るもの、続けるもの、見送るものを決めるためのサービスです。"
 };
 
 export default function RootLayout({

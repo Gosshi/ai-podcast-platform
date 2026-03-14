@@ -5,6 +5,7 @@ export const ANALYTICS_EVENT_NAMES = [
   "onboarding_entry_click",
   "nav_click",
   "decisions_view",
+  "decisions_intro_impression",
   "decisions_hero_impression",
   "alerts_view",
   "library_view",
