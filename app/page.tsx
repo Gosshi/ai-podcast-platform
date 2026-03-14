@@ -1,7 +1,7 @@
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import TrackedLink from "@/app/components/TrackedLink";
 import { loadDecisionDashboardCards } from "@/app/lib/decisions";
-import { buildOnboardingPath } from "@/app/lib/onboarding";
+import { buildAccountEntryPath, buildOnboardingPath } from "@/app/lib/onboarding";
 import { formatGenreLabel, formatTopicTitle } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./home.module.css";
@@ -62,10 +62,6 @@ const formatDeadline = (value: string | null): string => {
   });
 };
 
-const buildAccountEntryPath = (nextPath: string): string => {
-  return `/account?next=${encodeURIComponent(nextPath)}`;
-};
-
 export default async function HomePage() {
   const viewer = await getViewerFromCookies();
   const { cards } = await loadDecisionDashboardCards({
@@ -74,8 +70,8 @@ export default async function HomePage() {
   });
 
   const onboardingHref = buildOnboardingPath("/decisions");
-  const onboardingEntryHref = viewer ? onboardingHref : buildAccountEntryPath(onboardingHref);
-  const startHref = onboardingEntryHref;
+  const onboardingEntryHref = onboardingHref;
+  const startHref = onboardingHref;
   const loginHref = buildAccountEntryPath(onboardingHref);
   const onboardingSource = viewer?.needsOnboarding ? "landing_first_run" : "landing_preferences";
 
@@ -185,7 +181,7 @@ export default async function HomePage() {
                 <strong>まず何を見るかがすぐ分かる</strong>
               </article>
               <article className={styles.stat}>
-                <span>あとで見返す判断</span>
+                <span>保存した判断</span>
                 <strong>迷った候補を残して整理できる</strong>
               </article>
               <article className={styles.stat}>

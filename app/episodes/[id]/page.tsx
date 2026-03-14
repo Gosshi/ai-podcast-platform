@@ -138,17 +138,7 @@ export default async function EpisodeDetailPage({
                         genre={card.genre}
                         frameType={card.frame_type}
                         judgmentType={card.judgment_type}
-                      />
-                      <SaveDecisionButton
-                        judgmentCardId={card.id}
-                        viewer={viewer}
-                        initialSaved={card.is_saved}
-                        page={`/episodes/${id}`}
-                        source="episode_detail_card"
-                        episodeId={episode.id}
-                        genre={card.genre}
-                        frameType={card.frame_type}
-                        judgmentType={card.judgment_type}
+                        compact
                       />
                     </div>
                     <DecisionCalculator
@@ -157,6 +147,17 @@ export default async function EpisodeDetailPage({
                       locale="ja"
                       analyticsPage={`/episodes/${id}`}
                       analyticsSource="episode_detail_card"
+                    />
+                    <SaveDecisionButton
+                      judgmentCardId={card.id}
+                      viewer={viewer}
+                      initialSaved={card.is_saved}
+                      page={`/episodes/${id}`}
+                      source="episode_detail_card"
+                      episodeId={episode.id}
+                      genre={card.genre}
+                      frameType={card.frame_type}
+                      judgmentType={card.judgment_type}
                     />
                     <dl className={styles.metaList}>
                       {card.action_text ? (

@@ -101,7 +101,7 @@ export default async function HistoryPage() {
       {!viewer ? (
         <section className={styles.noticePanel}>
           <h2>履歴を使うにはログインが必要です</h2>
-          <p>判断カードで「この判断を使う」を押すと履歴に保存されます。ログイン後、この画面で結果を更新できます。</p>
+          <p>判断カードで「履歴に残す」を押すと履歴に追加されます。ログイン後、この画面で結果を更新できます。</p>
           <TrackedLink
             href="/account"
             className={styles.primaryLink}

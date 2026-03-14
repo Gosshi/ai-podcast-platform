@@ -54,15 +54,11 @@ const formatDecisionDate = (value: string | null): string => {
   });
 };
 
-const buildAccountEntryPath = (nextPath: string): string => {
-  return `/account?next=${encodeURIComponent(nextPath)}`;
-};
-
 export default async function DecisionsPage() {
   const viewer = await getViewerFromCookies();
   const isPaid = viewer?.isPaid ?? false;
   const onboardingPath = buildOnboardingPath("/decisions");
-  const onboardingEntryHref = viewer ? onboardingPath : buildAccountEntryPath(onboardingPath);
+  const onboardingEntryHref = onboardingPath;
 
   const [{ cards, error }, historyState, alertState] = await Promise.all([
     loadDecisionDashboardCards({ isPaid, userId: viewer?.userId }),
@@ -251,19 +247,19 @@ export default async function DecisionsPage() {
                   destination: onboardingPath
                 }}
               >
-                {viewer ? "好みを設定する" : "ログインして好みを設定する"}
+                {viewer ? "好みを設定する" : "はじめる"}
               </TrackedLink>
             ) : null}
             <TrackedLink
-              href="/decisions/library"
+              href="/watchlist"
               className={styles.heroLink}
-              eventName="library_card_click"
+              eventName="watchlist_card_click"
               eventProperties={{
                 page: "/decisions",
-                source: "decision_dashboard_hero_library_link"
+                source: "decision_dashboard_hero_watchlist_link"
               }}
             >
-              ライブラリを見る
+              保存を見る
             </TrackedLink>
           </div>
         </div>
@@ -277,9 +273,6 @@ export default async function DecisionsPage() {
             <p className={styles.sectionCaption}>
               まず最初に見ておきたい判断だけを上にまとめています。
             </p>
-          </div>
-          <div className={styles.countRow}>
-            <span>最大3件</span>
           </div>
         </div>
 
@@ -345,7 +338,7 @@ export default async function DecisionsPage() {
                       </dd>
                     </div>
                   </dl>
-                  <ul className={styles.reasonTagList}>
+                  <ul className={styles.reasonTagList} aria-label="おすすめ理由">
                     {recommendation.reason_tags.map((tag) => (
                       <li key={tag}>{tag}</li>
                     ))}
@@ -428,7 +421,7 @@ export default async function DecisionsPage() {
           alerts={alertState.alerts.slice(0, 3)}
           page="/decisions"
           title="お知らせ"
-          lead="期限が近いものや、あとで見たい候補をここからすぐ開き直せます。"
+          lead="見直し時期が来たものだけを、必要な分だけまとめています。"
           showViewAllLink={alertState.alerts.length > 3}
         />
       ) : null}
