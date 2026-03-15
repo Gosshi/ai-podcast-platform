@@ -50,6 +50,16 @@
 - ESLint
 - Supabase CLI (local project scaffold)
 
+## Codex AI Loop
+- Codex だけで `review -> fix -> verify` を回すためのテンプレートを [`ai/README.md`](ai/README.md) にまとめています
+- 作業ログは `ai/runs/YYYY-MM-DD-<topic>.md` に残します
+- 最小コマンド:
+  - `npm run ai:review -- <topic>`
+  - `npm run ai:fix -- <topic>`
+  - `npm run ai:verify -- <topic>`
+  - `npm run ai:issue-fix -- <topic>`
+- このループでは毎回、`Decision Assistant` としての成立、`Judgment Card` の伝わり方、保存 / 履歴 / 結果 / alerts の状態モデル、free / paid の成果差、mobile UX を確認します
+
 ## Setup
 1. `.env.example` を参考に `.env.local` を作成
 2. 依存関係をインストール: `npm ci`
