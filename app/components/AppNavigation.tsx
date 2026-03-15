@@ -6,11 +6,11 @@ import TrackedLink from "@/app/components/TrackedLink";
 import styles from "./app-navigation.module.css";
 
 const NAV_ITEMS = [
-  { href: "/decisions", label: "今日の判断" },
-  { href: "/alerts", label: "通知" },
-  { href: "/saved", label: "保存" },
-  { href: "/history", label: "履歴" },
-  { href: "/account", label: "アカウント" }
+  { href: "/decisions", label: "今日の判断", mobileLabel: "判断" },
+  { href: "/alerts", label: "通知", mobileLabel: "通知" },
+  { href: "/saved", label: "保存", mobileLabel: "保存" },
+  { href: "/history", label: "履歴", mobileLabel: "履歴" },
+  { href: "/account", label: "アカウント", mobileLabel: "設定" }
 ];
 const MOBILE_NAV_ITEMS = NAV_ITEMS;
 
@@ -103,6 +103,7 @@ export default function AppNavigation() {
             key={item.href}
             href={item.href}
             className={`${styles.mobileLink} ${isActivePath(pathname, item.href) ? styles.mobileLinkActive : ""}`.trim()}
+            aria-label={item.label}
             eventName="nav_click"
             eventProperties={{
               page: pathname,
@@ -112,7 +113,7 @@ export default function AppNavigation() {
             }}
           >
             <span className={styles.mobileIcon}>{NAV_ICONS[item.href]}</span>
-            <span className={styles.mobileLabel}>{item.label}</span>
+            <span className={styles.mobileLabel}>{item.mobileLabel}</span>
           </TrackedLink>
         ))}
       </nav>

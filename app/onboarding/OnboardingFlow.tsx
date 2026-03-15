@@ -402,7 +402,7 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
           <div className={styles.group}>
             <div className={styles.groupLabelRow}>
               <p className={styles.groupLabel}>予算感度</p>
-              <span className={styles.optionalTag}>任意</span>
+              <span className={styles.optionalTag}>任意 / あとで変更可</span>
             </div>
             <div className={styles.optionGrid}>
               {BUDGET_SENSITIVITY_OPTIONS.map((budgetValue) => (
