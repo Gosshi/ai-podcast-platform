@@ -105,10 +105,8 @@ export default async function HomePage() {
   });
 
   const onboardingHref = buildOnboardingPath("/decisions");
-  const onboardingEntryHref = onboardingHref;
   const loginHref = buildLoginPath("/decisions");
   const startHref = viewer ? onboardingHref : loginHref;
-  const onboardingSource = viewer?.needsOnboarding ? "landing_first_run" : "landing_preferences";
 
   const samples =
     cards
@@ -184,6 +182,19 @@ export default async function HomePage() {
               >
                 今日のおすすめを見る
               </TrackedLink>
+            </div>
+
+            <div className={styles.mobileHeroPreview}>
+              <div className={styles.mobileHeroPreviewHeader}>
+                <span className={styles.mobileHeroPreviewLabel}>こんな判断が届きます</span>
+                <span className={styles.mobileHeroPreviewBadge}>{JUDGMENT_LABELS[heroSample.judgmentType]}</span>
+              </div>
+              <strong className={styles.mobileHeroPreviewTitle}>{heroSample.topicTitle}</strong>
+              <p className={styles.mobileHeroPreviewSummary}>{heroSample.summary}</p>
+              <div className={styles.mobileHeroPreviewMeta}>
+                <span>{heroSample.genre}</span>
+                <span>{heroSample.nextAction}</span>
+              </div>
             </div>
 
             <div className={styles.stats}>

@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import DemoLoginControls from "./DemoLoginControls";
+import { getViewerFromCookies } from "@/app/lib/viewer";
+import { resolveMembershipBadgeLabel } from "@/app/lib/membership";
 
 type SearchParams = {
   error?: string | string[];
-  demo?: string | string[];
+  details?: string | string[];
 };
 
 const readParam = (value: string | string[] | undefined): string | null => {
@@ -21,11 +23,8 @@ export default async function DemoLoginPage({
 }) {
   const params = await searchParams;
   const error = readParam(params.error);
-  const demo = readParam(params.demo);
-
-  if (!error && (demo === "free" || demo === "paid")) {
-    redirect(`/api/dev/demo-login?demo=${demo}`);
-  }
+  const details = readParam(params.details);
+  const viewer = await getViewerFromCookies();
 
   return (
     <main
@@ -60,78 +59,81 @@ export default async function DemoLoginPage({
         </p>
 
         {error ? (
-          <p
+          <div
             style={{
               marginBottom: 20,
               padding: "12px 14px",
               borderRadius: 12,
               background: "#fee2e2",
-              color: "#991b1b"
+              color: "#991b1b",
+              display: "grid",
+              gap: 6
             }}
           >
-            demo login failed: {error}
-          </p>
+            <strong>demo login failed: {error}</strong>
+            {details ? <span style={{ fontSize: 14, lineHeight: 1.6 }}>{details}</span> : null}
+          </div>
         ) : null}
 
-        <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
-          <form action="/api/dev/demo-login" method="post" style={{ display: "grid", gap: 12 }}>
-            <input type="hidden" name="user" value="free" />
-            <div style={{ padding: 20, borderRadius: 18, background: "#f8fafc", border: "1px solid #cbd5e1" }}>
-              <strong style={{ display: "block", marginBottom: 8 }}>FREE demo user</strong>
-              <div style={{ color: "#475569", fontSize: 14 }}>demo-free@local.test</div>
-              <div style={{ color: "#64748b", fontSize: 14, marginTop: 10 }}>
-                preview 制限、archive lock、free gating の確認用
-              </div>
-            </div>
-            <button
-              type="submit"
+        <section
+          style={{
+            marginBottom: 24,
+            padding: 18,
+            borderRadius: 18,
+            border: "1px solid rgba(148, 163, 184, 0.24)",
+            background: "rgba(248, 250, 252, 0.92)",
+            display: "grid",
+            gap: 10
+          }}
+        >
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+            <strong>現在の検証状態</strong>
+            <span
               style={{
-                border: 0,
-                borderRadius: 14,
-                padding: "14px 18px",
-                background: "#0f172a",
-                color: "#fff",
-                fontSize: 15,
-                cursor: "pointer"
+                display: "inline-flex",
+                alignItems: "center",
+                minHeight: 28,
+                padding: "0 10px",
+                borderRadius: 999,
+                background: viewer ? "#dbeafe" : "#e2e8f0",
+                color: "#0f172a",
+                fontSize: 13,
+                fontWeight: 700
               }}
             >
-              FREE でログイン
-            </button>
-          </form>
+              {viewer ? resolveMembershipBadgeLabel(viewer.isPaid) : "未ログイン"}
+            </span>
+          </div>
+          <div style={{ color: "#334155", fontSize: 14, lineHeight: 1.7 }}>
+            {viewer ? (
+              <>
+                <div>email: {viewer.email ?? "-"}</div>
+                <div>plan: {viewer.planType ?? "-"}</div>
+                <div>subscription: {viewer.subscriptionStatus ?? "-"}</div>
+              </>
+            ) : (
+              <div>現在は demo session が入っていません。</div>
+            )}
+          </div>
+        </section>
 
-          <form action="/api/dev/demo-login" method="post" style={{ display: "grid", gap: 12 }}>
-            <input type="hidden" name="user" value="paid" />
-            <div style={{ padding: 20, borderRadius: 18, background: "#f8fafc", border: "1px solid #cbd5e1" }}>
-              <strong style={{ display: "block", marginBottom: 8 }}>PAID demo user</strong>
-              <div style={{ color: "#475569", fontSize: 14 }}>demo-paid@local.test</div>
-              <div style={{ color: "#64748b", fontSize: 14, marginTop: 10 }}>
-                personal hint、full library、alerts、replay、profile の確認用
-              </div>
-            </div>
-            <button
-              type="submit"
-              style={{
-                border: 0,
-                borderRadius: 14,
-                padding: "14px 18px",
-                background: "#2563eb",
-                color: "#fff",
-                fontSize: 15,
-                cursor: "pointer"
-              }}
-            >
-              PAID でログイン
-            </button>
-          </form>
-        </div>
+        <DemoLoginControls
+          initialSession={{
+            signedIn: Boolean(viewer),
+            email: viewer?.email ?? null,
+            isPaid: viewer?.isPaid ?? false,
+            planType: viewer?.planType ?? null,
+            subscriptionStatus: viewer?.subscriptionStatus ?? null
+          }}
+        />
 
         <div style={{ marginTop: 24, display: "flex", gap: 16, flexWrap: "wrap" }}>
           <Link href="/account">Account</Link>
           <Link href="/decisions">Decisions</Link>
           <Link href="/history">History</Link>
           <Link href="/alerts">Alerts</Link>
-          <Link href="/dev/demo-login?demo=free">FREEをURLで切替</Link>
-          <Link href="/dev/demo-login?demo=paid">PAIDをURLで切替</Link>
+          <Link href="/api/dev/demo-login?demo=free">FREEをURLで切替</Link>
+          <Link href="/api/dev/demo-login?demo=paid">PAIDをURLで切替</Link>
         </div>
       </section>
     </main>

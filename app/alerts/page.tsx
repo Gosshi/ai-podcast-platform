@@ -47,6 +47,21 @@ export default async function AlertsPage() {
             <p className={styles.eyebrow}>今日対応すべき1件</p>
             <h2>最初に見る通知</h2>
           </div>
+
+          <div className={styles.todayStats} aria-label="通知サマリー">
+            <article className={styles.todayStat}>
+              <span className={styles.todayStatLabel}>プラン</span>
+              <strong className={styles.todayStatValue}>{viewer?.isPaid ? "有料版" : "無料版"}</strong>
+            </article>
+            <article className={styles.todayStat}>
+              <span className={styles.todayStatLabel}>未読</span>
+              <strong className={styles.todayStatValue}>{unreadCount}</strong>
+            </article>
+            <article className={styles.todayStat}>
+              <span className={styles.todayStatLabel}>その他</span>
+              <strong className={styles.todayStatValue}>{secondaryAlerts.length}</strong>
+            </article>
+          </div>
         </div>
 
         {primaryAlert ? (
@@ -77,50 +92,35 @@ export default async function AlertsPage() {
         )}
       </section>
 
-      <section className={styles.hero}>
-        <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>通知</p>
-          <h1>アプリを閉じていても、次に見直す判断を失わない。</h1>
-          <p className={styles.lead}>
-            期限が近い判断、保存した候補、結果の記録、週ごとのまとめを一箇所にまとめています。
-          </p>
-
-          <div className={styles.statGrid}>
-            <article className={styles.statCard}>
-              <span className={styles.statLabel}>プラン</span>
-              <strong className={styles.statValue}>{viewer?.isPaid ? "有料版" : "無料版"}</strong>
-            </article>
-            <article className={styles.statCard}>
-              <span className={styles.statLabel}>未読</span>
-              <strong className={styles.statValue}>{unreadCount}</strong>
-            </article>
-            <article className={styles.statCard}>
-              <span className={styles.statLabel}>表示中</span>
-              <strong className={styles.statValue}>{alertState.alerts.length}</strong>
-            </article>
-          </div>
-
-          <div className={styles.linkRow}>
-            <Link href="/decisions" className={styles.primaryLink}>
-              今日のおすすめ
-            </Link>
-            <Link href="/weekly-decisions" className={styles.secondaryLink}>
-              週ごとのまとめ
-            </Link>
-          </div>
-        </div>
-      </section>
-
       {alertState.error ? <p className={styles.errorText}>{resolveAlertsErrorMessage(alertState.error)}</p> : null}
 
       <AlertsInbox
         alerts={secondaryAlerts}
         page="/alerts"
         title="その他の通知"
-        lead="最優先の1件以外は、ここでまとめて確認できます。"
+        lead="今日の1件を見たあとに、残りだけをここでまとめて確認できます。"
         emptyTitle="その他の通知はありません"
         emptyCopy="今日対応すべき1件以外は、いま追加の通知はありません。"
       />
+
+      <section className={styles.supportSection}>
+        <div>
+          <p className={styles.eyebrow}>通知の見方</p>
+          <h2>まず1件、そのあと必要なものだけ確認します</h2>
+          <p className={styles.lead}>
+            この画面はタスクを積み上げる場所ではなく、今日の最優先を見つけてから残りを軽く流し見するための場所です。
+          </p>
+        </div>
+
+        <div className={styles.linkRow}>
+          <Link href="/decisions" className={styles.primaryLink}>
+            今日のおすすめ
+          </Link>
+          <Link href="/weekly-decisions" className={styles.secondaryLink}>
+            週ごとのまとめ
+          </Link>
+        </div>
+      </section>
     </main>
   );
 }

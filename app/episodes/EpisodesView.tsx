@@ -72,6 +72,8 @@ const formatDeadline = (value: string | null, locale: Locale): string | null => 
   return formatDateTime(value, locale);
 };
 
+const getCurrentTimestamp = (): number => Date.now();
+
 const hasFreeArchiveAccess = (episode: EpisodeRow): boolean =>
   isWithinFreeAccessWindow(episode.published_at ?? episode.created_at);
 
@@ -327,21 +329,14 @@ export default function EpisodesView({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const cardRefs = useRef(new Map<string, HTMLDivElement>());
   const lastManualScrollAt = useRef(0);
-
-  useEffect(() => {
-    if (visibleEpisodes.length === 0) {
-      setSelectedEpisodeId(null);
-      return;
-    }
-
-    if (!selectedEpisodeId || !visibleEpisodes.some((episode) => episode.id === selectedEpisodeId)) {
-      setSelectedEpisodeId(visibleEpisodes[0].id);
-    }
-  }, [selectedEpisodeId, visibleEpisodes]);
+  const resolvedSelectedEpisodeId =
+    selectedEpisodeId && visibleEpisodes.some((episode) => episode.id === selectedEpisodeId)
+      ? selectedEpisodeId
+      : visibleEpisodes[0]?.id ?? null;
 
   useEffect(() => {
     const markManualScroll = () => {
-      lastManualScrollAt.current = Date.now();
+      lastManualScrollAt.current = getCurrentTimestamp();
     };
 
     window.addEventListener("scroll", markManualScroll, { passive: true });
@@ -360,7 +355,6 @@ export default function EpisodesView({
 
     const audio = audioRef.current;
     if (!audio || !activeEpisodeId) {
-      setPendingAutoPlay(false);
       return;
     }
 
@@ -406,7 +400,7 @@ export default function EpisodesView({
     const target = cardRefs.current.get(episodeId);
     if (!target) return;
 
-    if (!force && Date.now() - lastManualScrollAt.current < 700) {
+    if (!force && getCurrentTimestamp() - lastManualScrollAt.current < 700) {
       return;
     }
 
@@ -416,43 +410,40 @@ export default function EpisodesView({
     });
   }, []);
 
-  const startEpisodePlayback = useCallback(
-    (episode: EpisodeRow) => {
-      if (!episode.audio_url) return;
+  const startEpisodePlayback = (episode: EpisodeRow) => {
+    if (!episode.audio_url) return;
 
-      setPlaybackError(null);
-      setSelectedEpisodeId(episode.id);
+    setPlaybackError(null);
+    setSelectedEpisodeId(episode.id);
 
-      const audio = audioRef.current;
-      const shouldAutoScroll = Date.now() - lastManualScrollAt.current >= 700;
+    const audio = audioRef.current;
+    const shouldAutoScroll = getCurrentTimestamp() - lastManualScrollAt.current >= 700;
 
-      if (activeEpisodeId === episode.id && audio) {
-        if (audio.paused) {
-          void audio.play().catch((error: unknown) => {
-            setPlaybackError(error instanceof Error ? error.message : messageSet.common.unknownError);
-          });
-        } else {
-          audio.pause();
-        }
-
-        if (shouldAutoScroll) {
-          scrollToEpisodeCard(episode.id, false);
-        }
-
-        return;
+    if (activeEpisodeId === episode.id && audio) {
+      if (audio.paused) {
+        void audio.play().catch((error: unknown) => {
+          setPlaybackError(error instanceof Error ? error.message : messageSet.common.unknownError);
+        });
+      } else {
+        audio.pause();
       }
-
-      setActiveEpisodeId(episode.id);
-      setPendingAutoPlay(true);
 
       if (shouldAutoScroll) {
         scrollToEpisodeCard(episode.id, false);
       }
-    },
-    [activeEpisodeId, messageSet.common.unknownError, scrollToEpisodeCard]
-  );
 
-  const selectedEpisode = selectedEpisodeId ? episodesById.get(selectedEpisodeId) ?? null : null;
+      return;
+    }
+
+    setActiveEpisodeId(episode.id);
+    setPendingAutoPlay(true);
+
+    if (shouldAutoScroll) {
+      scrollToEpisodeCard(episode.id, false);
+    }
+  };
+
+  const selectedEpisode = resolvedSelectedEpisodeId ? episodesById.get(resolvedSelectedEpisodeId) ?? null : null;
   const activeEpisode = activeEpisodeId ? episodesById.get(activeEpisodeId) ?? null : null;
   const selectedScriptText = isPaid
     ? selectedEpisode?.full_script ?? null
@@ -588,7 +579,7 @@ export default function EpisodesView({
 
                   <div className={styles.episodeList}>
                     {rows.map((episode) => {
-                      const isSelected = selectedEpisodeId === episode.id;
+                      const isSelected = resolvedSelectedEpisodeId === episode.id;
                       const isPlayingCard = isPlaying && activeEpisodeId === episode.id;
                       const statusLabel = !episode.audio_url
                         ? t.statusPending
