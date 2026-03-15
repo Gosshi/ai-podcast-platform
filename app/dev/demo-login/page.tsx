@@ -6,6 +6,7 @@ import { resolveMembershipBadgeLabel } from "@/app/lib/membership";
 type SearchParams = {
   error?: string | string[];
   details?: string | string[];
+  demo?: string | string[];
 };
 
 const readParam = (value: string | string[] | undefined): string | null => {
@@ -24,6 +25,7 @@ export default async function DemoLoginPage({
   const params = await searchParams;
   const error = readParam(params.error);
   const details = readParam(params.details);
+  const requestedDemoUser = readParam(params.demo);
   const viewer = await getViewerFromCookies();
 
   return (
@@ -125,6 +127,7 @@ export default async function DemoLoginPage({
             planType: viewer?.planType ?? null,
             subscriptionStatus: viewer?.subscriptionStatus ?? null
           }}
+          requestedDemoUser={requestedDemoUser === "free" || requestedDemoUser === "paid" ? requestedDemoUser : null}
         />
 
         <div style={{ marginTop: 24, display: "flex", gap: 16, flexWrap: "wrap" }}>
@@ -132,8 +135,8 @@ export default async function DemoLoginPage({
           <Link href="/decisions">Decisions</Link>
           <Link href="/history">History</Link>
           <Link href="/alerts">Alerts</Link>
-          <Link href="/api/dev/demo-login?demo=free">FREEをURLで切替</Link>
-          <Link href="/api/dev/demo-login?demo=paid">PAIDをURLで切替</Link>
+          <Link href="/dev/demo-login?demo=free">FREEをURLで切替</Link>
+          <Link href="/dev/demo-login?demo=paid">PAIDをURLで切替</Link>
         </div>
       </section>
     </main>

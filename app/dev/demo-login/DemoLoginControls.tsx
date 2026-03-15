@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { createBrowserSupabaseClient } from "@/src/lib/supabase/browserClient";
 
 type DemoUser = "free" | "paid";
 
@@ -14,6 +15,7 @@ type SessionState = {
 
 type DemoLoginControlsProps = {
   initialSession: SessionState;
+  requestedDemoUser?: DemoUser | null;
 };
 
 type DemoSwitchResponse =
@@ -22,6 +24,8 @@ type DemoSwitchResponse =
       demoUser: DemoUser;
       expectedEmail: string;
       redirectTo: string;
+      accessToken: string;
+      refreshToken: string;
     }
   | {
       ok: false;
@@ -64,79 +68,125 @@ const describeSession = (session: SessionState | null) => {
   return `current: ${session.email ?? "-"} / ${session.isPaid ? "paid" : "free"} / ${session.planType ?? "-"}`;
 };
 
-export default function DemoLoginControls({ initialSession }: DemoLoginControlsProps) {
+export default function DemoLoginControls({ initialSession, requestedDemoUser = null }: DemoLoginControlsProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<SessionState>(initialSession);
   const [pendingUser, setPendingUser] = useState<DemoUser | null>(null);
+  const autoSwitchHandledRef = useRef<DemoUser | null>(null);
 
-  const switchDemoUser = (demoUser: DemoUser) => {
+  const syncBrowserSession = async (payload: Extract<DemoSwitchResponse, { ok: true }>) => {
+    const supabase = createBrowserSupabaseClient();
+    const { data, error: sessionError } = await supabase.auth.setSession({
+      access_token: payload.accessToken,
+      refresh_token: payload.refreshToken
+    });
+
+    if (sessionError || !data.session) {
+      throw new Error(sessionError?.message ?? "demo_session_sync_failed");
+    }
+
+    const syncResponse = await fetch("/api/auth/session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        accessToken: data.session.access_token,
+        refreshToken: data.session.refresh_token
+      }),
+      credentials: "same-origin"
+    });
+
+    if (!syncResponse.ok) {
+      throw new Error("demo_cookie_sync_failed");
+    }
+  };
+
+  const switchDemoUser = async (demoUser: DemoUser) => {
+    if (pendingUser) {
+      return;
+    }
+
     setError(null);
     setMessage(`${demoUser.toUpperCase()} に切り替えています...`);
     setPendingUser(demoUser);
 
-    void fetch("/api/dev/demo-login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json"
-      },
-      body: JSON.stringify({ demo: demoUser }),
-      credentials: "same-origin"
-    })
-      .then(async (response) => {
-        const payload = (await response.json().catch(() => null)) as DemoSwitchResponse | null;
-        if (!response.ok || !payload || !payload.ok) {
-          const nextSession = payload && !payload.ok && payload.session ? payload.session : session;
-          setSession(nextSession);
-          throw new Error(
-            [
-              payload && !payload.ok ? payload.error : "demo_login_failed",
-              payload && !payload.ok && payload.details ? payload.details : null,
-              describeSession(nextSession)
-            ]
-              .filter(Boolean)
-              .join(" / ")
-          );
-        }
-
-        const statusResponse = await fetch("/api/dev/demo-login?mode=status", {
-          cache: "no-store",
-          credentials: "same-origin",
-          headers: {
-            Accept: "application/json"
-          }
-        });
-        const statusPayload = (await statusResponse.json().catch(() => null)) as
-          | { ok: true; session: SessionState }
-          | { ok: false }
-          | null;
-
-        if (!statusResponse.ok || !statusPayload || !statusPayload.ok) {
-          throw new Error("demo_status_check_failed / cookie 更新後の状態確認に失敗しました。");
-        }
-
-        setSession(statusPayload.session);
-
-        if (statusPayload.session.email !== payload.expectedEmail) {
-          throw new Error(
-            `demo_session_mismatch / expected=${payload.expectedEmail} actual=${statusPayload.session.email ?? "none"}`
-          );
-        }
-
-        setMessage(
-          `${demoUser.toUpperCase()} に切り替えました。${statusPayload.session.isPaid ? "paid" : "free"} gating を確認できます。`
-        );
-        window.location.assign(payload.redirectTo);
-      })
-      .catch((requestError) => {
-        setError(requestError instanceof Error ? requestError.message : "demo_login_failed");
-        setMessage(null);
-      })
-      .finally(() => {
-        setPendingUser(null);
+    try {
+      const response = await fetch("/api/dev/demo-login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({ demo: demoUser }),
+        credentials: "same-origin"
       });
+      const payload = (await response.json().catch(() => null)) as DemoSwitchResponse | null;
+      if (!response.ok || !payload || !payload.ok) {
+        const nextSession = payload && !payload.ok && payload.session ? payload.session : session;
+        setSession(nextSession);
+        throw new Error(
+          [
+            payload && !payload.ok ? payload.error : "demo_login_failed",
+            payload && !payload.ok && payload.details ? payload.details : null,
+            describeSession(nextSession)
+          ]
+            .filter(Boolean)
+            .join(" / ")
+        );
+      }
+
+      await syncBrowserSession(payload);
+
+      const statusResponse = await fetch("/api/dev/demo-login?mode=status", {
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json"
+        }
+      });
+      const statusPayload = (await statusResponse.json().catch(() => null)) as
+        | { ok: true; session: SessionState }
+        | { ok: false }
+        | null;
+
+      if (!statusResponse.ok || !statusPayload || !statusPayload.ok) {
+        throw new Error("demo_status_check_failed / cookie 更新後の状態確認に失敗しました。");
+      }
+
+      setSession(statusPayload.session);
+
+      if (statusPayload.session.email !== payload.expectedEmail) {
+        throw new Error(
+          `demo_session_mismatch / expected=${payload.expectedEmail} actual=${statusPayload.session.email ?? "none"}`
+        );
+      }
+
+      setMessage(
+        `${demoUser.toUpperCase()} に切り替えました。${statusPayload.session.isPaid ? "paid" : "free"} gating を確認できます。`
+      );
+      window.location.assign(payload.redirectTo);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "demo_login_failed");
+      setMessage(null);
+    } finally {
+      setPendingUser(null);
+    }
   };
+
+  const runAutoDemoSwitch = useEffectEvent((demoUser: DemoUser) => {
+    void switchDemoUser(demoUser);
+  });
+
+  useEffect(() => {
+    if (!requestedDemoUser || autoSwitchHandledRef.current === requestedDemoUser) {
+      return;
+    }
+
+    autoSwitchHandledRef.current = requestedDemoUser;
+    runAutoDemoSwitch(requestedDemoUser);
+  }, [requestedDemoUser]);
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -153,7 +203,9 @@ export default function DemoLoginControls({ initialSession }: DemoLoginControlsP
               </div>
               <button
                 type="button"
-                onClick={() => switchDemoUser(demoUser)}
+                onClick={() => {
+                  void switchDemoUser(demoUser);
+                }}
                 disabled={Boolean(pendingUser)}
                 style={{
                   border: 0,
