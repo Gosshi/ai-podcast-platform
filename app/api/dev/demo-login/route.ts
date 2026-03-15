@@ -101,7 +101,9 @@ const signInDemoUser = async (request: Request, demoUser: keyof typeof DEMO_USER
       ok: true,
       demoUser,
       expectedEmail: DEMO_USERS[demoUser],
-      redirectTo: `/account?demo=${demoUser}`
+      redirectTo: `/account?demo=${demoUser}`,
+      accessToken: data.session.access_token,
+      refreshToken: data.session.refresh_token
     });
     response.cookies.set(ACCESS_TOKEN_COOKIE, data.session.access_token, buildCookieOptions());
     response.cookies.set(REFRESH_TOKEN_COOKIE, data.session.refresh_token, buildCookieOptions());
