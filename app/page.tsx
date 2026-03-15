@@ -80,6 +80,29 @@ const SHOWCASE_SAMPLES = [
   }
 ] as const;
 
+const MEMBERSHIP_OUTCOMES = [
+  {
+    tier: "無料版",
+    title: "まず今日の判断を止めずに前へ進める",
+    summary: "最初のおすすめと短い判断カードで、今すぐ決めるべきことを絞り込みます。",
+    points: [
+      "判断タイトルとかんたんな説明で迷いを止める",
+      "保存や履歴の入口を試して使い方をつかむ",
+      "まず1件の判断を前に進める体験ができる"
+    ]
+  },
+  {
+    tier: "有料版",
+    title: "理由、次の行動、結果の学習までつながる",
+    summary: "判断理由、次の行動、見直しタイミング、履歴分析まで含めて、Decision Assistant として使い続けやすくなります。",
+    points: [
+      "判断理由と次の行動が見えるのですぐ動ける",
+      "結果や履歴が次のおすすめに返ってくる",
+      "通知まで含めて毎日開く理由が生まれる"
+    ]
+  }
+] as const;
+
 const formatDeadline = (value: string | null): string => {
   if (!value) return "今週のうちに確認";
 
@@ -107,6 +130,37 @@ export default async function HomePage() {
   const onboardingHref = buildOnboardingPath("/decisions");
   const loginHref = buildLoginPath("/decisions");
   const startHref = viewer ? onboardingHref : loginHref;
+  const startLabel = viewer ? "好みを見直す" : "はじめる";
+  const decisionsHref = viewer ? "/decisions" : loginHref;
+  const decisionsLabel = viewer ? "今日のおすすめを見る" : "ログインして今日のおすすめを見る";
+  const accountHref = viewer ? "/account" : loginHref;
+  const accountLabel = viewer ? "アカウントを見る" : "ログイン";
+  const alertsHref = viewer ? "/alerts" : buildLoginPath("/alerts");
+  const savedHref = viewer ? "/saved" : buildLoginPath("/saved");
+  const historyHref = viewer ? "/history" : buildLoginPath("/history");
+  const retentionFlows = [
+    {
+      title: "通知",
+      summary: "見直しタイミング、weekly digest、結果入力のきっかけがまとまります。",
+      ctaLabel: viewer ? "通知を見る" : "ログインして通知を見る",
+      href: alertsHref,
+      source: "landing_retention_alerts"
+    },
+    {
+      title: "保存",
+      summary: "今は決めない判断を残しておき、あとで比較しながら戻れます。",
+      ctaLabel: viewer ? "保存を開く" : "ログインして保存を使う",
+      href: savedHref,
+      source: "landing_retention_saved"
+    },
+    {
+      title: "履歴",
+      summary: "満足、普通、後悔の結果が残り、次のおすすめに少しずつ返ります。",
+      ctaLabel: viewer ? "履歴を見る" : "ログインして履歴を育てる",
+      href: historyHref,
+      source: "landing_retention_history"
+    }
+  ] as const;
 
   const samples =
     cards
@@ -168,19 +222,19 @@ export default async function HomePage() {
                   ]
                 }
               >
-                はじめる
+                {startLabel}
               </TrackedLink>
               <TrackedLink
-                href={viewer ? "/decisions" : loginHref}
+                href={decisionsHref}
                 className={styles.secondaryLink}
                 eventName="landing_cta_click"
                 eventProperties={{
                   page: "/",
                   source: "landing_decisions",
-                  destination: viewer ? "/decisions" : loginHref
+                  destination: decisionsHref
                 }}
               >
-                今日のおすすめを見る
+                {decisionsLabel}
               </TrackedLink>
             </div>
 
@@ -258,6 +312,30 @@ export default async function HomePage() {
           </div>
         </section>
 
+        <section className={`${styles.section} ${styles.membershipSection}`.trim()}>
+          <div className={styles.sectionHeader}>
+            <p className={styles.eyebrow}>無料版 / 有料版</p>
+            <h2>違いは、判断の深さと続けたときの返り方です</h2>
+            <p className={styles.sectionLead}>
+              機能数の違いではなく、今日の判断をどこまで前に進められるか、結果がどこまで次に返ってくるかで分かれます。
+            </p>
+          </div>
+          <div className={styles.membershipGrid}>
+            {MEMBERSHIP_OUTCOMES.map((tier) => (
+              <article key={tier.tier} className={styles.membershipCard}>
+                <span className={styles.membershipTier}>{tier.tier}</span>
+                <h3>{tier.title}</h3>
+                <p>{tier.summary}</p>
+                <ul className={styles.membershipList}>
+                  {tier.points.map((point) => (
+                    <li key={point}>{point}</li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </section>
+
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>判断カードのサンプル</p>
@@ -309,11 +387,45 @@ export default async function HomePage() {
           </ol>
         </section>
 
+        <section className={`${styles.section} ${styles.retentionSection}`.trim()}>
+          <div className={styles.sectionHeader}>
+            <p className={styles.eyebrow}>続ける理由</p>
+            <h2>毎日開くと、前の判断が次に返ってきます</h2>
+            <p className={styles.sectionLead}>
+              このプロダクトは 1 回見るだけではなく、通知、保存、履歴を通して判断の途中経過を持ち歩けることが価値です。
+            </p>
+          </div>
+          <div className={styles.retentionGrid}>
+            {retentionFlows.map((flow) => (
+              <article key={flow.title} className={styles.retentionCard}>
+                <h3>{flow.title}</h3>
+                <p>{flow.summary}</p>
+                <TrackedLink
+                  href={flow.href}
+                  className={styles.retentionLink}
+                  eventName="landing_cta_click"
+                  eventProperties={{
+                    page: "/",
+                    source: flow.source,
+                    destination: flow.href
+                  }}
+                >
+                  {flow.ctaLabel}
+                </TrackedLink>
+              </article>
+            ))}
+          </div>
+        </section>
+
         <section className={`${styles.section} ${styles.ctaSection}`.trim()}>
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>次にすること</p>
             <h2>まず何をすればいいか、ここから選べます</h2>
-            <p className={styles.sectionLead}>初回はログインしておすすめを整え、慣れていればそのまま今日のおすすめへ進めます。</p>
+            <p className={styles.sectionLead}>
+              {viewer
+                ? "必要なら好みを見直し、そのまま今日のおすすめやアカウント確認へ進めます。"
+                : "初回はログインしておすすめを整え、慣れていればそのまま今日のおすすめへ進めます。"}
+            </p>
           </div>
           <div className={styles.ctaRow}>
             <TrackedLink
@@ -344,19 +456,19 @@ export default async function HomePage() {
                 }
               ]}
             >
-              はじめる
+              {startLabel}
             </TrackedLink>
             <TrackedLink
-              href={loginHref}
+              href={accountHref}
               className={styles.secondaryLink}
               eventName="landing_cta_click"
               eventProperties={{
                 page: "/",
-                source: "landing_footer_login",
-                destination: loginHref
+                source: viewer ? "landing_footer_account" : "landing_footer_login",
+                destination: accountHref
               }}
               >
-                ログイン
+                {accountLabel}
               </TrackedLink>
             <TrackedLink
               href="/decisions"
