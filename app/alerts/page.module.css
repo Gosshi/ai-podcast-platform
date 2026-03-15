@@ -7,9 +7,7 @@
 }
 
 .hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.8fr);
-  gap: 1rem;
+  display: block;
 }
 
 .heroCopy,
@@ -187,7 +185,6 @@
 }
 
 @media (max-width: 860px) {
-  .hero,
   .statGrid {
     grid-template-columns: 1fr;
   }

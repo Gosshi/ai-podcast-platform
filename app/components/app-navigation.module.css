@@ -23,11 +23,12 @@
   font-size: 1rem;
   font-weight: 800;
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .nav {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 0.65rem;
 }
@@ -64,13 +65,32 @@
     width: min(100vw, calc(100vw - 1.25rem));
     min-height: 4rem;
     padding: 0.75rem 0;
-    flex-direction: column;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
   }
 
   .nav {
-    width: 100%;
-    justify-content: flex-start;
+    min-width: 0;
+    justify-content: flex-end;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 0.45rem;
+  }
+
+  .nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .brand {
+    font-size: 0.92rem;
+  }
+
+  .link {
+    white-space: nowrap;
+    font-size: 0.83rem;
+    padding: 0.45rem 0.65rem;
   }
 }
 
@@ -98,24 +118,46 @@
     bottom: 0.75rem;
     z-index: 30;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.65rem;
-    padding: 0.7rem;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.35rem;
+    padding: 0.45rem;
     border-radius: 22px;
     background: rgba(15, 23, 42, 0.96);
     box-shadow: 0 18px 36px rgba(15, 23, 42, 0.24);
   }
 
   .mobileLink {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.8rem;
-    border-radius: 16px;
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 0.2rem;
+    min-height: 3.35rem;
+    border-radius: 14px;
     color: rgba(226, 232, 240, 0.88);
     text-decoration: none;
-    font-size: 0.95rem;
     font-weight: 800;
+  }
+
+  .mobileIcon {
+    display: inline-flex;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  .mobileIcon svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .mobileLabel {
+    font-size: 0.64rem;
+    line-height: 1.1;
+    white-space: nowrap;
   }
 
   .mobileLinkActive {
@@ -125,6 +167,6 @@
 
   .mobileNavSpacer {
     display: block;
-    height: 5.6rem;
+    height: 5.9rem;
   }
 }

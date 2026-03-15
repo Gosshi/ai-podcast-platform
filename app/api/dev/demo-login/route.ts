@@ -37,16 +37,10 @@ const resolveBaseUrl = (request: Request): URL => {
 const redirectWithError = (request: Request, message: string) => {
   const url = new URL("/dev/demo-login", resolveBaseUrl(request));
   url.searchParams.set("error", message);
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(url, { status: 303 });
 };
 
-export async function POST(request: Request) {
-  if (process.env.NODE_ENV !== "development") {
-    return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
-  }
-
-  const formData = await request.formData().catch(() => null);
-  const demoUser = resolveDemoUser(formData?.get("user") ?? null);
+const signInDemoUser = async (request: Request, demoUser: keyof typeof DEMO_USERS | null) => {
   if (!demoUser) {
     return redirectWithError(request, "invalid_demo_user");
   }
@@ -62,10 +56,32 @@ export async function POST(request: Request) {
   }
 
   const cookieStore = await cookies();
+  cookieStore.delete(ACCESS_TOKEN_COOKIE);
+  cookieStore.delete(REFRESH_TOKEN_COOKIE);
   cookieStore.set(ACCESS_TOKEN_COOKIE, data.session.access_token, buildCookieOptions());
   cookieStore.set(REFRESH_TOKEN_COOKIE, data.session.refresh_token, buildCookieOptions());
 
   const url = new URL("/account", resolveBaseUrl(request));
   url.searchParams.set("demo", demoUser);
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(url, { status: 303 });
+};
+
+export async function GET(request: Request) {
+  if (process.env.NODE_ENV !== "development") {
+    return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
+  }
+
+  const url = new URL(request.url);
+  const demoUser = resolveDemoUser(url.searchParams.get("demo") ?? url.searchParams.get("user"));
+  return signInDemoUser(request, demoUser);
+}
+
+export async function POST(request: Request) {
+  if (process.env.NODE_ENV !== "development") {
+    return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
+  }
+
+  const formData = await request.formData().catch(() => null);
+  const demoUser = resolveDemoUser(formData?.get("user") ?? formData?.get("demo") ?? null);
+  return signInDemoUser(request, demoUser);
 }
