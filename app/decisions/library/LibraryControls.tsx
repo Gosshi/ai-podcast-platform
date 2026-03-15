@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { formatFrameTypeLabel, formatGenreLabel } from "@/app/lib/uiText";
+import { formatFrameTypeLabel, formatGenreLabel, JUDGMENT_TYPE_LABELS as JUDGMENT_TYPE_LABEL_MAP } from "@/app/lib/uiText";
 import type { DecisionLibrarySort, DecisionLibraryUrgency } from "@/src/lib/decisionLibrary";
 import { track } from "@/src/lib/analytics";
 import type { JudgmentType } from "@/src/lib/judgmentCards";
@@ -27,9 +27,9 @@ type LibraryControlsProps = {
 
 const JUDGMENT_TYPE_LABELS: Array<{ value: JudgmentType | null; label: string }> = [
   { value: null, label: "すべて" },
-  { value: "use_now", label: "採用" },
-  { value: "watch", label: "後で考える" },
-  { value: "skip", label: "見送る" }
+  { value: "use_now", label: JUDGMENT_TYPE_LABEL_MAP.use_now },
+  { value: "watch", label: JUDGMENT_TYPE_LABEL_MAP.watch },
+  { value: "skip", label: JUDGMENT_TYPE_LABEL_MAP.skip }
 ];
 
 const URGENCY_LABELS: Array<{ value: DecisionLibraryUrgency | null; label: string }> = [

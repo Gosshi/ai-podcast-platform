@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 type SearchParams = {
   error?: string | string[];
+  demo?: string | string[];
 };
 
 const readParam = (value: string | string[] | undefined): string | null => {
@@ -19,6 +21,11 @@ export default async function DemoLoginPage({
 }) {
   const params = await searchParams;
   const error = readParam(params.error);
+  const demo = readParam(params.demo);
+
+  if (!error && (demo === "free" || demo === "paid")) {
+    redirect(`/api/dev/demo-login?demo=${demo}`);
+  }
 
   return (
     <main
@@ -123,6 +130,8 @@ export default async function DemoLoginPage({
           <Link href="/decisions">Decisions</Link>
           <Link href="/history">History</Link>
           <Link href="/alerts">Alerts</Link>
+          <Link href="/dev/demo-login?demo=free">FREEをURLで切替</Link>
+          <Link href="/dev/demo-login?demo=paid">PAIDをURLで切替</Link>
         </div>
       </section>
     </main>

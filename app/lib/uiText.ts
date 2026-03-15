@@ -1,9 +1,9 @@
 import type { JudgmentType } from "@/src/lib/judgmentCards";
 
 export const JUDGMENT_TYPE_LABELS: Record<JudgmentType, string> = {
-  use_now: "採用",
-  watch: "後で考える",
-  skip: "見送る"
+  use_now: "おすすめ: 今すぐ",
+  watch: "おすすめ: 様子見",
+  skip: "おすすめ: 見送り"
 };
 
 export const WATCHLIST_STATUS_LABELS = {

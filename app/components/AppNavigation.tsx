@@ -1,5 +1,6 @@
 "use client";
 
+import type { JSX } from "react";
 import { usePathname } from "next/navigation";
 import TrackedLink from "@/app/components/TrackedLink";
 import styles from "./app-navigation.module.css";
@@ -11,7 +12,39 @@ const NAV_ITEMS = [
   { href: "/history", label: "履歴" },
   { href: "/account", label: "アカウント" }
 ];
-const MOBILE_NAV_ITEMS = NAV_ITEMS.slice(0, 2);
+const MOBILE_NAV_ITEMS = NAV_ITEMS;
+
+const NAV_ICONS: Record<(typeof NAV_ITEMS)[number]["href"], JSX.Element> = {
+  "/decisions": (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 12.75 9.25 17 19 7.25" />
+    </svg>
+  ),
+  "/alerts": (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 4.75a4.25 4.25 0 0 0-4.25 4.25v1.38c0 .84-.28 1.66-.8 2.32L5.75 14.2v1.55h12.5V14.2l-1.2-1.5a3.75 3.75 0 0 1-.8-2.32V9A4.25 4.25 0 0 0 12 4.75Z" />
+      <path d="M9.75 17.25a2.25 2.25 0 0 0 4.5 0" />
+    </svg>
+  ),
+  "/saved": (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7.25 5.75h9.5a1 1 0 0 1 1 1v11.5l-5.75-3-5.75 3V6.75a1 1 0 0 1 1-1Z" />
+    </svg>
+  ),
+  "/history": (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4.75 12a7.25 7.25 0 1 0 2.13-5.12" />
+      <path d="M4.75 5.75v3.75H8.5" />
+      <path d="M12 8.25v4l2.75 1.75" />
+    </svg>
+  ),
+  "/account": (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 12a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Z" />
+      <path d="M6.75 18.25a5.25 5.25 0 0 1 10.5 0" />
+    </svg>
+  )
+};
 
 const isActivePath = (pathname: string, href: string): boolean => {
   if (href === "/saved") {
@@ -78,7 +111,8 @@ export default function AppNavigation() {
               label: item.label
             }}
           >
-            {item.label}
+            <span className={styles.mobileIcon}>{NAV_ICONS[item.href]}</span>
+            <span className={styles.mobileLabel}>{item.label}</span>
           </TrackedLink>
         ))}
       </nav>
