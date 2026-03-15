@@ -107,6 +107,11 @@ export default async function HomePage() {
   const onboardingHref = buildOnboardingPath("/decisions");
   const loginHref = buildLoginPath("/decisions");
   const startHref = viewer ? onboardingHref : loginHref;
+  const startLabel = viewer ? "好みを見直す" : "はじめる";
+  const decisionsHref = viewer ? "/decisions" : loginHref;
+  const decisionsLabel = viewer ? "今日のおすすめを見る" : "ログインして今日のおすすめを見る";
+  const accountHref = viewer ? "/account" : loginHref;
+  const accountLabel = viewer ? "アカウントを見る" : "ログイン";
 
   const samples =
     cards
@@ -168,19 +173,19 @@ export default async function HomePage() {
                   ]
                 }
               >
-                はじめる
+                {startLabel}
               </TrackedLink>
               <TrackedLink
-                href={viewer ? "/decisions" : loginHref}
+                href={decisionsHref}
                 className={styles.secondaryLink}
                 eventName="landing_cta_click"
                 eventProperties={{
                   page: "/",
                   source: "landing_decisions",
-                  destination: viewer ? "/decisions" : loginHref
+                  destination: decisionsHref
                 }}
               >
-                今日のおすすめを見る
+                {decisionsLabel}
               </TrackedLink>
             </div>
 
@@ -313,7 +318,11 @@ export default async function HomePage() {
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>次にすること</p>
             <h2>まず何をすればいいか、ここから選べます</h2>
-            <p className={styles.sectionLead}>初回はログインしておすすめを整え、慣れていればそのまま今日のおすすめへ進めます。</p>
+            <p className={styles.sectionLead}>
+              {viewer
+                ? "必要なら好みを見直し、そのまま今日のおすすめやアカウント確認へ進めます。"
+                : "初回はログインしておすすめを整え、慣れていればそのまま今日のおすすめへ進めます。"}
+            </p>
           </div>
           <div className={styles.ctaRow}>
             <TrackedLink
@@ -344,19 +353,19 @@ export default async function HomePage() {
                 }
               ]}
             >
-              はじめる
+              {startLabel}
             </TrackedLink>
             <TrackedLink
-              href={loginHref}
+              href={accountHref}
               className={styles.secondaryLink}
               eventName="landing_cta_click"
               eventProperties={{
                 page: "/",
-                source: "landing_footer_login",
-                destination: loginHref
+                source: viewer ? "landing_footer_account" : "landing_footer_login",
+                destination: accountHref
               }}
               >
-                ログイン
+                {accountLabel}
               </TrackedLink>
             <TrackedLink
               href="/decisions"
