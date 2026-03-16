@@ -1,0 +1,234 @@
+.player {
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem 1.4rem;
+  border-radius: 24px;
+  background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+  color: #f1f5f9;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3);
+}
+
+.noAudio {
+  text-align: center;
+  padding: 1.5rem 0;
+  color: #94a3b8;
+}
+
+.noAudio p {
+  margin: 0;
+}
+
+.meta {
+  text-align: center;
+}
+
+.nowPlaying {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #f97316;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.35;
+  color: #f8fafc;
+}
+
+.description {
+  margin: 0.4rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #94a3b8;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+}
+
+.playBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border: none;
+  border-radius: 50%;
+  background: #f8fafc;
+  color: #0f172a;
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.playBtn:hover {
+  transform: scale(1.06);
+  background: #ffffff;
+}
+
+.playBtn:active {
+  transform: scale(0.96);
+}
+
+.playBtn svg {
+  width: 1.4rem;
+  height: 1.4rem;
+  fill: currentColor;
+}
+
+.skipBtn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.skipBtn:hover {
+  color: #f8fafc;
+}
+
+.skipBtn svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.skipBtn span {
+  font-size: 0.6rem;
+  font-weight: 800;
+}
+
+.progressArea {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.time {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+  min-width: 2.8rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.progressBar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(148, 163, 184, 0.25);
+  cursor: pointer;
+  position: relative;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 3px;
+  background: #f97316;
+  transition: width 100ms linear;
+}
+
+.progressThumb {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f97316;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+  transform: translate(-50%, -50%);
+  transition: left 100ms linear;
+  opacity: 0;
+}
+
+.progressBar:hover .progressThumb {
+  opacity: 1;
+}
+
+.extras {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.rateBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.85rem;
+  padding: 0 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.rateBtn:hover {
+  border-color: #f97316;
+  color: #f97316;
+}
+
+.error {
+  margin: 0;
+  text-align: center;
+  color: #fca5a5;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 720px) {
+  .player {
+    padding: 1.15rem 1rem;
+    border-radius: 20px;
+    gap: 0.85rem;
+  }
+
+  .title {
+    font-size: 1.05rem;
+  }
+
+  .playBtn {
+    width: 3rem;
+    height: 3rem;
+  }
+
+  .playBtn svg {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+
+  .skipBtn {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .controls {
+    gap: 1rem;
+  }
+}

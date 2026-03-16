@@ -63,7 +63,11 @@ export const ANALYTICS_EVENT_NAMES = [
   "weekly_digest_open",
   "weekly_digest_item_click",
   "generate_card_submit",
-  "generate_card_outcome"
+  "generate_card_outcome",
+  "podcast_hero_impression",
+  "podcast_play",
+  "episode_card_click",
+  "welcome_shown"
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];
