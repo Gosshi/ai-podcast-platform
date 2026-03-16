@@ -55,9 +55,10 @@ const GENRE_LABELS: Record<string, string> = {
 
 type GenerateCardFormProps = {
   isPaid: boolean;
+  showWelcome?: boolean;
 };
 
-export default function GenerateCardForm({ isPaid }: GenerateCardFormProps) {
+export default function GenerateCardForm({ isPaid, showWelcome = false }: GenerateCardFormProps) {
   const [inputText, setInputText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -172,7 +173,15 @@ export default function GenerateCardForm({ isPaid }: GenerateCardFormProps) {
   };
 
   return (
-    <section className={styles.section}>
+    <section className={`${styles.section} ${showWelcome ? styles.sectionHighlight : ""}`.trim()} id="ai-consult">
+      {showWelcome ? (
+        <div className={styles.welcomeBanner}>
+          <p className={styles.welcomeTitle}>🎉 設定が完了しました！</p>
+          <p className={styles.welcomeBody}>
+            さっそく迷っていることを入力してみましょう。AIがあなたの好みに合わせた判断カードを作ります。
+          </p>
+        </div>
+      ) : null}
       <p className={styles.eyebrow}>AI判断</p>
       <h2 className={styles.heading}>AIに判断を相談する</h2>
       <p className={styles.caption}>

@@ -34,11 +34,17 @@ const formatDeadline = (value: string | null): string => {
   });
 };
 
-export default async function DecisionsPage() {
+export default async function DecisionsPage({
+  searchParams
+}: {
+  searchParams: Promise<{ welcome?: string }>;
+}) {
   const viewer = await getViewerFromCookies();
   if (!viewer) {
     redirect(buildLoginPath("/decisions"));
   }
+  const params = await searchParams;
+  const showWelcome = params.welcome === "1";
 
   const isPaid = viewer?.isPaid ?? false;
   const onboardingPath = buildOnboardingPath("/decisions");
@@ -103,7 +109,7 @@ export default async function DecisionsPage() {
         </div>
       </section>
 
-      <GenerateCardForm isPaid={isPaid} />
+      <GenerateCardForm isPaid={isPaid} showWelcome={showWelcome} />
 
       <section className={styles.recommendationSection}>
         <div className={styles.recommendationHeader}>
