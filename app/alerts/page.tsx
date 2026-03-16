@@ -44,8 +44,8 @@ export default async function AlertsPage() {
       <section className={styles.todaySection}>
         <div className={styles.todayHeader}>
           <div>
-            <p className={styles.eyebrow}>今日対応すべき1件</p>
-            <h2>最初に見る通知</h2>
+            <p className={styles.eyebrow}>お知らせ</p>
+            <h2>最新の通知</h2>
           </div>
 
           <div className={styles.todayStats} aria-label="通知サマリー">
@@ -86,8 +86,8 @@ export default async function AlertsPage() {
           </article>
         ) : (
           <div className={styles.todayEmpty}>
-            <h3>今日すぐ対応する通知はありません</h3>
-            <p>期限が近い判断や結果記録が必要なものが出たら、ここに最優先で表示します。</p>
+            <h3>新しい通知はありません</h3>
+            <p>新しいエピソードの配信や保存した内容の更新があれば、ここに表示します。</p>
           </div>
         )}
       </section>
@@ -105,19 +105,19 @@ export default async function AlertsPage() {
 
       <section className={styles.supportSection}>
         <div>
-          <p className={styles.eyebrow}>通知の見方</p>
-          <h2>まず1件、そのあと必要なものだけ確認します</h2>
+          <p className={styles.eyebrow}>ナビゲーション</p>
+          <h2>エピソードを聴く・保存した内容を見直す</h2>
           <p className={styles.lead}>
-            この画面はタスクを積み上げる場所ではなく、今日の最優先を見つけてから残りを軽く流し見するための場所です。
+            通知を確認したら、今日のエピソードを聴くか、過去のアーカイブを振り返れます。
           </p>
         </div>
 
         <div className={styles.linkRow}>
           <Link href="/decisions" className={styles.primaryLink}>
-            今日のおすすめ
+            今日のエピソード
           </Link>
-          <Link href="/weekly-decisions" className={styles.secondaryLink}>
-            週ごとのまとめ
+          <Link href="/episodes" className={styles.secondaryLink}>
+            アーカイブ
           </Link>
         </div>
       </section>

@@ -45,9 +45,9 @@ export default async function HistoryPage() {
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>履歴</p>
-          <h1>実行した判断と、その結果をあとで見直せるようにする。</h1>
+          <h1>聴いたエピソードと、実行した判断を振り返る。</h1>
           <p className={styles.lead}>
-            採用した判断を残し、あとから満足・普通・後悔で結果を更新できます。自分の判断傾向を蓄積して、次回の選び方に活かせます。
+            エピソードから得た判断を記録し、あとから結果を振り返れます。自分の傾向を把握して、次の行動に活かせます。
           </p>
 
           <div className={styles.statsGrid}>
@@ -121,10 +121,10 @@ export default async function HistoryPage() {
       <section className={styles.section}>
           <div className={styles.sectionHeading}>
             <div>
-              <p className={styles.sectionEyebrow}>判断の傾向</p>
-              <h2>履歴から見える、あなたの判断傾向</h2>
+              <p className={styles.sectionEyebrow}>あなたの傾向</p>
+              <h2>エピソードから見える、あなたの行動傾向</h2>
               <p className={styles.sectionLead}>
-                実行した履歴を集計して、どんな判断が自分に合いやすいかを見やすくします。
+                実行した記録を集計して、どんな行動が自分に合いやすいかを見やすくします。
               </p>
             </div>
             <span className={styles.sectionCount}>{profile.totalDecisions}件</span>
