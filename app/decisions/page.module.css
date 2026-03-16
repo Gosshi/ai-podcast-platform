@@ -114,6 +114,10 @@
   letter-spacing: 0.08em;
 }
 
+.playerSection {
+  margin-top: 0.85rem;
+}
+
 .paywallBanner {
   margin-top: 1.25rem;
   padding: 1.25rem 1.4rem;

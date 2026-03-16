@@ -1,39 +1,16 @@
 import { redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
-import GenerateCardForm from "@/app/components/GenerateCardForm";
+import AudioPlayer from "@/app/components/AudioPlayer";
 import PremiumPreview from "@/app/components/PremiumPreview";
 import TrackedLink from "@/app/components/TrackedLink";
-import { loadDecisionDashboardCards } from "@/app/lib/decisions";
+import { loadPublishedEpisodes } from "@/app/lib/episodes";
 import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
-import { formatEpisodeTitle, formatGenreLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS } from "@/app/lib/uiText";
+import { formatGenreLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
-import { rankNextBestDecisions } from "@/src/lib/nextBestDecision";
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
-
-const URGENCY_LEVEL_LABELS = {
-  critical: "最優先",
-  high: "高優先",
-  medium: "確認",
-  low: "低優先"
-} as const;
-
-const formatDeadline = (value: string | null): string => {
-  if (!value) return "期限未設定";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  return date.toLocaleString("ja-JP", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  });
-};
 
 export default async function DecisionsPage({
   searchParams
@@ -49,159 +26,123 @@ export default async function DecisionsPage({
 
   const isPaid = viewer?.isPaid ?? false;
   const onboardingPath = buildOnboardingPath("/decisions");
-  const onboardingEntryHref = onboardingPath;
 
-  const { cards, error } = await loadDecisionDashboardCards({ isPaid, userId: viewer?.userId });
-
-  const nextBestDecisions = rankNextBestDecisions({
-    cards,
+  const { episodes, error } = await loadPublishedEpisodes({
+    genreFilter: null,
     isPaid,
-    profile: null,
-    preferenceProfile: viewer?.preferenceProfile
+    userId: viewer?.userId
   });
-  const featuredDecisions = nextBestDecisions.slice(0, 3);
+
+  const latestEpisode = episodes.length > 0 ? episodes[0] : null;
+  const judgmentCards = latestEpisode?.judgment_cards ?? [];
 
   return (
     <main className={styles.page}>
       <AnalyticsPageView page="/decisions" pageEventName="decisions_view" />
 
+      {/* --- Today's Episode Hero --- */}
       <section className={styles.hero}>
         <AnalyticsEventOnRender
-          eventName="decisions_intro_impression"
+          eventName="podcast_hero_impression"
           properties={{
             page: "/decisions",
-            source: "decisions_intro",
+            source: "podcast_hero",
             is_paid: isPaid,
-            needs_onboarding: Boolean(viewer?.needsOnboarding)
+            has_episode: Boolean(latestEpisode),
+            episode_id: latestEpisode?.id ?? undefined
           }}
         />
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>今日のおすすめ</p>
-          <h1>今日のおすすめ</h1>
-          <p className={styles.lead}>今日の判断を、好みや履歴をもとに短いカードでまとめています。</p>
-          <div className={styles.heroActions}>
-            {viewer.needsOnboarding ? (
-              <TrackedLink
-                href={onboardingEntryHref}
-                className={styles.secondaryHeroLink}
-                eventName="onboarding_entry_click"
-                eventProperties={{
-                  page: "/decisions",
-                  source: "decisions_intro",
-                  destination: onboardingPath
-                }}
-              >
-                好みを設定する
-              </TrackedLink>
-            ) : null}
-            <TrackedLink
-              href="/decisions/all"
-              className={styles.heroLink}
-              eventName="nav_click"
-              eventProperties={{
-                page: "/decisions",
-                source: "decision_dashboard_hero_all_link",
-                destination: "/decisions/all"
-              }}
-            >
-              すべての判断を見る
-            </TrackedLink>
-          </div>
+          <p className={styles.eyebrow}>Today&apos;s Podcast</p>
+          <h1>{latestEpisode?.title ?? "今日のエピソードを準備中です"}</h1>
+          {latestEpisode?.description ? (
+            <p className={styles.lead}>{latestEpisode.description}</p>
+          ) : !latestEpisode ? (
+            <p className={styles.lead}>
+              あなたの関心に合わせた最新エピソードをまもなくお届けします。
+            </p>
+          ) : null}
         </div>
       </section>
 
-      <GenerateCardForm isPaid={isPaid} showWelcome={showWelcome} />
+      {/* --- Audio Player --- */}
+      <section className={styles.playerSection}>
+        <AudioPlayer
+          src={latestEpisode?.audio_url ?? null}
+          title={latestEpisode?.title ?? "エピソード準備中"}
+          description={latestEpisode?.description}
+        />
+      </section>
 
-      <section className={styles.recommendationSection}>
-        <div className={styles.recommendationHeader}>
-          <div>
-            <p className={styles.sectionEyebrow}>今日のおすすめ</p>
-            <h2>今日のおすすめ判断</h2>
-            <p className={styles.sectionCaption}>
-              まず最初に見ておきたい判断だけを上にまとめています。
-            </p>
+      {/* --- Judgment Cards from Episode --- */}
+      {judgmentCards.length > 0 ? (
+        <section className={styles.recommendationSection}>
+          <div className={styles.recommendationHeader}>
+            <div>
+              <p className={styles.sectionEyebrow}>判断カード</p>
+              <h2>エピソードの判断ポイント</h2>
+              <p className={styles.sectionCaption}>
+                今日のエピソードから抽出された判断カードです。
+              </p>
+            </div>
+            <div className={styles.countRow}>
+              <span>{judgmentCards.length}件</span>
+            </div>
           </div>
-        </div>
 
-        {featuredDecisions.length === 0 ? (
-          <p className={styles.emptyText}>今すぐおすすめできる判断カードはまだありません。</p>
-        ) : (
           <div className={styles.recommendationGrid}>
-            {featuredDecisions.map((recommendation) => (
-              <article key={recommendation.card.id} className={styles.recommendationCard}>
+            {judgmentCards.map((card) => (
+              <article key={card.id} className={styles.recommendationCard}>
                 <AnalyticsEventOnRender
-                  eventName="next_best_decision_impression"
+                  eventName="judgment_card_impression"
                   properties={{
                     page: "/decisions",
-                    source: "next_best_decision",
-                    episode_id: recommendation.card.episode_id,
-                    judgment_card_id: recommendation.card.id,
-                    genre: recommendation.card.genre ?? undefined,
-                    frame_type: recommendation.card.frame_type ?? undefined,
-                    judgment_type: recommendation.card.judgment_type
+                    source: "episode_judgment_card",
+                    episode_id: latestEpisode?.id ?? undefined,
+                    judgment_card_id: card.id,
+                    genre: card.genre ?? undefined,
+                    judgment_type: card.judgment_type
                   }}
                 />
                 <TrackedLink
-                  href={`/decisions/${recommendation.card.episode_id}`}
+                  href={`/decisions/${latestEpisode?.id}`}
                   className={styles.recommendationLink}
-                  eventName="next_best_decision_click"
+                  eventName="judgment_card_click"
                   eventProperties={{
                     page: "/decisions",
-                    source: "next_best_decision",
-                    episode_id: recommendation.card.episode_id,
-                    judgment_card_id: recommendation.card.id,
-                    genre: recommendation.card.genre ?? undefined,
-                    frame_type: recommendation.card.frame_type ?? undefined,
-                    judgment_type: recommendation.card.judgment_type
+                    source: "episode_judgment_card",
+                    episode_id: latestEpisode?.id ?? undefined,
+                    judgment_card_id: card.id,
+                    judgment_type: card.judgment_type
                   }}
                 >
                   <div className={styles.recommendationTopRow}>
-                    <span className={`${styles.badge} ${styles[`badge_${recommendation.card.judgment_type}`]}`.trim()}>
-                      {JUDGMENT_TYPE_LABELS[recommendation.card.judgment_type]}
+                    <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`] ?? ""}`.trim()}>
+                      {JUDGMENT_TYPE_LABELS[card.judgment_type]}
                     </span>
-                    <span className={`${styles.urgencyBadge} ${styles[`urgencyBadge_${recommendation.urgency_level}`]}`.trim()}>
-                      {URGENCY_LEVEL_LABELS[recommendation.urgency_level]}
-                    </span>
+                    <span className={styles.genreTag}>{formatGenreLabel(card.genre ?? null)}</span>
                   </div>
-                  <div className={styles.recommendationMetaRow}>
-                    <span className={styles.genreTag}>{formatGenreLabel(recommendation.card.genre)}</span>
-                    <span className={styles.recommendationEpisodeLabel}>
-                      {formatEpisodeTitle(recommendation.card.episode_title)}
-                    </span>
-                  </div>
-                  <h3>{formatTopicTitle(recommendation.card.topic_title)}</h3>
-                  <p className={styles.summary}>{recommendation.card.judgment_summary}</p>
+                  <h3>{formatTopicTitle(card.topic_title)}</h3>
+                  <p className={styles.summary}>{card.judgment_summary}</p>
                   {isPaid ? (
                     <>
-                      <dl className={styles.metaList}>
-                        <div>
-                          <dt>次の行動</dt>
-                          <dd>{recommendation.recommended_action}</dd>
-                        </div>
-                        <div>
-                          <dt>見直しタイミング</dt>
-                          <dd>
-                            {recommendation.card.deadline_at
-                              ? formatDeadline(recommendation.card.deadline_at)
-                              : recommendation.deadline_label}
-                          </dd>
-                        </div>
-                      </dl>
-                      <ul className={styles.reasonTagList} aria-label="おすすめ理由">
-                        {recommendation.reason_tags.map((tag) => (
-                          <li key={tag}>{tag}</li>
-                        ))}
-                      </ul>
+                      {card.action_text ? (
+                        <dl className={styles.metaList}>
+                          <div>
+                            <dt>次の行動</dt>
+                            <dd>{card.action_text}</dd>
+                          </div>
+                        </dl>
+                      ) : null}
                     </>
                   ) : (
                     <PremiumPreview
                       placeholders={[
-                        { label: "次の行動", value: "具体的な行動を提案します" },
-                        { label: "見直しタイミング", value: "最適なタイミングを表示" }
+                        { label: "次の行動", value: "具体的な行動を提案します" }
                       ]}
-                      message="次の行動と見直しタイミングを確認"
+                      message="有料版で行動提案を確認"
                       page="/decisions"
-                      source="recommendation_card_preview"
+                      source="episode_card_preview"
                     />
                   )}
                   <p className={styles.episodeLinkText}>詳細を見る</p>
@@ -209,59 +150,84 @@ export default async function DecisionsPage({
               </article>
             ))}
           </div>
-        )}
+        </section>
+      ) : latestEpisode ? (
+        <section className={styles.recommendationSection}>
+          <p className={styles.emptyText}>
+            このエピソードには判断カードがまだ生成されていません。
+          </p>
+        </section>
+      ) : null}
 
+      {/* --- All Episodes Link --- */}
+      <div className={styles.allLinkPanel}>
+        <div>
+          <p className={styles.sectionEyebrow}>アーカイブ</p>
+          <h3>過去のエピソードはこちらから</h3>
+          <p className={styles.sectionCaption}>
+            すべてのエピソードと判断カードを一覧で確認できます。
+          </p>
+        </div>
+        <TrackedLink
+          href="/episodes"
+          className={styles.inlineUpgradeLink}
+          eventName="nav_click"
+          eventProperties={{
+            page: "/decisions",
+            source: "podcast_dashboard_episodes_link",
+            destination: "/episodes"
+          }}
+        >
+          すべてのエピソードを見る
+        </TrackedLink>
+      </div>
+
+      {/* --- Onboarding Prompt --- */}
+      {viewer.needsOnboarding ? (
         <div className={styles.allLinkPanel}>
           <div>
-            <p className={styles.sectionEyebrow}>一覧</p>
-            <h3>すべての判断は一覧画面でまとめて確認できます</h3>
+            <p className={styles.sectionEyebrow}>設定</p>
+            <h3>好みを設定して、あなた専用のポッドキャストを受け取ろう</h3>
             <p className={styles.sectionCaption}>
-              今日のおすすめに絞って判断したあと、必要なときだけ全件一覧へ進めます。
+              関心のあるジャンルやトピックを設定すると、より精度の高いエピソードが届きます。
             </p>
           </div>
           <TrackedLink
-            href="/decisions/all"
+            href={onboardingPath}
             className={styles.inlineUpgradeLink}
-            eventName="nav_click"
+            eventName="onboarding_entry_click"
             eventProperties={{
               page: "/decisions",
-              source: "decision_dashboard_all_link",
-              destination: "/decisions/all"
+              source: "podcast_dashboard_onboarding",
+              destination: onboardingPath
             }}
           >
-            すべての判断を見る
+            好みを設定する
           </TrackedLink>
         </div>
+      ) : null}
 
-        {!isPaid ? (
-          <div className={styles.recommendationFootnote}>
-            <p className={styles.sectionEyebrow}>プラン</p>
-            <h3>有料版では判断理由と次の行動まで見えます</h3>
-            <p>無料版はタイトルとかんたんな説明まで。有料版で見直しタイミングと履歴分析も確認できます。</p>
-            <TrackedLink
-              href="/account"
-              className={styles.inlineUpgradeLink}
-              eventName="subscribe_cta_click"
-              eventProperties={{
-                page: "/decisions",
-                source: "next_best_decision_upgrade"
-              }}
-            >
-              プランを見る
-            </TrackedLink>
-          </div>
-        ) : null}
-      </section>
+      {showWelcome ? (
+        <AnalyticsEventOnRender
+          eventName="welcome_shown"
+          properties={{ page: "/decisions" }}
+        />
+      ) : null}
 
-      {error ? <p className={styles.errorText}>判断カードの読み込みに失敗しました。時間をおいて再度お試しください。</p> : null}
+      {error ? (
+        <p className={styles.errorText}>
+          エピソードの読み込みに失敗しました。時間をおいて再度お試しください。
+        </p>
+      ) : null}
 
+      {/* --- Paywall Banner --- */}
       {!isPaid ? (
         <section className={styles.paywallBanner}>
           <div>
-            <p className={styles.paywallEyebrow}>無料版</p>
-            <h2>無料版はタイトルとかんたんな説明までです</h2>
+            <p className={styles.paywallEyebrow}>Premium</p>
+            <h2>有料版でフルスクリプトと行動提案を確認</h2>
             <p>
-              有料版にすると、判断理由、次の行動、見直しタイミング、履歴分析までまとめて確認できます。
+              無料版はエピソード再生と判断カードの概要まで。有料版でスクリプト全文、行動提案、アーカイブが使えます。
             </p>
           </div>
           <TrackedLink
@@ -270,7 +236,7 @@ export default async function DecisionsPage({
             eventName="subscribe_cta_click"
             eventProperties={{
               page: "/decisions",
-              source: "decision_dashboard_paywall_banner"
+              source: "podcast_dashboard_paywall_banner"
             }}
           >
             プランを見る
