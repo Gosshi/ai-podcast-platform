@@ -275,13 +275,24 @@ export default async function HistoryPage() {
               <article key={entry.id} id={`decision-${entry.id}`} className={styles.historyCard}>
                 <div className={styles.historyHeader}>
                   <div>
-                    <p className={styles.cardEyebrow}>{formatFrameTypeLabel(entry.frame_type)}</p>
+                    <p className={styles.cardEyebrow}>
+                      {entry.source === "ai_generated" ? "AI相談" : formatFrameTypeLabel(entry.frame_type)}
+                    </p>
                     <h3>{formatTopicTitle(entry.topic_title)}</h3>
                   </div>
-                  <span className={`${styles.badge} ${styles[`badge_${entry.decision_type}`]}`.trim()}>
-                    {DECISION_TYPE_LABELS[entry.decision_type]}
-                  </span>
+                  <div className={styles.badgeGroup}>
+                    {entry.source === "ai_generated" ? (
+                      <span className={`${styles.badge} ${styles.badge_ai}`.trim()}>AI生成</span>
+                    ) : null}
+                    <span className={`${styles.badge} ${styles[`badge_${entry.decision_type}`]}`.trim()}>
+                      {DECISION_TYPE_LABELS[entry.decision_type]}
+                    </span>
+                  </div>
                 </div>
+
+                {entry.source === "ai_generated" && entry.input_text ? (
+                  <p className={styles.inputTextPreview}>相談: {entry.input_text}</p>
+                ) : null}
 
                 <dl className={styles.metaGrid}>
                   <div>
@@ -293,12 +304,12 @@ export default async function HistoryPage() {
                     <dd>{formatGenreLabel(entry.genre, "-")}</dd>
                   </div>
                   <div>
-                    <dt>採用日</dt>
+                    <dt>{entry.source === "ai_generated" ? "相談日" : "採用日"}</dt>
                     <dd>{formatDecisionHistoryDate(entry.created_at)}</dd>
                   </div>
                   <div>
                     <dt>出典</dt>
-                    <dd>{formatEpisodeTitle(entry.episode_title)}</dd>
+                    <dd>{entry.source === "ai_generated" ? "AI判断" : formatEpisodeTitle(entry.episode_title)}</dd>
                   </div>
                 </dl>
 
@@ -308,7 +319,7 @@ export default async function HistoryPage() {
                     <p className={styles.outcomeValue}>{formatDecisionOutcomeLabel(entry.outcome)}</p>
                   </div>
                   <DecisionOutcomeSelect
-                    decisionId={entry.id}
+                    decisionId={entry.source === "ai_generated" ? entry.judgment_card_id : entry.id}
                     initialOutcome={entry.outcome}
                     page="/history"
                     episodeId={entry.episode_id}
@@ -316,37 +327,42 @@ export default async function HistoryPage() {
                     genre={entry.genre}
                     frameType={entry.frame_type}
                     judgmentType={entry.decision_type}
+                    apiBasePath={entry.source === "ai_generated" ? "/api/generate-card" : undefined}
                   />
                 </div>
-                <div className={styles.cardFooter}>
-                  <TrackedLink
-                    href={buildDecisionReplayPath(entry.id)}
-                    className={styles.replayLink}
-                    eventName="decision_replay_from_history_click"
-                    eventProperties={{
-                      page: "/history",
-                      source: "history_list_card",
-                      decision_id: entry.id,
-                      episode_id: entry.episode_id,
-                      judgment_card_id: entry.judgment_card_id,
-                      genre: entry.genre ?? undefined,
-                      frame_type: entry.frame_type ?? undefined,
-                      saved_decision_type: entry.decision_type,
-                      outcome: entry.outcome
-                    }}
-                  >
-                    学びを見る
-                  </TrackedLink>
-                </div>
-                <RemoveDecisionButton
-                  decisionId={entry.id}
-                  page="/history"
-                  episodeId={entry.episode_id}
-                  judgmentCardId={entry.judgment_card_id}
-                  genre={entry.genre}
-                  frameType={entry.frame_type}
-                  judgmentType={entry.decision_type}
-                />
+                {entry.source === "episode" ? (
+                  <div className={styles.cardFooter}>
+                    <TrackedLink
+                      href={buildDecisionReplayPath(entry.id)}
+                      className={styles.replayLink}
+                      eventName="decision_replay_from_history_click"
+                      eventProperties={{
+                        page: "/history",
+                        source: "history_list_card",
+                        decision_id: entry.id,
+                        episode_id: entry.episode_id,
+                        judgment_card_id: entry.judgment_card_id,
+                        genre: entry.genre ?? undefined,
+                        frame_type: entry.frame_type ?? undefined,
+                        saved_decision_type: entry.decision_type,
+                        outcome: entry.outcome
+                      }}
+                    >
+                      学びを見る
+                    </TrackedLink>
+                  </div>
+                ) : null}
+                {entry.source === "episode" ? (
+                  <RemoveDecisionButton
+                    decisionId={entry.id}
+                    page="/history"
+                    episodeId={entry.episode_id}
+                    judgmentCardId={entry.judgment_card_id}
+                    genre={entry.genre}
+                    frameType={entry.frame_type}
+                    judgmentType={entry.decision_type}
+                  />
+                ) : null}
               </article>
             ))}
           </div>

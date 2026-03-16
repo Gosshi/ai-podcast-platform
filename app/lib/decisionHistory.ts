@@ -17,6 +17,8 @@ export type SavedJudgmentCard = JudgmentCard & {
   saved_outcome: DecisionOutcome | null;
 };
 
+export type DecisionHistorySource = "episode" | "ai_generated";
+
 export type DecisionHistoryEntry = {
   id: string;
   judgment_card_id: string;
@@ -32,6 +34,8 @@ export type DecisionHistoryEntry = {
   updated_at: string;
   episode_title: string | null;
   episode_published_at: string | null;
+  source: DecisionHistorySource;
+  input_text?: string | null;
 };
 
 export type DecisionHistoryStats = {
@@ -278,6 +282,59 @@ export const attachSavedDecisionState = (
   });
 };
 
+type GeneratedCardRow = {
+  id: string;
+  input_text: string;
+  genre: string | null;
+  topic_title: string;
+  frame_type: string | null;
+  judgment_type: JudgmentType;
+  judgment_summary: string;
+  action_text: string | null;
+  deadline_at: string | null;
+  threshold_json: JudgmentThresholdJson | null;
+  watch_points_json: unknown;
+  confidence_score: number | null;
+  outcome: DecisionOutcome;
+  created_at: string;
+  updated_at: string;
+};
+
+const loadGeneratedCardEntries = async (
+  userId: string,
+  supabase: Awaited<ReturnType<typeof import("./supabaseClients").createServiceRoleClient>>
+): Promise<DecisionHistoryEntry[]> => {
+  const { data, error } = await supabase
+    .from("user_generated_cards")
+    .select("id, input_text, genre, topic_title, frame_type, judgment_type, judgment_summary, action_text, deadline_at, threshold_json, watch_points_json, confidence_score, outcome, created_at, updated_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (error || !data) {
+    return [];
+  }
+
+  return (data as GeneratedCardRow[]).map((row) => ({
+    id: `gen_${row.id}`,
+    judgment_card_id: row.id,
+    episode_id: "",
+    topic_title: row.topic_title,
+    frame_type: row.frame_type,
+    genre: row.genre,
+    decision_type: row.judgment_type,
+    outcome: row.outcome,
+    threshold_json: row.threshold_json ?? {},
+    deadline_at: row.deadline_at,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    episode_title: null,
+    episode_published_at: null,
+    source: "ai_generated" as const,
+    input_text: row.input_text
+  }));
+};
+
 export const loadDecisionHistory = async (
   userId: string
 ): Promise<{ entries: DecisionHistoryEntry[]; stats: DecisionHistoryStats; profile: DecisionProfile; error: string | null }> => {
@@ -377,7 +434,7 @@ export const loadDecisionHistory = async (
       return map;
     }, new Map<string, EpisodeLookupRow>());
 
-    const entries = decisions.map((decision) => {
+    const episodeEntries = decisions.map((decision) => {
       const card = judgmentCards.get(decision.judgment_card_id);
       const episode = episodes.get(decision.episode_id);
 
@@ -395,9 +452,16 @@ export const loadDecisionHistory = async (
         created_at: decision.created_at,
         updated_at: decision.updated_at,
         episode_title: episode?.title ?? null,
-        episode_published_at: episode?.published_at ?? null
+        episode_published_at: episode?.published_at ?? null,
+        source: "episode" as const
       } satisfies DecisionHistoryEntry;
     });
+
+    const generatedEntries = await loadGeneratedCardEntries(userId, supabase);
+
+    const entries = [...episodeEntries, ...generatedEntries].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
 
     const resolvedEntries: DecisionProfileEntry[] = entries.flatMap((entry) => {
       if (!hasDecisionOutcome(entry.outcome)) {
