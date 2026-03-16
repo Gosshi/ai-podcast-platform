@@ -356,6 +356,27 @@
   color: #b91c1c;
 }
 
+.badge_ai {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.badgeGroup {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.inputTextPreview {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.8rem;
+  background: #f1f5f9;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
 .metaGrid {
   margin: 1rem 0 0;
   display: grid;

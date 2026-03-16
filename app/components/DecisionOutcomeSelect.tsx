@@ -21,6 +21,7 @@ type DecisionOutcomeSelectProps = {
   frameType?: string | null;
   judgmentType?: "use_now" | "watch" | "skip";
   variant?: "select" | "quick";
+  apiBasePath?: string;
 };
 
 type UpdateDecisionResponse =
@@ -49,7 +50,8 @@ export default function DecisionOutcomeSelect({
   genre,
   frameType,
   judgmentType,
-  variant = "select"
+  variant = "select",
+  apiBasePath
 }: DecisionOutcomeSelectProps) {
   const router = useRouter();
   const [value, setValue] = useState<DecisionOutcome>(initialOutcome);
@@ -63,7 +65,8 @@ export default function DecisionOutcomeSelect({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`/api/decision-history/${decisionId}`, {
+      const basePath = apiBasePath ?? "/api/decision-history";
+      const response = await fetch(`${basePath}/${decisionId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json"
