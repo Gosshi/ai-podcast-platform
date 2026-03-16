@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import JudgmentCardActions from "@/app/components/JudgmentCardActions";
+import PremiumPreview from "@/app/components/PremiumPreview";
 import TrackedLink from "@/app/components/TrackedLink";
 import { loadDecisionDashboardCards } from "@/app/lib/decisions";
 import { buildLoginPath } from "@/app/lib/onboarding";
@@ -124,32 +125,20 @@ export default async function AllDecisionsPage() {
                         <dd>{card.deadline_at ? formatDeadline(card.deadline_at) : "今週中に見直す"}</dd>
                       </div>
                     </dl>
-                  ) : null}
+                  ) : (
+                    <PremiumPreview
+                      placeholders={[
+                        { label: "判断理由", value: "詳しい判断の根拠を表示" },
+                        { label: "次の行動", value: "具体的な行動を提案" },
+                        { label: "見直しタイミング", value: "最適な時期を表示" }
+                      ]}
+                      message="判断理由と次の行動を確認"
+                      page="/decisions/all"
+                      source="decision_all_card_preview"
+                    />
+                  )}
                   <p className={styles.episodeLinkText}>詳細を見る</p>
                 </TrackedLink>
-
-                {!viewer.isPaid ? (
-                  <div className={styles.lockedPanel}>
-                    <strong>無料版はタイトルとかんたんな説明までです</strong>
-                    <p>有料版で判断理由、次の行動、見直しタイミングまで確認できます。</p>
-                    <TrackedLink
-                      href="/account"
-                      className={styles.paywallLink}
-                      eventName="judgment_card_locked_cta_click"
-                      eventProperties={{
-                        page: "/decisions/all",
-                        source: "decision_all_locked_panel",
-                        episode_id: card.episode_id,
-                        judgment_card_id: card.id,
-                        genre: card.genre ?? undefined,
-                        frame_type: card.frame_type ?? undefined,
-                        judgment_type: card.judgment_type
-                      }}
-                    >
-                      詳細を見る
-                    </TrackedLink>
-                  </div>
-                ) : null}
 
                 <div className={styles.cardActionRow}>
                   <JudgmentCardActions

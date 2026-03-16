@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
+import { PremiumPreviewInline } from "@/app/components/PremiumPreview";
 import TrackedLink from "@/app/components/TrackedLink";
 import { buildLoginPath } from "@/app/lib/onboarding";
 import { formatEpisodeTitle, formatFrameTypeLabel, formatGenreLabel, formatTopicTitle } from "@/app/lib/uiText";
@@ -174,7 +175,15 @@ export default async function WeeklyDecisionsPage() {
                           <dt>見直しタイミング</dt>
                           <dd>{formatDeadline(item.deadline_at)}</dd>
                         </div>
-                      ) : null}
+                      ) : (
+                        <div>
+                          <PremiumPreviewInline
+                            message="見直しタイミングを確認"
+                            page="/weekly-decisions"
+                            source="weekly_digest_deadline_preview"
+                          />
+                        </div>
+                      )}
                       <div>
                         <dt>詳細</dt>
                         <dd>{formatEpisodeTitle(item.episode_title)}</dd>

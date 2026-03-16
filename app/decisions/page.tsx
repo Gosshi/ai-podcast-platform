@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import GenerateCardForm from "@/app/components/GenerateCardForm";
+import PremiumPreview from "@/app/components/PremiumPreview";
 import TrackedLink from "@/app/components/TrackedLink";
 import { loadDecisionDashboardCards } from "@/app/lib/decisions";
 import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
@@ -192,7 +193,17 @@ export default async function DecisionsPage({
                         ))}
                       </ul>
                     </>
-                  ) : null}
+                  ) : (
+                    <PremiumPreview
+                      placeholders={[
+                        { label: "次の行動", value: "具体的な行動を提案します" },
+                        { label: "見直しタイミング", value: "最適なタイミングを表示" }
+                      ]}
+                      message="次の行動と見直しタイミングを確認"
+                      page="/decisions"
+                      source="recommendation_card_preview"
+                    />
+                  )}
                   <p className={styles.episodeLinkText}>詳細を見る</p>
                 </TrackedLink>
               </article>

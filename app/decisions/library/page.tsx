@@ -4,6 +4,7 @@ import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import JudgmentCardActions from "@/app/components/JudgmentCardActions";
 import MemberControls from "@/app/components/MemberControls";
+import PremiumPreview from "@/app/components/PremiumPreview";
 import TrackedLink from "@/app/components/TrackedLink";
 import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
 import { resolveJudgmentCardActionState } from "@/app/lib/judgmentCardState";
@@ -398,10 +399,16 @@ export default async function DecisionLibraryPage({
                   ) : null}
 
                   {!isPaid ? (
-                    <div className={styles.lockedPanel}>
-                      <strong>無料版はタイトルとかんたんな説明までです</strong>
-                      <p>有料版で判断理由、次の行動、見直しタイミング、履歴分析を確認できます。</p>
-                    </div>
+                    <PremiumPreview
+                      placeholders={[
+                        { label: "見直しタイミング", value: "最適な見直し時期を表示" },
+                        { label: "次の行動", value: "具体的な行動を提案" },
+                        { label: "見直しポイント", value: "判断のポイントを表示" }
+                      ]}
+                      message="判断理由と次の行動を確認"
+                      page="/decisions/library"
+                      source="library_card_preview"
+                    />
                   ) : null}
 
                   <div className={styles.cardFooter}>

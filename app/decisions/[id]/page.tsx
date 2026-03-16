@@ -4,6 +4,7 @@ import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import DecisionCalculator from "@/app/components/DecisionCalculator";
 import JudgmentCardActions from "@/app/components/JudgmentCardActions";
 import MemberControls from "@/app/components/MemberControls";
+import PremiumPreview from "@/app/components/PremiumPreview";
 import TrackedLink from "@/app/components/TrackedLink";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { buildLoginPath } from "@/app/lib/onboarding";
@@ -189,25 +190,16 @@ export default async function EpisodeDetailPage({
                         ) : null}
                       </>
                     ) : (
-                      <div className={styles.lockedBlock}>
-                        <strong>無料版はタイトルとかんたんな説明までです</strong>
-                        <p>有料版で判断理由、次の行動、見直しタイミングを確認できます。</p>
-                        <TrackedLink
-                          href="/account"
-                          eventName="judgment_card_locked_cta_click"
-                          eventProperties={{
-                            page: `/decisions/${id}`,
-                            source: "episode_detail_locked_block",
-                            episode_id: episode.id,
-                            judgment_card_id: card.id,
-                            genre: card.genre ?? undefined,
-                            frame_type: card.frame_type ?? undefined,
-                            judgment_type: card.judgment_type
-                          }}
-                        >
-                          有料で判断詳細を開放
-                        </TrackedLink>
-                      </div>
+                      <PremiumPreview
+                        placeholders={[
+                          { label: "次の行動", value: "具体的な行動を提案します" },
+                          { label: "判断理由", value: "詳しい判断の根拠を表示" },
+                          { label: "見直しタイミング", value: "最適な見直し時期" }
+                        ]}
+                        message="判断理由と次の行動を確認"
+                        page={`/decisions/${id}`}
+                        source="episode_detail_card_preview"
+                      />
                     )}
                   </article>
                 ))}
