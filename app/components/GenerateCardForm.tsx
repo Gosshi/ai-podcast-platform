@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { track } from "@/src/lib/analytics";
 import styles from "./generate-card-form.module.css";
 
@@ -24,13 +24,29 @@ type ListResponse =
   | { ok: true; cards: GeneratedCard[]; remaining: number }
   | { ok: false; error: string };
 
-type GenerateResponse =
-  | { ok: true; card: GeneratedCard; remaining: number }
-  | { ok: false; error: string; limit?: number; remaining?: number; minLength?: number; maxLength?: number };
+type ErrorResponse = {
+  ok: false;
+  error: string;
+  limit?: number;
+  remaining?: number;
+  minLength?: number;
+  maxLength?: number;
+};
 
 type OutcomeResponse =
   | { ok: true; card: { id: string; outcome: string } }
   | { ok: false; error: string };
+
+type StreamPhase = "idle" | "connecting" | "generating" | "done";
+
+type SSEDoneData = {
+  card?: GeneratedCard;
+  remaining?: number;
+};
+
+type SSEErrorData = {
+  error?: string;
+};
 
 const JUDGMENT_TYPE_LABELS: Record<string, string> = {
   use_now: "おすすめ: 今すぐ",
@@ -53,6 +69,38 @@ const GENRE_LABELS: Record<string, string> = {
   entertainment: "エンタメ"
 };
 
+const parseSSELines = (
+  text: string,
+  onEvent: (eventName: string, data: string) => void
+): string => {
+  const lines = text.split("\n");
+  let currentEvent = "";
+  let remainder = "";
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (i === lines.length - 1 && !text.endsWith("\n")) {
+      remainder = line;
+      break;
+    }
+
+    if (line.startsWith("event: ")) {
+      currentEvent = line.slice(7).trim();
+    } else if (line.startsWith("data: ")) {
+      const data = line.slice(6);
+      if (currentEvent) {
+        onEvent(currentEvent, data);
+        currentEvent = "";
+      }
+    } else if (line === "") {
+      currentEvent = "";
+    }
+  }
+
+  return remainder;
+};
+
 type GenerateCardFormProps = {
   isPaid: boolean;
   showWelcome?: boolean;
@@ -61,11 +109,13 @@ type GenerateCardFormProps = {
 export default function GenerateCardForm({ isPaid, showWelcome = false }: GenerateCardFormProps) {
   const [inputText, setInputText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [streamPhase, setStreamPhase] = useState<StreamPhase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [cards, setCards] = useState<GeneratedCard[]>([]);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [updatingOutcome, setUpdatingOutcome] = useState<string | null>(null);
   const [justGeneratedId, setJustGeneratedId] = useState<string | null>(null);
+  const skeletonRef = useRef<HTMLDivElement>(null);
 
   const loadCards = useCallback(async () => {
     try {
@@ -84,10 +134,29 @@ export default function GenerateCardForm({ isPaid, showWelcome = false }: Genera
     void loadCards();
   }, [loadCards]);
 
+  const handleErrorCode = (apiError: string) => {
+    if (apiError === "daily_limit_reached") {
+      setError(
+        isPaid
+          ? "本日の生成上限（20回）に達しました。明日また利用できます。"
+          : "無料版の生成上限（3回/日）に達しました。有料版にすると20回/日まで生成できます。"
+      );
+    } else if (apiError === "input_too_short") {
+      setError("もう少し詳しく入力してください。");
+    } else if (apiError === "input_too_long") {
+      setError("入力が長すぎます。500文字以内にしてください。");
+    } else if (apiError === "ai_timeout") {
+      setError("AIの応答がタイムアウトしました。時間をおいて再度お試しください。");
+    } else {
+      setError("判断カードの生成に失敗しました。時間をおいて再度お試しください。");
+    }
+  };
+
   const onSubmit = async () => {
     if (!inputText.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
+    setStreamPhase("connecting");
     setError(null);
 
     try {
@@ -97,41 +166,74 @@ export default function GenerateCardForm({ isPaid, showWelcome = false }: Genera
         body: JSON.stringify({ inputText: inputText.trim() })
       });
 
-      const data = (await response.json().catch(() => null)) as GenerateResponse | null;
-
-      if (!response.ok || !data || !data.ok) {
-        const apiError = data && !data.ok ? data.error : "generate_failed";
-        if (apiError === "daily_limit_reached") {
-          setError(
-            isPaid
-              ? "本日の生成上限（20回）に達しました。明日また利用できます。"
-              : "無料版の生成上限（3回/日）に達しました。有料版にすると20回/日まで生成できます。"
-          );
-        } else if (apiError === "input_too_short") {
-          setError("もう少し詳しく入力してください。");
-        } else if (apiError === "input_too_long") {
-          setError("入力が長すぎます。500文字以内にしてください。");
-        } else if (apiError === "ai_timeout") {
-          setError("AIの応答がタイムアウトしました。時間をおいて再度お試しください。");
-        } else {
-          setError("判断カードの生成に失敗しました。時間をおいて再度お試しください。");
-        }
+      // Non-streaming error responses (auth, validation, rate limit)
+      if (!response.ok) {
+        const errorData = (await response.json().catch(() => null)) as ErrorResponse | null;
+        handleErrorCode(errorData?.error ?? "generate_failed");
+        setStreamPhase("idle");
+        setIsSubmitting(false);
         return;
       }
 
-      setCards((prev) => [data.card, ...prev]);
-      setRemaining(data.remaining);
-      setInputText("");
-      setJustGeneratedId(data.card.id);
+      // SSE stream
+      const reader = response.body?.getReader();
+      if (!reader) {
+        setError("判断カードの生成に失敗しました。時間をおいて再度お試しください。");
+        setStreamPhase("idle");
+        setIsSubmitting(false);
+        return;
+      }
 
-      track("generate_card_submit", {
-        page: "/decisions",
-        source: "generate_card_form",
-        judgment_type: data.card.judgment_type,
-        genre: data.card.genre ?? undefined
+      setStreamPhase("generating");
+
+      // Scroll skeleton into view
+      requestAnimationFrame(() => {
+        skeletonRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       });
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        buffer = parseSSELines(buffer, (eventName, data) => {
+          try {
+            if (eventName === "done") {
+              const parsed = JSON.parse(data) as SSEDoneData;
+              if (parsed.card) {
+                setCards((prev) => [parsed.card as GeneratedCard, ...prev]);
+                setJustGeneratedId(parsed.card.id);
+                setInputText("");
+                track("generate_card_submit", {
+                  page: "/decisions",
+                  source: "generate_card_form",
+                  judgment_type: parsed.card.judgment_type,
+                  genre: parsed.card.genre ?? undefined
+                });
+              }
+              if (parsed.remaining !== undefined) {
+                setRemaining(parsed.remaining);
+              }
+              setStreamPhase("done");
+            } else if (eventName === "error") {
+              const parsed = JSON.parse(data) as SSEErrorData;
+              handleErrorCode(parsed.error ?? "generate_failed");
+              setStreamPhase("idle");
+            }
+          } catch {
+            // Skip malformed SSE data
+          }
+        });
+      }
+
+      setStreamPhase("idle");
     } catch {
       setError("判断カードの生成に失敗しました。時間をおいて再度お試しください。");
+      setStreamPhase("idle");
     } finally {
       setIsSubmitting(false);
     }
@@ -215,6 +317,34 @@ export default function GenerateCardForm({ isPaid, showWelcome = false }: Genera
         </div>
         {error ? <p className={styles.error}>{error}</p> : null}
       </div>
+
+      {streamPhase === "generating" || streamPhase === "connecting" ? (
+        <div className={styles.resultList}>
+          <article className={`${styles.resultCard} ${styles.skeletonCard}`} ref={skeletonRef}>
+            <div className={styles.cardTopRow}>
+              <span className={`${styles.badge} ${styles.skeletonBadge}`}>
+                <span className={styles.shimmer} />
+              </span>
+            </div>
+            <div className={`${styles.skeletonLine} ${styles.skeletonLineShort}`}>
+              <span className={styles.shimmer} />
+            </div>
+            <div className={`${styles.skeletonLine} ${styles.skeletonLineMedium}`}>
+              <span className={styles.shimmer} />
+            </div>
+            <div className={`${styles.skeletonLine} ${styles.skeletonLineFull}`}>
+              <span className={styles.shimmer} />
+            </div>
+            <div className={`${styles.skeletonLine} ${styles.skeletonLineLong}`}>
+              <span className={styles.shimmer} />
+            </div>
+            <div className={styles.skeletonStatus}>
+              <span className={styles.skeletonDot} />
+              AIが判断を考えています...
+            </div>
+          </article>
+        </div>
+      ) : null}
 
       {cards.length > 0 ? (
         <div className={styles.resultList}>
