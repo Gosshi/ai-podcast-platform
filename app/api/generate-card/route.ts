@@ -211,76 +211,99 @@ export async function POST(request: Request) {
 
   const userContext = buildUserContext(viewer.preferenceProfile);
   const userMessage = `${inputText}${userContext}`;
+  const remainingAfter = dailyLimit - usedCount - 1;
 
-  let aiResponse: Response;
-  try {
-    aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.7,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userMessage }
-        ]
-      }),
-      signal: AbortSignal.timeout(30_000)
-    });
-  } catch {
-    return jsonResponse({ ok: false, error: "ai_timeout" }, 504);
-  }
+  const encoder = new TextEncoder();
+  const sseEvent = (event: string, data: Record<string, unknown>): Uint8Array =>
+    encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 
-  if (!aiResponse.ok) {
-    const errorBody = (await aiResponse.json().catch(() => ({}))) as OpenAIResponse;
-    const errorMessage = errorBody.error?.message ?? `OpenAI API error: ${aiResponse.status}`;
-    return jsonResponse({ ok: false, error: "ai_error", detail: errorMessage }, 502);
-  }
+  const userId = viewer.userId;
+  const stream = new ReadableStream({
+    async start(controller) {
+      controller.enqueue(sseEvent("status", { status: "generating" }));
 
-  const aiData = (await aiResponse.json().catch(() => null)) as OpenAIResponse | null;
-  const rawContent = aiData?.choices?.[0]?.message?.content;
-  if (!rawContent) {
-    return jsonResponse({ ok: false, error: "ai_empty_response" }, 502);
-  }
+      let aiResponse: Response;
+      try {
+        aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            temperature: 0.7,
+            response_format: { type: "json_object" },
+            messages: [
+              { role: "system", content: SYSTEM_PROMPT },
+              { role: "user", content: userMessage }
+            ]
+          }),
+          signal: AbortSignal.timeout(30_000)
+        });
+      } catch {
+        controller.enqueue(sseEvent("error", { error: "ai_timeout" }));
+        controller.close();
+        return;
+      }
 
-  let parsedJson: GeneratedCardJson;
-  try {
-    parsedJson = JSON.parse(rawContent) as GeneratedCardJson;
-  } catch {
-    return jsonResponse({ ok: false, error: "ai_invalid_json" }, 502);
-  }
+      if (!aiResponse.ok) {
+        controller.enqueue(sseEvent("error", { error: "ai_error" }));
+        controller.close();
+        return;
+      }
 
-  const card = parseGeneratedCard(parsedJson);
+      const aiBody = (await aiResponse.json().catch(() => null)) as OpenAIResponse | null;
+      const rawContent = aiBody?.choices?.[0]?.message?.content;
 
-  // Insert into DB
-  const { data: insertedCard, error: insertError } = await supabase
-    .from("user_generated_cards")
-    .insert({
-      user_id: viewer.userId,
-      input_text: inputText,
-      lang: "ja",
-      topic_order: 1,
-      ...card
-    })
-    .select("id, input_text, topic_title, genre, judgment_type, judgment_summary, action_text, deadline_at, threshold_json, watch_points_json, confidence_score, outcome, created_at")
-    .single();
+      if (!rawContent) {
+        controller.enqueue(sseEvent("error", { error: "ai_empty_response" }));
+        controller.close();
+        return;
+      }
 
-  if (insertError || !insertedCard) {
-    return jsonResponse({ ok: false, error: insertError?.message ?? "insert_failed" }, 500);
-  }
+      let parsedJson: GeneratedCardJson;
+      try {
+        parsedJson = JSON.parse(rawContent) as GeneratedCardJson;
+      } catch {
+        controller.enqueue(sseEvent("error", { error: "ai_invalid_json" }));
+        controller.close();
+        return;
+      }
 
-  return jsonResponse(
-    {
-      ok: true,
-      card: insertedCard,
-      remaining: dailyLimit - usedCount - 1
-    },
-    201
-  );
+      const card = parseGeneratedCard(parsedJson);
+
+      const { data: insertedCard, error: insertError } = await supabase
+        .from("user_generated_cards")
+        .insert({
+          user_id: userId,
+          input_text: inputText,
+          lang: "ja",
+          topic_order: 1,
+          ...card
+        })
+        .select("id, input_text, topic_title, genre, judgment_type, judgment_summary, action_text, deadline_at, threshold_json, watch_points_json, confidence_score, outcome, created_at")
+        .single();
+
+      if (insertError || !insertedCard) {
+        controller.enqueue(sseEvent("error", { error: insertError?.message ?? "insert_failed" }));
+        controller.close();
+        return;
+      }
+
+      controller.enqueue(sseEvent("done", { card: insertedCard, remaining: remainingAfter }));
+      controller.close();
+    }
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive"
+    }
+  });
 }
 
 export async function GET() {
