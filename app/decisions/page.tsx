@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
+import GenerateCardForm from "@/app/components/GenerateCardForm";
 import TrackedLink from "@/app/components/TrackedLink";
 import { loadDecisionDashboardCards } from "@/app/lib/decisions";
 import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
@@ -101,6 +102,8 @@ export default async function DecisionsPage() {
           </div>
         </div>
       </section>
+
+      <GenerateCardForm isPaid={isPaid} />
 
       <section className={styles.recommendationSection}>
         <div className={styles.recommendationHeader}>
