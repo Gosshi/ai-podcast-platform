@@ -1,0 +1,132 @@
+.wrapper {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+/* Blurred placeholder content */
+.blurredContent {
+  padding: 0.85rem 1rem;
+  filter: blur(5px);
+  user-select: none;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.blurredContent dl {
+  margin: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.blurredContent dt {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+}
+
+.blurredContent dd {
+  margin: 0;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.blurredContent ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.2rem;
+  color: #475569;
+  font-size: 0.92rem;
+}
+
+/* Overlay with CTA */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  background: rgba(248, 250, 252, 0.7);
+  backdrop-filter: blur(2px);
+  border-radius: 18px;
+  border: 1px dashed rgba(14, 165, 233, 0.35);
+}
+
+.lockIcon {
+  width: 1.6rem;
+  height: 1.6rem;
+  color: #0369a1;
+  opacity: 0.85;
+}
+
+.overlayText {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.overlayLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.15rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition: opacity 160ms ease;
+}
+
+.overlayLink:hover {
+  opacity: 0.85;
+}
+
+/* Inline variant: compact, no blur overlay, just a hint row */
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f0f9ff, #eff6ff);
+  border: 1px solid rgba(14, 165, 233, 0.15);
+}
+
+.inlineLockIcon {
+  width: 1rem;
+  height: 1rem;
+  color: #0369a1;
+  flex-shrink: 0;
+}
+
+.inlineText {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #334155;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.inlineLink {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #0369a1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.inlineLink:hover {
+  text-decoration: underline;
+}
