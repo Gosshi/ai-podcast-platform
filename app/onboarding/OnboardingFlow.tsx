@@ -285,7 +285,8 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
             next_path: nextPath
           });
 
-          router.replace(nextPath);
+          const redirectUrl = nextPath === "/decisions" ? "/decisions?welcome=1" : nextPath;
+          router.replace(redirectUrl);
           router.refresh();
         })
         .catch((requestError) => {
