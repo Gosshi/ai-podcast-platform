@@ -77,7 +77,7 @@ export default async function DecisionReplayPage({
               <p className={styles.eyebrow}>学び</p>
               <h1>{formatTopicTitle(replay.topic_title)}</h1>
               <p className={styles.lead}>
-                当時の判断内容と、あとから記録した結果を並べて見直します。
+                当時の内容と、あとから記録した結果を並べて見直します。
               </p>
 
               <div className={styles.badgeRow}>
@@ -94,7 +94,7 @@ export default async function DecisionReplayPage({
             <MemberControls
               viewer={viewer}
               title="プラン"
-              copy="無料版は要点まで、有料版は当時の判断理由まで見返せます。"
+              copy="無料版は要点まで、有料版は当時の詳細まで見返せます。"
               analyticsSource={pagePath}
               variant="compact"
             />
@@ -104,13 +104,13 @@ export default async function DecisionReplayPage({
             <div className={styles.sectionHeading}>
               <div>
                 <p className={styles.sectionEyebrow}>概要</p>
-                <h2>判断概要</h2>
+                <h2>トピック概要</h2>
               </div>
             </div>
 
             <dl className={styles.summaryGrid}>
               <div>
-                <dt>判断</dt>
+                <dt>トピック</dt>
                 <dd>{formatTopicTitle(replay.topic_title)}</dd>
               </div>
               <div>
@@ -126,7 +126,7 @@ export default async function DecisionReplayPage({
                 <dd>{DECISION_TYPE_LABELS[replay.judgment_type]}</dd>
               </div>
               <div>
-                <dt>判断した日</dt>
+                <dt>記録日</dt>
                 <dd>{formatDecisionReplayDateTime(replay.created_at)}</dd>
               </div>
               <div>
@@ -139,8 +139,8 @@ export default async function DecisionReplayPage({
           <section className={styles.section}>
             <div className={styles.sectionHeading}>
               <div>
-                <p className={styles.sectionEyebrow}>判断内容</p>
-                <h2>当時の判断内容</h2>
+                <p className={styles.sectionEyebrow}>当時の内容</p>
+                <h2>当時の詳細</h2>
               </div>
             </div>
 
@@ -180,13 +180,13 @@ export default async function DecisionReplayPage({
                     !visibleReplay.deadline_at &&
                     visibleReplay.watch_points.length === 0 &&
                     visibleReplay.threshold_highlights.length === 0 ? (
-                      <p className={styles.mutedText}>当時の判断理由として保存された追加情報はまだありません。</p>
+                      <p className={styles.mutedText}>当時の詳細として保存された追加情報はまだありません。</p>
                     ) : null}
                   </div>
                 ) : (
                   <div className={styles.lockedPanel}>
                         <strong>有料版では当時の詳細まで見返せます</strong>
-                        <p>当時の行動指針、見直しタイミング、判断理由をまとめて確認できます。</p>
+                        <p>当時の行動指針、見直しタイミング、詳細をまとめて確認できます。</p>
                     <TrackedLink
                       href="/account"
                       className={styles.secondaryLink}
@@ -216,7 +216,7 @@ export default async function DecisionReplayPage({
 
             <div className={styles.compareGrid}>
               <article className={styles.compareCard}>
-                <p className={styles.cardLabel}>当時の判断</p>
+                <p className={styles.cardLabel}>当時のおすすめ</p>
                 <strong>{DECISION_TYPE_LABELS[replay.judgment_type]}</strong>
                 <p className={styles.bodyText}>{replay.judgment_summary}</p>
                 <dl className={styles.metaList}>
@@ -225,7 +225,7 @@ export default async function DecisionReplayPage({
                     <dd>{DECISION_TYPE_LABELS[replay.judgment_type]}</dd>
                   </div>
                   <div>
-                    <dt>判断日時</dt>
+                    <dt>記録日時</dt>
                     <dd>{formatDecisionReplayDateTime(replay.created_at)}</dd>
                   </div>
                 </dl>
@@ -234,7 +234,7 @@ export default async function DecisionReplayPage({
               <article className={styles.compareCard}>
                 <p className={styles.cardLabel}>実際の結果</p>
                 <strong>{formatDecisionOutcomeLabel(replay.outcome)}</strong>
-                <p className={styles.bodyText}>採用した判断: {DECISION_TYPE_LABELS[replay.decision_type]}</p>
+                <p className={styles.bodyText}>採用したアクション: {DECISION_TYPE_LABELS[replay.decision_type]}</p>
                 <dl className={styles.metaList}>
                   <div>
                     <dt>結果</dt>
@@ -288,7 +288,7 @@ export default async function DecisionReplayPage({
             ) : (
               <div className={styles.lockedPanel}>
                 <strong>有料版では学びメモを詳しく表示します</strong>
-                <p>過去の判断から学べる内容を、より詳しく確認できます。</p>
+                <p>過去のアクションから学べる内容を、より詳しく確認できます。</p>
               </div>
             )}
           </section>
