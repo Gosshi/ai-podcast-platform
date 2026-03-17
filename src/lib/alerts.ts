@@ -221,8 +221,8 @@ export const buildDeadlineDueSoonAlerts = (
           title: `${card.topic_title} の締切が近づいています`,
           summary:
             hoursUntilDue <= 24
-              ? "24時間以内に確認したい判断です。詳細から理由と次の行動を確認できます。"
-              : `${hoursUntilDue}時間以内に見直したい判断です。保存一覧や詳細から再訪できます。`,
+              ? "24時間以内に確認したいトピックです。詳細から理由と次の行動を確認できます。"
+              : `${hoursUntilDue}時間以内に見直したいトピックです。保存一覧や詳細から再訪できます。`,
           urgency: resolveUrgencyFromHours(hoursUntilDue),
           due_at: card.deadline_at,
           created_at: createdAt,
@@ -280,8 +280,8 @@ export const buildWatchlistDueSoonAlerts = (
           title: `保存中の「${item.topic_title}」を見直すタイミングです`,
           summary:
             item.status === "watching"
-              ? "後で考える判断です。期限前に詳細と保存一覧を見直してください。"
-              : "保存した判断です。期限が来る前に保存一覧から再訪してください。",
+              ? "後で考えるトピックです。期限前に詳細と保存一覧を見直してください。"
+              : "保存したトピックです。期限が来る前に保存一覧から再訪してください。",
           urgency: resolveUrgencyFromHours(hoursUntilDue),
           due_at: item.deadline_at,
           created_at: createdAt,

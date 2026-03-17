@@ -106,7 +106,7 @@ const resolveDeadlineInfo = (
       score: 54,
       deadlineLabel: isPaid ? deadlineAt ?? "3日以内" : "3日以内に確認",
       urgencyLevel: "high",
-      tag: "今週前半に判断"
+      tag: "今週前半にチェック"
     };
   }
 
