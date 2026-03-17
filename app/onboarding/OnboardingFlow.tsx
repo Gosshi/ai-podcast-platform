@@ -33,26 +33,26 @@ const STEP_TITLES = [
   {
     id: "interest_topics",
     eyebrow: "1 / 4",
-    title: "気になる判断領域を選ぶ",
-    description: "まずは、ふだん迷いやすいテーマを教えてください。複数選べます。"
+    title: "聴きたいジャンルを選ぶ",
+    description: "毎日届くポッドキャストのテーマを選びます。複数選べます。"
   },
   {
     id: "active_subscriptions",
     eyebrow: "2 / 4",
     title: "使っているサービスを教える",
-    description: "いま試せるか、続けるか、見送るかを整理しやすくするために使います。"
+    description: "利用中のサービスに合わせた情報をエピソードに反映します。"
   },
   {
     id: "decision_priority",
     eyebrow: "3 / 4",
-    title: "判断で何を優先するかを決める",
-    description: "お金、時間、新しい発見、後悔しにくさのどれを重視するかを決めます。"
+    title: "重視する観点を選ぶ",
+    description: "コスト、時間、新しい発見、リスク回避のどれを重視するか教えてください。"
   },
   {
     id: "time_and_budget",
     eyebrow: "4 / 4",
-    title: "使える時間を教える",
-    description: "使える時間と予算感覚を入れて、無理のないおすすめに整えます。"
+    title: "聴ける時間を教える",
+    description: "ポッドキャストに使える時間と予算感覚から、最適なエピソードをお届けします。"
   }
 ] as const;
 
@@ -68,14 +68,14 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 const INTEREST_TOPIC_HELPERS: Record<InterestTopic, string> = {
-  games: "ゲームやエンタメ判断",
-  streaming: "サブスクや継続判断",
-  anime: "作品選びや視聴判断",
-  movies: "長めのコンテンツ判断",
+  games: "ゲームやエンタメの最新情報",
+  streaming: "サブスクの比較や見直し",
+  anime: "注目作品やおすすめ",
+  movies: "映画やドラマの話題",
   tech: "ガジェットや新サービス",
-  lifestyle: "日常の段取りや習慣",
-  work: "タスク優先順位や作業判断",
-  shopping: "買うか迷うものの整理"
+  lifestyle: "暮らしの工夫やトレンド",
+  work: "仕事術や生産性の話題",
+  shopping: "買い物のヒントやレビュー"
 };
 
 const ACTIVE_SUBSCRIPTION_HELPERS: Record<ActiveSubscription, string> = {
@@ -99,10 +99,10 @@ const DECISION_PRIORITY_HELPERS: Record<DecisionPriority, string> = {
 };
 
 const DAILY_AVAILABLE_TIME_HELPERS: Record<DailyAvailableTime, string> = {
-  under_30m: "スキマ時間だけ使える",
-  "30_to_60m": "1つ判断して動ける",
-  "1_to_2h": "しっかり比較する余裕がある",
-  over_2h: "まとまった時間を取りやすい"
+  under_30m: "通勤中にさっと聴ける",
+  "30_to_60m": "じっくり1エピソード聴ける",
+  "1_to_2h": "複数エピソードを聴ける",
+  over_2h: "まとまった時間がある"
 };
 
 const BUDGET_HELPERS: Record<BudgetSensitivity, string> = {
@@ -358,7 +358,7 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
 
       {step === 2 ? (
         <div className={styles.group}>
-          <p className={styles.groupLabel}>判断で何を優先しますか</p>
+          <p className={styles.groupLabel}>何を重視しますか</p>
           <div className={styles.optionGrid}>
             {DECISION_PRIORITY_OPTIONS.map((priority) => (
               <button
@@ -381,7 +381,7 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
       {step === 3 ? (
         <div className={styles.formGrid}>
           <div className={styles.group}>
-            <p className={styles.groupLabel}>1日にどれくらい時間を使えますか</p>
+            <p className={styles.groupLabel}>1日にどれくらい聴けますか</p>
             <div className={styles.optionGrid}>
               {DAILY_AVAILABLE_TIME_OPTIONS.map((time) => (
                 <button
