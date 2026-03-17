@@ -67,6 +67,8 @@ export const ANALYTICS_EVENT_NAMES = [
   "podcast_hero_impression",
   "podcast_play",
   "episode_card_click",
+  "share_click",
+  "share_complete",
   "welcome_shown"
 ] as const;
 

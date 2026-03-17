@@ -3,6 +3,7 @@ import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import AudioPlayer from "@/app/components/AudioPlayer";
 import PremiumPreview from "@/app/components/PremiumPreview";
+import ShareButton from "@/app/components/ShareButton";
 import TrackedLink from "@/app/components/TrackedLink";
 import { loadPublishedEpisodes } from "@/app/lib/episodes";
 import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
@@ -72,6 +73,18 @@ export default async function DecisionsPage({
           title={latestEpisode?.title ?? "エピソード準備中"}
           description={latestEpisode?.description}
         />
+        {latestEpisode ? (
+          <div className={styles.shareRow}>
+            <ShareButton
+              title={latestEpisode.title ?? "AI Podcast"}
+              text={latestEpisode.description ?? undefined}
+              url={`/decisions/${latestEpisode.id}`}
+              page="/decisions"
+              source="podcast_hero"
+              episodeId={latestEpisode.id}
+            />
+          </div>
+        ) : null}
       </section>
 
       {/* --- Judgment Cards from Episode --- */}
