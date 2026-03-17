@@ -40,7 +40,7 @@ export default function OutcomeReminderSection({
           <p className={styles.eyebrow}>結果の記録</p>
           <h2>結果を記録してください</h2>
           <p className={styles.lead}>
-            判断して終わりではなく、結果を残して次のおすすめに活かします。
+            アクションして終わりではなく、結果を残して次のおすすめに活かします。
           </p>
         </div>
         <span className={styles.countBadge}>{reminders.length}件</span>
@@ -87,7 +87,7 @@ export default function OutcomeReminderSection({
                 <dd>{formatOutcomeReminderTiming(reminder)}</dd>
               </div>
               <div>
-                <dt>判断タイプ</dt>
+                <dt>アクション</dt>
                 <dd>{DECISION_TYPE_LABELS[reminder.decision_type]}</dd>
               </div>
               <div>

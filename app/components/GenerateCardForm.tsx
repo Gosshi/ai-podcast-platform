@@ -340,7 +340,7 @@ export default function GenerateCardForm({ isPaid, showWelcome = false }: Genera
             </div>
             <div className={styles.skeletonStatus}>
               <span className={styles.skeletonDot} />
-              AIが判断を考えています...
+              AIが回答を考えています...
             </div>
           </article>
         </div>

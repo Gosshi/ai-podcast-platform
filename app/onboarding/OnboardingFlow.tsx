@@ -107,7 +107,7 @@ const DAILY_AVAILABLE_TIME_HELPERS: Record<DailyAvailableTime, string> = {
 
 const BUDGET_HELPERS: Record<BudgetSensitivity, string> = {
   low: "課金はあまり気にしない",
-  medium: "内容次第で判断したい",
+  medium: "内容次第で決めたい",
   high: "追加料金には慎重"
 };
 

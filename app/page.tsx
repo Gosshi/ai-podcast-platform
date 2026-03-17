@@ -7,7 +7,7 @@ import styles from "./home.module.css";
 export const dynamic = "force-dynamic";
 export const metadata = {
   title: "あなた専用のAIポッドキャストを毎日届ける | AI Podcast",
-  description: "関心に合わせてAIが毎日ポッドキャストを生成。聴くだけで情報が整理され、判断ポイントも一目でわかる。"
+  description: "関心に合わせてAIが毎日ポッドキャストを生成。聴くだけで情報が整理され、要点も一目でわかる。"
 };
 
 const SAMPLE_EPISODES = [
@@ -16,7 +16,7 @@ const SAMPLE_EPISODES = [
     genre: "テクノロジー",
     duration: "8分",
     cards: 3,
-    summary: "話題のAIツールを実用性の視点で比較し、今すぐ試すべきか判断します。"
+    summary: "話題のAIツールを実用性の視点で比較し、今すぐ試すべきかお伝えします。"
   },
   {
     title: "サブスク見直し — 今月解約してもいいもの",
@@ -56,7 +56,7 @@ export default async function HomePage() {
             <h1>欲しい情報だけを、毎日ポッドキャストで届ける。</h1>
             <p className={styles.lead}>
               あなたの関心に合わせてAIがエピソードを生成。
-              通勤中や家事の合間に聴くだけで、情報が整理され判断ポイントも見えてきます。
+              通勤中や家事の合間に聴くだけで、情報が整理され要点も見えてきます。
             </p>
 
             <div className={styles.ctaRow}>
@@ -109,7 +109,7 @@ export default async function HomePage() {
             </div>
             <h2>今週チェックすべきAIツール3選</h2>
             <p className={styles.sampleSummary}>
-              話題のAIツールを実用性の視点で比較し、今すぐ試すべきか判断します。
+              話題のAIツールを実用性の視点で比較し、今すぐ試すべきかお伝えします。
             </p>
             <dl className={styles.sampleMeta}>
               <div>
@@ -118,7 +118,7 @@ export default async function HomePage() {
               </div>
               <div>
                 <dt>トピックカード</dt>
-                <dd>3件の判断ポイント</dd>
+                <dd>3件のポイント</dd>
               </div>
               <div>
                 <dt>更新</dt>

@@ -112,7 +112,7 @@ export default async function WeeklyDecisionsPage() {
           <div>
             <p className={styles.eyebrow}>無料版</p>
             <h2>無料版はカテゴリごとに一部だけ表示します</h2>
-            <p>有料会員になると今週の全件に加えて、判断理由、次の行動、見直しタイミングまで確認できます。</p>
+            <p>有料会員になると今週の全件に加えて、詳細、次の行動、見直しタイミングまで確認できます。</p>
           </div>
           <TrackedLink
             href="/account"
@@ -142,7 +142,7 @@ export default async function WeeklyDecisionsPage() {
             </div>
 
             {items.length === 0 ? (
-              <p className={styles.emptyText}>この分類の判断はまだありません。</p>
+              <p className={styles.emptyText}>この分類のトピックはまだありません。</p>
             ) : (
               <div className={styles.grid}>
                 {items.map((item) => (
