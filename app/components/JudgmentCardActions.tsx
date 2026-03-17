@@ -91,7 +91,7 @@ export default function JudgmentCardActions({
         >
           結果を記録する
         </TrackedLink>
-        <p className={styles.metaText}>採用した判断です。満足 / 普通 / 後悔をあとで記録できます。</p>
+        <p className={styles.metaText}>採用済みです。満足 / 普通 / 後悔をあとで記録できます。</p>
       </div>
     );
   }

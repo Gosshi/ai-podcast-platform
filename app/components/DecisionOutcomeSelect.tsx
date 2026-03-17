@@ -123,7 +123,7 @@ export default function DecisionOutcomeSelect({
   if (variant === "quick") {
     return (
       <div className={styles.quickOutcomeStack}>
-        <div className={styles.quickOutcomeGroup} role="group" aria-label="判断結果をすばやく記録">
+        <div className={styles.quickOutcomeGroup} role="group" aria-label="結果をすばやく記録">
           {OUTCOME_OPTIONS.map((outcome) => (
             <button
               key={outcome}
@@ -151,7 +151,7 @@ export default function DecisionOutcomeSelect({
         value={value ?? ""}
         onChange={(event) => void onChange(event.target.value as DecisionOutcomeValue)}
         disabled={isSubmitting}
-        aria-label="判断結果"
+        aria-label="結果"
       >
         <option value="" disabled>
           結果を選ぶ

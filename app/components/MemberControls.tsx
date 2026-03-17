@@ -55,7 +55,7 @@ const shouldRefreshForAuthEvent = (event: AuthChangeEvent): boolean => {
 export default function MemberControls({
   viewer,
   title = "会員ステータス",
-  copy = "無料版はタイトルとかんたんな説明まで。有料会員になると判断理由、次の行動、見直しタイミング、履歴分析が使えます。",
+  copy = "無料版はタイトルとかんたんな説明まで。有料会員になると詳細、次の行動、見直しタイミング、履歴分析が使えます。",
   showBillingPortal = false,
   analyticsSource,
   variant = "full",
@@ -245,9 +245,9 @@ export default function MemberControls({
               <p className={styles.copy}>
                 {viewer
                   ? viewer.isPaid
-                  ? "結果まで残しながら、自分向けの判断精度を育てられます。"
+                  ? "結果まで残しながら、自分に合うおすすめ精度を育てられます。"
                     : "無料版ではタイトルとかんたんな説明まで確認できます。詳しい設定はアカウントから管理できます。"
-                  : "ログイン後は初回設定に進み、そのまま判断画面へ戻れます。"}
+                  : "ログイン後は初回設定に進み、そのままエピソード画面へ戻れます。"}
               </p>
             </div>
             <Link href={viewer ? "/account" : buildLoginPath(authRedirectPath)} className={styles.compactLink}>
@@ -355,7 +355,7 @@ export default function MemberControls({
                   メールでログイン
                 </button>
               </div>
-              <p className={styles.hint}>ログイン後は初回設定に進み、そのまま判断画面へ戻れます。</p>
+              <p className={styles.hint}>ログイン後は初回設定に進み、そのままエピソード画面へ戻れます。</p>
             </form>
           )}
 

@@ -75,7 +75,7 @@ export default function NotificationPreferencesForm({
         />
         <div>
           <h3>期限と保存中のお知らせ</h3>
-          <p>期限が近い判断や保存した候補をお知らせに表示します。</p>
+          <p>期限が近いトピックや保存した候補をお知らせに表示します。</p>
         </div>
       </label>
 

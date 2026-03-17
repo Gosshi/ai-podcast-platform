@@ -158,7 +158,7 @@ export default function LibraryControls({
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="判断タイトル / 説明"
+            placeholder="トピックタイトル / 説明"
             className={styles.searchInput}
           />
         </label>
@@ -271,7 +271,7 @@ export default function LibraryControls({
       </div>
 
       <div className={styles.chipGroup}>
-        <span className={styles.chipLabel}>判断</span>
+        <span className={styles.chipLabel}>おすすめ</span>
         <div className={styles.chipRow}>
           {JUDGMENT_TYPE_LABELS.map((item) => (
             <button

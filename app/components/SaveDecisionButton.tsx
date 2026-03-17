@@ -62,7 +62,7 @@ export default function SaveDecisionButton({
 
   const onClick = async () => {
     if (!judgmentCardId) {
-      setError("保存対象の判断が見つかりません。");
+      setError("保存対象のトピックが見つかりません。");
       return;
     }
 

@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "AI Podcast",
   description:
-    "欲しい情報だけを、毎日AIがポッドキャストで届ける。通勤中に聴くだけで、判断と行動が変わります。"
+    "欲しい情報だけを、毎日AIがポッドキャストで届ける。通勤中に聴くだけで、情報整理と行動が変わります。"
 };
 
 export default function RootLayout({

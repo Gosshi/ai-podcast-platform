@@ -39,7 +39,7 @@ type FieldDefinition = {
 const copy = {
   ja: {
     title: "再判定",
-    subtitle: "自分の時間や費用で入れ直して、もう一度判断できます。",
+    subtitle: "自分の時間や費用で入れ直して、もう一度評価できます。",
     expand: "開く",
     collapse: "閉じる",
     upgradeTitle: "有料会員で再判定",
