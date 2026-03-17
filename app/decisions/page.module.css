@@ -118,6 +118,12 @@
   margin-top: 0.85rem;
 }
 
+.shareRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.65rem;
+}
+
 .paywallBanner {
   margin-top: 1.25rem;
   padding: 1.25rem 1.4rem;

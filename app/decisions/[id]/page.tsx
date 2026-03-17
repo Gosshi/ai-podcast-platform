@@ -6,6 +6,7 @@ import DecisionCalculator from "@/app/components/DecisionCalculator";
 import JudgmentCardActions from "@/app/components/JudgmentCardActions";
 import MemberControls from "@/app/components/MemberControls";
 import PremiumPreview from "@/app/components/PremiumPreview";
+import ShareButton from "@/app/components/ShareButton";
 import TrackedLink from "@/app/components/TrackedLink";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { buildLoginPath } from "@/app/lib/onboarding";
@@ -92,6 +93,16 @@ export default async function EpisodeDetailPage({
                 title={formatEpisodeTitle(episode.title)}
                 description={episode.description}
               />
+              <div className={styles.shareRow}>
+                <ShareButton
+                  title={formatEpisodeTitle(episode.title)}
+                  text={episode.description ?? undefined}
+                  url={`/decisions/${id}`}
+                  page={`/decisions/${id}`}
+                  source="episode_detail"
+                  episodeId={episode.id}
+                />
+              </div>
             </div>
 
             <MemberControls
