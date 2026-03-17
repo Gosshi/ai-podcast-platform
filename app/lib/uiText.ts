@@ -213,5 +213,5 @@ export const formatTopicTitle = (value: string | null, fallback = "判断メモ"
     return normalized;
   }
 
-  return TOPIC_TITLE_MAP[normalized] ?? resolveKeywordTitle(normalized) ?? "判断カード";
+  return TOPIC_TITLE_MAP[normalized] ?? resolveKeywordTitle(normalized) ?? "トピックカード";
 };

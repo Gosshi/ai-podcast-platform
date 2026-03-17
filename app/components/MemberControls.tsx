@@ -304,9 +304,9 @@ export default function MemberControls({
           ) : null}
 
           {viewer?.isPaid ? (
-            <p className={styles.hint}>締切を逃しにくくなり、迷いを減らしながら判断を早く進められます。</p>
+            <p className={styles.hint}>フルスクリプト、行動提案、アーカイブ無制限で毎日のポッドキャストをもっと活用できます。</p>
           ) : (
-            <p className={styles.hint}>無料版はタイトルとかんたんな説明まで。有料会員で判断理由、次の行動、見直しタイミング、履歴分析が使えます。</p>
+            <p className={styles.hint}>無料版はエピソード再生と概要まで。有料会員でフルスクリプト、行動提案、アーカイブ無制限が使えます。</p>
           )}
 
           {viewer ? (

@@ -43,7 +43,7 @@ const copy = {
     expand: "開く",
     collapse: "閉じる",
     upgradeTitle: "有料会員で再判定",
-    upgradeCopy: "この判断カードを自分の数字で再評価できます。",
+    upgradeCopy: "このトピックカードを自分の数字で再評価できます。",
     upgradeCta: "有料会員で再判定",
     submit: "再判定する",
     thresholdLabel: "判定ルール",

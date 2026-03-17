@@ -205,16 +205,15 @@ export default async function DecisionLibraryPage({
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>保存から探す</p>
-          <h1>後で考える判断の候補を、まとめて探せます。</h1>
+          <h1>気になるトピックを、まとめて探せます。</h1>
           <p className={styles.lead}>
-            カテゴリや見直しタイミングごとに、過去の判断メモを探せます。気になった候補を見つけて、保存する前の比較に
-            使う画面です。
+            カテゴリや見直しタイミングごとに、過去のトピックを探せます。気になった候補を見つけて保存できます。
           </p>
 
           <div className={styles.heroMeta}>
             <span className={styles.heroBadge}>{isPaid ? "有料プラン" : "無料プラン"}</span>
             <span>{isPaid ? "保存候補をまとめて探せます" : `直近カードを最大${FREE_LIBRARY_CARD_LIMIT}件まで表示`}</span>
-            <span>{query ? `「${query}」に近い判断を表示中` : "気になる判断を探して保存できます"}</span>
+            <span>{query ? `「${query}」に近いトピックを表示中` : "気になるトピックを探して保存できます"}</span>
           </div>
 
           {viewer.needsOnboarding ? (
@@ -293,10 +292,10 @@ export default async function DecisionLibraryPage({
         <section className={styles.noticePanel}>
           <div>
             <p className={styles.sectionEyebrow}>表示上限</p>
-            <h2>無料版は最近の判断だけを一部表示します</h2>
+            <h2>無料版は最近のトピックだけを一部表示します</h2>
             <p>
               {result.searchPreviewLimited
-                ? `この条件に合う判断はまだありますが、無料版では最初の ${result.cards.length} 件だけ表示します。`
+                ? `この条件に合うトピックはまだありますが、無料版では最初の ${result.cards.length} 件だけ表示します。`
                 : `無料版では直近カードを最大 ${FREE_LIBRARY_CARD_LIMIT} 件まで表示します。`}
             </p>
           </div>
@@ -318,15 +317,15 @@ export default async function DecisionLibraryPage({
         <div className={styles.sectionHeading}>
           <div>
             <p className={styles.sectionEyebrow}>検索結果</p>
-            <h2>保存前に比較できる判断メモ</h2>
+            <h2>保存前に比較できるトピック</h2>
             <p className={styles.sectionLead}>
-              エピソード一覧から探し直さなくても、判断の内容から見返せます。
+              エピソード一覧から探し直さなくても、トピックの内容から見返せます。
             </p>
           </div>
         </div>
 
         {result.cards.length === 0 ? (
-          <p className={styles.emptyText}>条件に一致する判断メモはありません。</p>
+          <p className={styles.emptyText}>条件に一致するトピックはありません。</p>
         ) : (
           <div className={styles.grid}>
             {result.cards.map((card) => {
@@ -403,9 +402,9 @@ export default async function DecisionLibraryPage({
                       placeholders={[
                         { label: "見直しタイミング", value: "最適な見直し時期を表示" },
                         { label: "次の行動", value: "具体的な行動を提案" },
-                        { label: "見直しポイント", value: "判断のポイントを表示" }
+                        { label: "見直しポイント", value: "ポイントを表示" }
                       ]}
-                      message="判断理由と次の行動を確認"
+                      message="詳細と行動提案を確認"
                       page="/decisions/library"
                       source="library_card_preview"
                     />

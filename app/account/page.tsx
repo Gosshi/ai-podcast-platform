@@ -110,7 +110,7 @@ export default async function AccountPage({
             </p>
             {subscription === "success" && viewer?.isPaid ? (
               <p className={`${styles.statusMessage} ${styles.success}`}>
-                有料会員への切り替えが完了しました。迷いを減らし、判断を早く進めるための機能が使えます。
+                有料会員への切り替えが完了しました。フルスクリプト・行動提案・アーカイブ無制限が使えます。
               </p>
             ) : null}
             {subscription === "success" && !viewer?.isPaid ? (
@@ -120,7 +120,7 @@ export default async function AccountPage({
             ) : null}
             {subscription === "cancel" ? (
               <p className={`${styles.statusMessage} ${styles.cancel}`}>
-                購入手続きはキャンセルされました。無料版のまま判断の要点を確認でき、必要になった時点で再開できます。
+                購入手続きはキャンセルされました。無料版のままエピソード再生と概要を確認でき、必要になった時点で再開できます。
               </p>
             ) : null}
           </div>
@@ -182,12 +182,12 @@ export default async function AccountPage({
               <strong className={styles.statValue}>{viewer?.stripeCustomerId ? "支払い設定から変更可能" : "ログイン後に表示"}</strong>
             </article>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>判断カード</span>
-              <strong className={styles.statValue}>{viewer?.isPaid ? "判断理由まで表示" : "タイトル / かんたんな説明"}</strong>
+              <span className={styles.statLabel}>スクリプト</span>
+              <strong className={styles.statValue}>{viewer?.isPaid ? "全文閲覧可能" : "プレビューのみ"}</strong>
             </article>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>履歴分析</span>
-              <strong className={styles.statValue}>{viewer?.isPaid ? "利用可能" : "有料版で利用可能"}</strong>
+              <span className={styles.statLabel}>アーカイブ</span>
+              <strong className={styles.statValue}>{viewer?.isPaid ? "無制限" : "直近のみ"}</strong>
             </article>
           </div>
         </section>
@@ -201,37 +201,36 @@ export default async function AccountPage({
 
           <div className={styles.featureGrid}>
             <article className={styles.featureCard}>
-              <h3>判断理由まで確認できる</h3>
-              <p>無料版のタイトルとかんたんな説明に加えて、判断理由まで確認できます。</p>
+              <h3>フルスクリプトを読める</h3>
+              <p>エピソードの台本全文を確認でき、聴き逃した内容もテキストで振り返れます。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>次の行動が明確になる</h3>
-              <p>その場で迷わないように、次の行動まで確認できます。</p>
+              <h3>行動提案を確認できる</h3>
+              <p>トピックカードの具体的な次のアクションまで確認できます。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>見直しタイミングが分かる</h3>
-              <p>後で考える判断を、いつ見直すかまで揃えて確認できます。</p>
+              <h3>アーカイブが無制限</h3>
+              <p>過去のすべてのエピソードとトピックカードにアクセスできます。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>履歴分析が使える</h3>
-              <p>採用した判断の結果を分析して、次のおすすめに活かせます。</p>
+              <h3>保存・履歴分析が使える</h3>
+              <p>気になるトピックを無制限に保存し、行動傾向を分析できます。</p>
             </article>
           </div>
 
           <ul className={styles.list}>
-            <li>無料版は判断タイトルとかんたんな説明まで確認できます。</li>
-            <li>有料版では判断理由、次の行動、見直しタイミング、履歴分析を使えます。</li>
+            <li>無料版はエピソード再生とトピックカードの概要まで確認できます。</li>
+            <li>有料版ではフルスクリプト、行動提案、無制限アーカイブ、履歴分析を使えます。</li>
             <li>支払い方法の変更や解約も、この画面から進められます。</li>
-            <li>反映中でもアカウント画面から状態確認を続けられます。</li>
           </ul>
 
-          <p className={styles.lead}>判断を見直すなら「今日のおすすめ」へ戻れます。</p>
+          <p className={styles.lead}>今日のエピソードを聴くか、アーカイブを探せます。</p>
           <div className={styles.ctaRow}>
             <Link href="/decisions" className={styles.primaryLink}>
-              今日のおすすめへ戻る
+              今日のエピソードへ
             </Link>
             <Link href="/episodes" className={styles.secondaryLink}>
-              詳細を見る
+              アーカイブを見る
             </Link>
           </div>
         </section>
@@ -240,9 +239,9 @@ export default async function AccountPage({
           <section className={styles.section}>
             <div>
               <p className={styles.eyebrow}>好み設定</p>
-              <h2>初回設定と好みの見直し</h2>
+              <h2>ポッドキャストの好みを管理</h2>
               <p className={styles.sectionLead}>
-                最初に設定した好みと、使いながらたまる履歴の両方を使って、おすすめの並びや補足を整えます。
+                設定した好みに合わせて、毎日のエピソード内容がパーソナライズされます。
               </p>
             </div>
 
@@ -267,7 +266,7 @@ export default async function AccountPage({
                 </strong>
               </article>
               <article className={styles.statCard}>
-                <span className={styles.statLabel}>判断優先</span>
+                <span className={styles.statLabel}>重視すること</span>
                 <strong className={styles.statValue}>
                   {formatSingleSelection<DecisionPriority>(viewer.preferences?.decisionPriority, DECISION_PRIORITY_LABELS)}
                 </strong>
@@ -297,7 +296,7 @@ export default async function AccountPage({
                 {viewer.needsOnboarding ? "好みを設定する" : "好みを見直す"}
               </Link>
               <Link href="/decisions" className={styles.secondaryLink}>
-                今日のおすすめを見る
+                今日のエピソードを聴く
               </Link>
             </div>
           </section>

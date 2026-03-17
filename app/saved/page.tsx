@@ -91,17 +91,17 @@ export default async function WatchlistPage({
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>保存</p>
-          <h1>後で考える判断を保存して、見直す順番を整える。</h1>
+          <p className={styles.eyebrow}>保存済み</p>
+          <h1>気になるトピックを保存して、あとで見直す。</h1>
           <p className={styles.lead}>
-            履歴が「実行した判断」を残すのに対して、この画面は「まだ決めきらない判断」を保存しておく場所です。
-            あとから迷わず見直せるよう、後で考える候補だけをまとめています。
+            エピソードで気になったトピックをブックマークしておく場所です。
+            あとから振り返りたい内容だけをまとめて確認できます。
           </p>
 
           <p className={styles.limitText}>
             {isPaid
-              ? "有料版では保存件数の上限なく、見直しタイミングつきで整理できます。"
-              : `無料版では保存できる候補は最大${FREE_WATCHLIST_LIMIT}件までです。`}
+              ? "有料版では保存件数の上限なく整理できます。"
+              : `無料版では最大${FREE_WATCHLIST_LIMIT}件まで保存できます。`}
           </p>
         </div>
 
@@ -129,7 +129,7 @@ export default async function WatchlistPage({
       {!isPaid ? (
         <section className={styles.noticePanel}>
           <h2>無料版は件数制限つきです</h2>
-          <p>有料版にすると、より多くの候補を保存しながら見直しタイミングつきで整理できます。</p>
+          <p>有料版にすると、より多くのトピックを保存して整理できます。</p>
           <TrackedLink
             href="/account"
             className={styles.secondaryLink}
@@ -150,15 +150,15 @@ export default async function WatchlistPage({
         <div className={styles.sectionHeading}>
           <div>
             <p className={styles.sectionEyebrow}>保存一覧</p>
-            <h2>後で考える判断</h2>
-            <p className={styles.sectionLead}>詳細や履歴に戻りながら、見直したい候補だけを整理できます。</p>
+            <h2>ブックマークしたトピック</h2>
+            <p className={styles.sectionLead}>エピソードの詳細に戻りながら、見直したい内容を整理できます。</p>
           </div>
         </div>
 
         {visibleItems.length === 0 ? (
           <div className={styles.emptyPanel}>
-            <h3>まだ保存した判断はありません</h3>
-            <p>今日の判断や詳細画面で「保存」を押すと、ここに追加されます。</p>
+            <h3>まだ保存したトピックはありません</h3>
+            <p>エピソードの詳細画面で「保存」を押すと、ここに追加されます。</p>
           </div>
         ) : null}
 

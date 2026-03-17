@@ -38,22 +38,22 @@ export default async function LoginPage({
       <section className={styles.hero}>
         <div className={styles.copy}>
           <p className={styles.eyebrow}>ログイン</p>
-          <h1>まずログインして、判断の前提をそろえます。</h1>
+          <h1>ログインして、あなた専用のポッドキャストを受け取る。</h1>
           <p className={styles.lead}>
-            ログイン後は onboarding で好みや使っているサービスを確認し、そのまま今日の判断へ進みます。
+            ログイン後に好みを設定すると、関心に合わせたエピソードが毎日届きます。
           </p>
           <div className={styles.metaGrid}>
             <article className={styles.metaCard}>
               <span>次の流れ</span>
-              <strong>ログイン → 初回設定 → 今日の判断</strong>
+              <strong>ログイン → 好み設定 → 今日のエピソード</strong>
             </article>
             <article className={styles.metaCard}>
-              <span>無料版で見られるもの</span>
-              <strong>判断タイトル / かんたんな説明</strong>
+              <span>無料版</span>
+              <strong>エピソード再生 / トピックカード概要</strong>
             </article>
             <article className={styles.metaCard}>
-              <span>有料版で見られるもの</span>
-              <strong>判断理由 / 次の行動 / 見直しタイミング / 履歴分析</strong>
+              <span>有料版</span>
+              <strong>フルスクリプト / 行動提案 / アーカイブ無制限</strong>
             </article>
           </div>
         </div>
@@ -61,7 +61,7 @@ export default async function LoginPage({
         <MemberControls
           viewer={null}
           title="メールでログイン"
-          copy="ログイン後は必ず初回設定へ進みます。設定がある場合も、そのまま見直してから判断画面へ戻れます。"
+          copy="ログイン後は好みの設定へ進みます。設定済みの場合もそのまま見直してからエピソードへ戻れます。"
           analyticsSource="/login"
           authRedirectPath={nextPath}
         />

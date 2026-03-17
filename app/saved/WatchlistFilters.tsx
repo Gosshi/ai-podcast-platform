@@ -137,7 +137,7 @@ export default function WatchlistFilters({
         </label>
 
         <label className={styles.selectLabel}>
-          <span>判断の切り口</span>
+          <span>切り口</span>
           <select
             value={frameType ?? ""}
             className={styles.select}
@@ -148,7 +148,7 @@ export default function WatchlistFilters({
               updateFilters("frameType", nextValue);
             }}
           >
-            <option value="">すべての判断の切り口</option>
+            <option value="">すべての切り口</option>
             {options.frameTypes.map((item) => (
               <option key={item} value={item}>
                 {formatFrameTypeLabel(item, item)}

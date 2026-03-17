@@ -7,7 +7,7 @@ const getResendClient = (): Resend | null => {
 };
 
 const EMAIL_FROM =
-  process.env.EMAIL_FROM?.trim() || "AI Decision Assistant <noreply@example.com>";
+  process.env.EMAIL_FROM?.trim() || "AI Podcast <noreply@example.com>";
 
 type SendEmailParams = {
   to: string;

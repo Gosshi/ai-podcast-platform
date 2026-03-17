@@ -275,8 +275,8 @@ export const buildDecisionReplayInsights = (
   if (replay.outcome === "success") {
     candidates.push({
       key: "outcome-success",
-      title: "この判断は満足につながりました",
-      body: "記録された結果は「満足」でした。当時見ていた条件を次回も再現できると、似た判断の精度を上げやすくなります。",
+      title: "このアクションは満足につながりました",
+      body: "記録された結果は「満足」でした。当時見ていた条件を次回も再現できると、同じパターンを活かしやすくなります。",
       tone: "positive",
       score: 60
     });

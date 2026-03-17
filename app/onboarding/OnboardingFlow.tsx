@@ -61,7 +61,7 @@ const STEP_COUNT = STEP_TITLES.length;
 const ERROR_MESSAGES: Record<string, string> = {
   interest_topics_required: "興味ジャンルを1つ以上選んでください。",
   active_subscriptions_required: "使っているサービスを1つ以上選んでください。",
-  decision_priority_required: "判断で優先したいことを選んでください。",
+  decision_priority_required: "重視したいことを選んでください。",
   daily_available_time_required: "1日に使える時間を選んでください。",
   budget_sensitivity_invalid: "予算感度の値が不正です。もう一度選び直してください。",
   unauthorized: "セッションが切れています。ログインし直してください。"

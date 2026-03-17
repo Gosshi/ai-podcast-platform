@@ -3,10 +3,10 @@ import type { StoredUserAlert } from "./alerts";
 const APP_BASE_URL = process.env.APP_BASE_URL?.trim() || "http://127.0.0.1:3000";
 
 const ALERT_SUBJECT_MAP: Record<string, string> = {
-  deadline_due_soon: "判断の期限が近づいています",
-  watchlist_due_soon: "保存した判断の期限が近づいています",
-  outcome_reminder: "判断の結果を記録しませんか？",
-  weekly_digest_ready: "今週の判断まとめ"
+  deadline_due_soon: "トピックの期限が近づいています",
+  watchlist_due_soon: "保存したトピックの期限が近づいています",
+  outcome_reminder: "アクションの結果を記録しませんか？",
+  weekly_digest_ready: "今週のまとめ"
 };
 
 type EmailContent = {
@@ -44,7 +44,7 @@ const buildHtmlTemplate = (alert: StoredUserAlert, ctaUrl: string, ctaLabel: str
 <tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;">
   <tr><td style="background:#0f172a;padding:20px 24px;">
-    <span style="color:#f8fafc;font-size:16px;font-weight:800;letter-spacing:0.02em;">AI Decision Assistant</span>
+    <span style="color:#f8fafc;font-size:16px;font-weight:800;letter-spacing:0.02em;">AI Podcast</span>
   </td></tr>
   <tr><td style="padding:28px 24px;">
     <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:0.1em;">${escapeHtml(alert.alertTypeLabel)}</p>
@@ -54,7 +54,7 @@ const buildHtmlTemplate = (alert: StoredUserAlert, ctaUrl: string, ctaLabel: str
   </td></tr>
   <tr><td style="padding:16px 24px;border-top:1px solid #e2e8f0;background:#f8fafc;">
     <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.6;">
-      このメールは AI Decision Assistant から送信されています。<br>
+      このメールは AI Podcast から送信されています。<br>
       <a href="${APP_BASE_URL}/account" style="color:#64748b;">通知設定を変更する</a>
     </p>
   </td></tr>
@@ -76,7 +76,7 @@ const buildPlainText = (alert: StoredUserAlert, ctaUrl: string): string => {
     `確認する: ${ctaUrl}`,
     "",
     "---",
-    "AI Decision Assistant",
+    "AI Podcast",
     `通知設定: ${APP_BASE_URL}/account`
   ].join("\n");
 };

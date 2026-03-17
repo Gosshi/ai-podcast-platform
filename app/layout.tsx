@@ -3,9 +3,9 @@ import AppNavigation from "@/app/components/AppNavigation";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Decision Assistant",
+  title: "AI Podcast",
   description:
-    "日々の判断をAIと履歴で整理するDecision Assistant。短い判断カードで行動、結果、学習のループを回します。"
+    "欲しい情報だけを、毎日AIがポッドキャストで届ける。通勤中に聴くだけで、判断と行動が変わります。"
 };
 
 export default function RootLayout({

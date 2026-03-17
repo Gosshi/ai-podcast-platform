@@ -93,7 +93,7 @@ export default async function EpisodeDetailPage({
             <MemberControls
               viewer={viewer}
               title="プラン"
-              copy="無料版はタイトルとかんたんな説明まで。有料版は判断理由、次の行動、見直しタイミングまで見られます。"
+              copy="無料版はタイトルと概要まで。有料版では詳細、行動提案、見直しタイミングまで見られます。"
               analyticsSource={`/decisions/${id}`}
               variant="compact"
             />
@@ -101,12 +101,12 @@ export default async function EpisodeDetailPage({
 
           <section className={styles.section}>
             <div className={styles.sectionHeading}>
-              <h2>判断カード</h2>
+              <h2>トピックカード</h2>
               <span>{episode.judgment_card_count}件</span>
             </div>
 
             {episode.judgment_cards.length === 0 ? (
-              <p className={styles.emptyText}>判断カードはまだありません。</p>
+              <p className={styles.emptyText}>トピックカードはまだありません。</p>
             ) : (
               <div className={styles.cardGrid}>
                 {episode.judgment_cards.map((card) => (
@@ -127,7 +127,7 @@ export default async function EpisodeDetailPage({
                       <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`]}`.trim()}>
                         {JUDGMENT_TYPE_LABELS[card.judgment_type]}
                       </span>
-                      <span className={styles.topicOrder}>{formatFrameTypeLabel(card.frame_type, `判断 ${card.topic_order}`)}</span>
+                      <span className={styles.topicOrder}>{formatFrameTypeLabel(card.frame_type, `トピック ${card.topic_order}`)}</span>
                     </div>
                     <h3>{formatTopicTitle(card.topic_title)}</h3>
                     <p className={styles.summary}>{card.judgment_summary}</p>
@@ -164,7 +164,7 @@ export default async function EpisodeDetailPage({
                             </div>
                           ) : null}
                           <div>
-                            <dt>判断理由</dt>
+                            <dt>詳細</dt>
                             <dd>{card.judgment_summary}</dd>
                           </div>
                           {card.deadline_at ? (
@@ -193,10 +193,10 @@ export default async function EpisodeDetailPage({
                       <PremiumPreview
                         placeholders={[
                           { label: "次の行動", value: "具体的な行動を提案します" },
-                          { label: "判断理由", value: "詳しい判断の根拠を表示" },
+                          { label: "詳細", value: "詳しい根拠を表示" },
                           { label: "見直しタイミング", value: "最適な見直し時期" }
                         ]}
-                        message="判断理由と次の行動を確認"
+                        message="詳細と行動提案を確認"
                         page={`/decisions/${id}`}
                         source="episode_detail_card_preview"
                       />
@@ -208,7 +208,7 @@ export default async function EpisodeDetailPage({
 
             {episode.judgment_cards_preview_limited ? (
               <p className={styles.lockedText}>
-                無料版ではタイトルとかんたんな説明まで表示し、判断理由や見直しタイミングは有料会員向けに制限しています。
+                無料版ではタイトルと概要まで表示し、詳細や見直しタイミングは有料会員向けに制限しています。
               </p>
             ) : null}
 

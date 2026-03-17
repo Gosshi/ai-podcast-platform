@@ -96,7 +96,7 @@ export default async function HomePage() {
                 <strong>通勤・家事の合間にインプット</strong>
               </article>
               <article className={styles.stat}>
-                <span>判断カード</span>
+                <span>トピックカード</span>
                 <strong>聴いた内容を行動に変える</strong>
               </article>
             </div>
@@ -117,7 +117,7 @@ export default async function HomePage() {
                 <dd>テクノロジー</dd>
               </div>
               <div>
-                <dt>判断カード</dt>
+                <dt>トピックカード</dt>
                 <dd>3件の判断ポイント</dd>
               </div>
               <div>
@@ -144,8 +144,8 @@ export default async function HomePage() {
               <p>通勤中、ランニング中、家事の合間に。ながら聴きで最新情報をキャッチアップできます。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>3. 判断カードで行動する</h3>
-              <p>エピソードから抽出された判断ポイントをカードで確認。聴いた内容をすぐ行動に変えられます。</p>
+              <h3>3. トピックカードで行動する</h3>
+              <p>エピソードから抽出されたポイントをカードで確認。聴いた内容をすぐ行動に変えられます。</p>
             </article>
           </div>
         </section>
@@ -168,7 +168,7 @@ export default async function HomePage() {
                 <p>{episode.summary}</p>
                 <dl className={styles.samplePanelMeta}>
                   <div>
-                    <dt>判断カード</dt>
+                    <dt>トピックカード</dt>
                     <dd>{episode.cards}件のポイント</dd>
                   </div>
                 </dl>
@@ -183,27 +183,27 @@ export default async function HomePage() {
             <p className={styles.eyebrow}>プラン</p>
             <h2>無料で聴ける。有料でもっと深く。</h2>
             <p className={styles.sectionLead}>
-              エピソードの再生と判断カードの概要は無料。有料版ではフルスクリプト、行動提案、アーカイブが使えます。
+              エピソードの再生とトピックカード概要は無料。有料版ではフルスクリプト、行動提案、アーカイブが使えます。
             </p>
           </div>
           <div className={styles.membershipGrid}>
             <article className={styles.membershipCard}>
               <span className={styles.membershipTier}>無料</span>
               <h3>毎日のエピソードを聴いて情報をキャッチアップ</h3>
-              <p>ポッドキャスト再生、判断カードの概要確認、好みの設定ができます。</p>
+              <p>ポッドキャスト再生、トピックカードの概要確認、好みの設定ができます。</p>
               <ul className={styles.membershipList}>
                 <li>毎日のエピソード再生</li>
-                <li>判断カードのタイトルと概要</li>
+                <li>トピックカードのタイトルと概要</li>
                 <li>好みの設定とおすすめの最適化</li>
               </ul>
             </article>
             <article className={styles.membershipCard}>
               <span className={styles.membershipTier}>有料</span>
-              <h3>フルスクリプトと行動提案で判断を加速</h3>
+              <h3>フルスクリプトと行動提案でもっと深く</h3>
               <p>エピソードの文字起こし、具体的な行動提案、過去エピソードのアーカイブが利用できます。</p>
               <ul className={styles.membershipList}>
                 <li>エピソードのフルスクリプト</li>
-                <li>判断カードの行動提案とタイミング</li>
+                <li>トピックカードの行動提案とタイミング</li>
                 <li>過去エピソードのアーカイブ</li>
               </ul>
             </article>

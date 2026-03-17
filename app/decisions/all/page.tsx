@@ -45,14 +45,14 @@ export default async function AllDecisionsPage() {
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>すべての判断</p>
-          <h1>判断カードを一覧で見直す</h1>
+          <p className={styles.eyebrow}>すべてのトピック</p>
+          <h1>トピックカードを一覧で確認する</h1>
           <p className={styles.lead}>
-            今日のおすすめだけで足りないときに、公開中の判断カードをまとめて確認できます。
+            今日のエピソードだけで足りないときに、公開中のトピックカードをまとめて確認できます。
           </p>
           <div className={styles.heroActions}>
             <Link href="/decisions" className={styles.secondaryHeroLink}>
-              今日のおすすめへ戻る
+              今日のエピソードへ戻る
             </Link>
           </div>
         </div>
@@ -64,14 +64,14 @@ export default async function AllDecisionsPage() {
         <div className={styles.sectionHeading}>
           <div>
             <p className={styles.sectionEyebrow}>一覧</p>
-            <h2>公開中の判断カード</h2>
+            <h2>公開中のトピックカード</h2>
             <p className={styles.sectionCaption}>採用するか、後で考えるか、見送るかをここから整理できます。</p>
           </div>
           <span className={styles.sectionCount}>{cards.length}件</span>
         </div>
 
         {cards.length === 0 ? (
-          <p className={styles.emptyText}>判断カードはまだありません。</p>
+          <p className={styles.emptyText}>トピックカードはまだありません。</p>
         ) : (
           <div className={styles.grid}>
             {cards.map((card) => (
@@ -113,7 +113,7 @@ export default async function AllDecisionsPage() {
                   {viewer.isPaid ? (
                     <dl className={styles.metaList}>
                       <div>
-                        <dt>判断理由</dt>
+                        <dt>詳細</dt>
                         <dd>{card.judgment_summary}</dd>
                       </div>
                       <div>
@@ -128,11 +128,11 @@ export default async function AllDecisionsPage() {
                   ) : (
                     <PremiumPreview
                       placeholders={[
-                        { label: "判断理由", value: "詳しい判断の根拠を表示" },
+                        { label: "詳細", value: "詳しい根拠を表示" },
                         { label: "次の行動", value: "具体的な行動を提案" },
                         { label: "見直しタイミング", value: "最適な時期を表示" }
                       ]}
-                      message="判断理由と次の行動を確認"
+                      message="詳細と行動提案を確認"
                       page="/decisions/all"
                       source="decision_all_card_preview"
                     />
