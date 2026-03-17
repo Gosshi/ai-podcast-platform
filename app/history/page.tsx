@@ -135,7 +135,7 @@ export default async function HistoryPage() {
               <h3>基本サマリー</h3>
               <div className={styles.profileStatGrid}>
                 <div>
-                  <dt>総判断数</dt>
+                  <dt>総アクション数</dt>
                   <dd>{profile.totalDecisions}</dd>
                 </div>
                 <div>
@@ -296,7 +296,7 @@ export default async function HistoryPage() {
 
                 <dl className={styles.metaGrid}>
                   <div>
-                    <dt>判断</dt>
+                    <dt>トピック</dt>
                     <dd>{formatTopicTitle(entry.topic_title)}</dd>
                   </div>
                   <div>
@@ -309,7 +309,7 @@ export default async function HistoryPage() {
                   </div>
                   <div>
                     <dt>出典</dt>
-                    <dd>{entry.source === "ai_generated" ? "AI判断" : formatEpisodeTitle(entry.episode_title)}</dd>
+                    <dd>{entry.source === "ai_generated" ? "AI相談" : formatEpisodeTitle(entry.episode_title)}</dd>
                   </div>
                 </dl>
 
