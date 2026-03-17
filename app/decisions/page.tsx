@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import AudioPlayer from "@/app/components/AudioPlayer";
+import GenerateCardForm from "@/app/components/GenerateCardForm";
 import PremiumPreview from "@/app/components/PremiumPreview";
 import ShareButton from "@/app/components/ShareButton";
 import TrackedLink from "@/app/components/TrackedLink";
@@ -232,6 +233,9 @@ export default async function DecisionsPage({
           エピソードの読み込みに失敗しました。時間をおいて再度お試しください。
         </p>
       ) : null}
+
+      {/* --- AI Consult --- */}
+      <GenerateCardForm isPaid={isPaid} showWelcome={showWelcome} />
 
       {/* --- Paywall Banner --- */}
       {!isPaid ? (
