@@ -6,6 +6,7 @@ import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import DecisionCalculator from "@/app/components/DecisionCalculator";
 import MemberControls from "@/app/components/MemberControls";
+import ShareButton from "@/app/components/ShareButton";
 import { isWithinFreeAccessWindow } from "@/app/lib/contentAccess";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { formatFrameTypeLabel } from "@/app/lib/uiText";
@@ -635,6 +636,14 @@ export default function EpisodesView({
                             >
                               {isSelected ? t.hideScript : t.viewScript}
                             </button>
+                            <ShareButton
+                              title={episode.title ?? "AI Podcast"}
+                              text={episode.preview_text ?? undefined}
+                              url={`/decisions/${episode.id}`}
+                              page="/episodes"
+                              source="episodes_card"
+                              episodeId={episode.id}
+                            />
                           </div>
                         </div>
                       );
