@@ -112,9 +112,9 @@ const DECISION_TYPE_LABELS: Record<JudgmentType, string> = {
 };
 
 const FRAME_TYPE_LABELS: Record<string, string> = {
-  "Frame A": "使う時間で判断",
+  "Frame A": "使う時間で比較",
   "Frame B": "月額の見直し",
-  "Frame C": "セール時の判断",
+  "Frame C": "セール時の比較",
   "Frame D": "広告負担の見直し"
 };
 
@@ -286,7 +286,7 @@ const buildInsightCandidates = (profile: DecisionProfile): InsightCandidate[] =>
     candidates.push({
       key: `frame-success:${bestFrame.key}`,
       title: `${bestFrame.label} で満足しやすい`,
-      body: `過去${bestFrame.count}件中${bestFrame.successCount}件が満足でした。この比較のしかたは自分の判断に合いやすい傾向です。`,
+      body: `過去${bestFrame.count}件中${bestFrame.successCount}件が満足でした。この比較のしかたは自分に合いやすい傾向です。`,
       tone: "positive",
       supportingCount: bestFrame.count,
       score: bestFrame.successRate + bestFrame.count * 4
@@ -318,7 +318,7 @@ const buildInsightCandidates = (profile: DecisionProfile): InsightCandidate[] =>
     candidates.push({
       key: `genre-use-now:${useNowGenre.key}`,
       title: `${useNowGenre.label} ではすぐ決めることが多い`,
-      body: `過去${useNowGenre.count}件中${useNowGenre.useNowCount}件で採用判断を選んでいます。このカテゴリは即断しやすい傾向です。`,
+      body: `過去${useNowGenre.count}件中${useNowGenre.useNowCount}件で採用を選んでいます。このカテゴリは即断しやすい傾向です。`,
       tone: "neutral",
       supportingCount: useNowGenre.count,
       score: useNowGenre.useNowRate + useNowGenre.count * 3
@@ -343,8 +343,8 @@ const buildInsightCandidates = (profile: DecisionProfile): InsightCandidate[] =>
   if (regretSignal) {
     candidates.push({
       key: `signal-regret:${regretSignal.key}`,
-      title: `${regretSignal.label} を含む判断は慎重に見る`,
-      body: `${regretSignal.label}が出ていた${regretSignal.count}件のうち${regretSignal.regretCount}件で後悔がありました。この条件がある判断は比較を増やす余地があります。`,
+      title: `${regretSignal.label} を含むトピックは慎重に見る`,
+      body: `${regretSignal.label}が出ていた${regretSignal.count}件のうち${regretSignal.regretCount}件で後悔がありました。この条件があるトピックは比較を増やす余地があります。`,
       tone: "caution",
       supportingCount: regretSignal.count,
       score: regretSignal.regretRate + regretSignal.count * 2
@@ -519,7 +519,7 @@ export const buildPersonalDecisionHint = (params: {
       if (genreStat.useNowRate >= 60 && genreStat.useNowCount >= 2) {
         candidates.push({
           key: `genre-use-now:${genreStat.key}`,
-          text: `${genreStat.label} は採用判断が多めです。過去${genreStat.count}件中${genreStat.useNowCount}件で優先して決めています。`,
+          text: `${genreStat.label} は採用が多めです。過去${genreStat.count}件中${genreStat.useNowCount}件で優先して決めています。`,
           tone: "neutral",
           supportingCount: genreStat.count,
           score: genreStat.useNowRate + genreStat.count * 3
@@ -546,7 +546,7 @@ export const buildPersonalDecisionHint = (params: {
     if (signalStat.regretRate >= 50 && signalStat.regretCount >= 2) {
       candidates.push({
         key: `signal-regret:${signalStat.key}`,
-        text: `${signalStat.label} を含む判断は過去${signalStat.count}件中${signalStat.regretCount}件で後悔がありました。条件確認を厚めにすると安定しやすいです。`,
+        text: `${signalStat.label} を含むトピックは過去${signalStat.count}件中${signalStat.regretCount}件で後悔がありました。条件確認を厚めにすると安定しやすいです。`,
         tone: "caution",
         supportingCount: signalStat.count,
         score: signalStat.regretRate + signalStat.count * 2
@@ -556,7 +556,7 @@ export const buildPersonalDecisionHint = (params: {
     if (signalStat.successRate >= 67 && signalStat.successCount >= 2) {
       candidates.push({
         key: `signal-success:${signalStat.key}`,
-        text: `${signalStat.label} を含む判断は満足が多めです。過去${signalStat.count}件中${signalStat.successCount}件が満足でした。`,
+        text: `${signalStat.label} を含むトピックは満足が多めです。過去${signalStat.count}件中${signalStat.successCount}件が満足でした。`,
         tone: "positive",
         supportingCount: signalStat.count,
         score: signalStat.successRate + signalStat.count * 2
@@ -570,7 +570,7 @@ export const buildPersonalDecisionHint = (params: {
       if (typeStat.regretRate >= 50 && typeStat.regretCount >= 2) {
         candidates.push({
           key: `decision-regret:${card.judgment_type}`,
-          text: `${DECISION_TYPE_LABELS[card.judgment_type]} を選んだ判断は、過去${typeStat.count}件中${typeStat.regretCount}件で後悔がありました。`,
+          text: `${DECISION_TYPE_LABELS[card.judgment_type]} を選んだアクションは、過去${typeStat.count}件中${typeStat.regretCount}件で後悔がありました。`,
           tone: "caution",
           supportingCount: typeStat.count,
           score: typeStat.regretRate + typeStat.count
@@ -580,7 +580,7 @@ export const buildPersonalDecisionHint = (params: {
       if (typeStat.successRate >= 67 && typeStat.successCount >= 2) {
         candidates.push({
           key: `decision-success:${card.judgment_type}`,
-          text: `${DECISION_TYPE_LABELS[card.judgment_type]} を選んだ判断は、過去${typeStat.count}件中${typeStat.successCount}件で満足でした。`,
+          text: `${DECISION_TYPE_LABELS[card.judgment_type]} を選んだアクションは、過去${typeStat.count}件中${typeStat.successCount}件で満足でした。`,
           tone: "positive",
           supportingCount: typeStat.count,
           score: typeStat.successRate + typeStat.count

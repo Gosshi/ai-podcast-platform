@@ -118,7 +118,7 @@ const episodes = {
     cardsLockedCopy: "Free members can read summaries. Action items, deadlines, and details are for paid members.",
     scriptLockedCopy: "Full deep dives and the archive are reserved for paid members.",
     depthLockedTitle: "The rest is members-only",
-    depthLockedCopy: "Unlock the action, deadline, watchpoints, and threshold logic behind this judgment.",
+    depthLockedCopy: "Unlock the action, deadline, watchpoints, and threshold logic behind this topic.",
     archiveLockedTitle: "The archive is members-only",
     archiveLockedCopy: "Free members can browse the last 7 days. Older episodes are reserved for paid members.",
     actionLabel: "Action",
