@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
+import AudioPlayer from "@/app/components/AudioPlayer";
 import DecisionCalculator from "@/app/components/DecisionCalculator";
 import JudgmentCardActions from "@/app/components/JudgmentCardActions";
 import MemberControls from "@/app/components/MemberControls";
@@ -65,8 +66,8 @@ export default async function EpisodeDetailPage({
   return (
     <main className={styles.page}>
       <div className={styles.backRow}>
-        <Link href="/decisions">今日のおすすめ</Link>
-        <Link href="/decisions/all">すべての判断</Link>
+        <Link href="/decisions">今日のエピソード</Link>
+        <Link href="/episodes">アーカイブ</Link>
       </div>
 
       {error ? <p className={styles.errorText}>読み込みに失敗しました。再読み込みしてください。</p> : null}
@@ -83,11 +84,14 @@ export default async function EpisodeDetailPage({
                 <span>{formatDateTime(episode.published_at ?? episode.created_at)}</span>
               </div>
 
-              {episode.audio_url ? (
-                <audio className={styles.audio} controls src={episode.audio_url}>
-                  このブラウザでは音声を再生できません。
-                </audio>
-              ) : null}
+            </div>
+
+            <div className={styles.playerSection}>
+              <AudioPlayer
+                src={episode.audio_url ?? null}
+                title={formatEpisodeTitle(episode.title)}
+                description={episode.description}
+              />
             </div>
 
             <MemberControls

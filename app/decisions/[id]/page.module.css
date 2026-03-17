@@ -82,9 +82,9 @@
   color: #334155;
 }
 
-.audio {
-  width: 100%;
+.playerSection {
   margin-top: 1.25rem;
+  grid-column: 1 / -1;
 }
 
 .section {
