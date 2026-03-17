@@ -40,10 +40,10 @@ export default async function OnboardingPage({
         <section className={styles.hero}>
           <div className={styles.copy}>
             <p className={styles.eyebrow}>はじめに</p>
-            <h1>判断の傾向を先に教えてください。</h1>
+            <h1>聴きたいジャンルを教えてください。</h1>
             <p className={styles.lead}>
-              最初に好みや使っているサービスを入れておくと、今日のおすすめや見直しタイミングがあなた向けに整います。
-              数問で終わるので、先に済ませておくとこのあと迷いにくくなります。
+              関心のあるジャンルや使っているサービスを設定すると、あなた専用のエピソードが届きます。
+              数問で終わるので、先に済ませておきましょう。
             </p>
             <div className={styles.metaGrid}>
               <article className={styles.metaCard}>

@@ -52,9 +52,9 @@ export default function AlertsInbox({
   alerts,
   page,
   title = "通知",
-  lead = "期限が近いものや見直したい判断を、ここからまとめて開き直せます。",
+  lead = "期限が近いものや見直したいトピックを、ここからまとめて確認できます。",
   emptyTitle = "今はお知らせがありません",
-  emptyCopy = "見直しタイミングが来た判断や週次まとめがあると、ここに表示されます。",
+  emptyCopy = "見直しタイミングが来たトピックや週次まとめがあると、ここに表示されます。",
   showViewAllLink = false
 }: AlertsInboxProps) {
   const router = useRouter();

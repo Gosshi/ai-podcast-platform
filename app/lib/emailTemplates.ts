@@ -3,10 +3,10 @@ import type { StoredUserAlert } from "./alerts";
 const APP_BASE_URL = process.env.APP_BASE_URL?.trim() || "http://127.0.0.1:3000";
 
 const ALERT_SUBJECT_MAP: Record<string, string> = {
-  deadline_due_soon: "判断の期限が近づいています",
-  watchlist_due_soon: "保存した判断の期限が近づいています",
-  outcome_reminder: "判断の結果を記録しませんか？",
-  weekly_digest_ready: "今週の判断まとめ"
+  deadline_due_soon: "トピックの期限が近づいています",
+  watchlist_due_soon: "保存したトピックの期限が近づいています",
+  outcome_reminder: "アクションの結果を記録しませんか？",
+  weekly_digest_ready: "今週のまとめ"
 };
 
 type EmailContent = {

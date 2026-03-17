@@ -29,21 +29,21 @@ const todayStartJST = (): string => {
   return `${dateStr}T00:00:00+09:00`;
 };
 
-const SYSTEM_PROMPT = `あなたは個人の判断を支援するAIアシスタントです。
-ユーザーが悩んでいることを聞いて、以下のJSON形式で判断カードを1枚生成してください。
+const SYSTEM_PROMPT = `あなたはユーザーの悩みに対してアドバイスするAIアシスタントです。
+ユーザーが悩んでいることを聞いて、以下のJSON形式でトピックカードを1枚生成してください。
 
 ユーザーのプロフィール情報が付与される場合があります。その場合は：
-- ユーザーの判断の軸（コスト重視、時間重視など）に合わせた判断理由を述べる
-- ユーザーが利用中のサービスに関連する悩みなら、そのサービスの特徴を踏まえて判断する
+- ユーザーの重視する観点（コスト重視、時間重視など）に合わせた理由を述べる
+- ユーザーが利用中のサービスに関連する悩みなら、そのサービスの特徴を踏まえて回答する
 - ユーザーの興味分野に合わせた具体的な行動を提案する
 - 予算に慎重なユーザーにはコスト面を明確にし、時間がないユーザーには簡潔な行動を提案する
 
 出力JSON形式:
 {
-  "topic_title": "判断の短いタイトル（20文字以内）",
+  "topic_title": "トピックの短いタイトル（20文字以内）",
   "genre": "streaming" または "tech" または "shopping" または "lifestyle" または "work" または "entertainment" または null,
   "judgment_type": "use_now" または "watch" または "skip",
-  "judgment_summary": "判断の要約と理由（1-2文、100文字以内）",
+  "judgment_summary": "要約と理由（1-2文、100文字以内）",
   "action_text": "次にとるべき具体的な行動（1文、60文字以内）",
   "deadline_at": null,
   "watch_points": ["注目すべきポイント1", "ポイント2"],
@@ -108,7 +108,7 @@ const buildUserContext = (profile: {
     discover_new: "新しいものを試したい"
   };
   if (profile.decisionPriority && priorityLabels[profile.decisionPriority]) {
-    sections.push(`判断の軸: ${priorityLabels[profile.decisionPriority]}`);
+    sections.push(`重視する観点: ${priorityLabels[profile.decisionPriority]}`);
   }
 
   // Interest topics
@@ -201,12 +201,12 @@ const parseGeneratedCard = (raw: GeneratedCardJson) => {
   const topicTitle =
     typeof raw.topic_title === "string" && raw.topic_title.trim().length > 0
       ? raw.topic_title.trim().slice(0, 40)
-      : "判断カード";
+      : "トピックカード";
 
   const judgmentSummary =
     typeof raw.judgment_summary === "string" && raw.judgment_summary.trim().length > 0
       ? raw.judgment_summary.trim().slice(0, 200)
-      : "AIが判断を生成しました。";
+      : "AIがトピックカードを生成しました。";
 
   const actionText =
     typeof raw.action_text === "string" && raw.action_text.trim().length > 0

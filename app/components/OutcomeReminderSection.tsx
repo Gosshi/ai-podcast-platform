@@ -133,7 +133,7 @@ export default function OutcomeReminderSection({
                   reminder_reason: reminder.reason
                 }}
               >
-                実行した判断を見る
+                実行したアクションを見る
               </TrackedLink>
               <TrackedLink
                 href={buildDecisionReplayPath(reminder.id)}

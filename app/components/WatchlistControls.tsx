@@ -58,7 +58,7 @@ const buildErrorMessage = (error: string, limit?: number): string => {
   }
 
   if (error === "unauthorized") {
-    return "判断を更新するにはログインが必要です。";
+    return "更新するにはログインが必要です。";
   }
 
   return "保存状態の更新に失敗しました。時間をおいて再度お試しください。";
@@ -108,7 +108,7 @@ export default function WatchlistControls({
     }
 
     if (!judgmentCardId) {
-      setError("対象の判断カードが見つかりません。");
+      setError("対象のトピックカードが見つかりません。");
       return;
     }
 

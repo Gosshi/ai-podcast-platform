@@ -45,9 +45,9 @@ export default async function HistoryPage() {
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>履歴</p>
-          <h1>聴いたエピソードと、実行した判断を振り返る。</h1>
+          <h1>聴いたエピソードと行動を振り返る。</h1>
           <p className={styles.lead}>
-            エピソードから得た判断を記録し、あとから結果を振り返れます。自分の傾向を把握して、次の行動に活かせます。
+            エピソードから得たアクションを記録し、あとから結果を振り返れます。自分の傾向を把握して、次に活かせます。
           </p>
 
           <div className={styles.statsGrid}>
@@ -83,7 +83,7 @@ export default async function HistoryPage() {
         <MemberControls
           viewer={viewer}
           title="プラン"
-          copy="実行した判断に結果を残すことで、自分に合う判断の精度を継続的に上げていきます。"
+          copy="実行したアクションに結果を残すことで、自分に合う行動パターンを見つけやすくなります。"
           analyticsSource="/history"
           variant="compact"
         />
@@ -122,7 +122,7 @@ export default async function HistoryPage() {
           <div className={styles.sectionHeading}>
             <div>
               <p className={styles.sectionEyebrow}>あなたの傾向</p>
-              <h2>エピソードから見える、あなたの行動傾向</h2>
+              <h2>エピソードから見えるあなたの行動傾向</h2>
               <p className={styles.sectionLead}>
                 実行した記録を集計して、どんな行動が自分に合いやすいかを見やすくします。
               </p>
@@ -154,9 +154,9 @@ export default async function HistoryPage() {
             </article>
 
             <article className={styles.profilePanel}>
-              <h3>判断と結果の比率</h3>
+              <h3>アクションと結果の比率</h3>
               <div className={styles.ratioGroup}>
-                <p className={styles.ratioLabel}>判断の傾向</p>
+                <p className={styles.ratioLabel}>アクションの傾向</p>
                 <div className={styles.ratioRow}>
                   {(["use_now", "watch", "skip"] as const).map((decisionType) => (
                     <div key={decisionType} className={styles.ratioChip}>
@@ -251,7 +251,7 @@ export default async function HistoryPage() {
 
           <p className={styles.profileFootnote}>
             {viewer.isPaid
-              ? "有料版では履歴上限なしで結果分析を育てられ、次の判断にも補足が返ります。"
+              ? "有料版では履歴上限なしで結果分析を続けられます。"
               : `無料版では最大${FREE_DECISION_HISTORY_LIMIT}件まで履歴を分析します。有料版で履歴上限なしになります。`}
           </p>
         </section>
@@ -260,14 +260,14 @@ export default async function HistoryPage() {
         <div className={styles.sectionHeading}>
           <div>
             <p className={styles.sectionEyebrow}>履歴一覧</p>
-            <h2>実行した判断</h2>
+            <h2>実行したアクション</h2>
           </div>
           <span className={styles.sectionCount}>{visibleEntries.length}件</span>
         </div>
 
         {visibleEntries.length === 0 ? (
           <p className={styles.emptyText}>
-            まだ履歴はありません。今日の判断または詳細画面から採用すると、ここに積み上がります。
+            まだ履歴はありません。エピソードの詳細画面からアクションを採用すると、ここに積み上がります。
           </p>
         ) : (
           <div className={styles.historyList}>

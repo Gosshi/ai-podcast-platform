@@ -206,11 +206,11 @@ export default async function AccountPage({
             </article>
             <article className={styles.featureCard}>
               <h3>行動提案を確認できる</h3>
-              <p>判断カードの具体的な次のアクションまで確認できます。</p>
+              <p>トピックカードの具体的な次のアクションまで確認できます。</p>
             </article>
             <article className={styles.featureCard}>
               <h3>アーカイブが無制限</h3>
-              <p>過去のすべてのエピソードと判断カードにアクセスできます。</p>
+              <p>過去のすべてのエピソードとトピックカードにアクセスできます。</p>
             </article>
             <article className={styles.featureCard}>
               <h3>保存・履歴分析が使える</h3>
@@ -219,7 +219,7 @@ export default async function AccountPage({
           </div>
 
           <ul className={styles.list}>
-            <li>無料版はエピソード再生と判断カードの概要まで確認できます。</li>
+            <li>無料版はエピソード再生とトピックカードの概要まで確認できます。</li>
             <li>有料版ではフルスクリプト、行動提案、無制限アーカイブ、履歴分析を使えます。</li>
             <li>支払い方法の変更や解約も、この画面から進められます。</li>
           </ul>
@@ -266,7 +266,7 @@ export default async function AccountPage({
                 </strong>
               </article>
               <article className={styles.statCard}>
-                <span className={styles.statLabel}>判断優先</span>
+                <span className={styles.statLabel}>重視すること</span>
                 <strong className={styles.statValue}>
                   {formatSingleSelection<DecisionPriority>(viewer.preferences?.decisionPriority, DECISION_PRIORITY_LABELS)}
                 </strong>

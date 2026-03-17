@@ -51,7 +51,7 @@ export default function RemoveDecisionButton({
 
       const payload = (await response.json().catch(() => null)) as RemoveDecisionResponse | null;
       if (!response.ok || !payload || !payload.ok) {
-        setError("判断の削除に失敗しました。");
+        setError("削除に失敗しました。");
         return;
       }
 
@@ -67,7 +67,7 @@ export default function RemoveDecisionButton({
       });
       router.refresh();
     } catch {
-      setError("判断の削除に失敗しました。");
+      setError("削除に失敗しました。");
     } finally {
       setIsSubmitting(false);
     }

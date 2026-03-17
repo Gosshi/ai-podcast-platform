@@ -218,7 +218,7 @@ export default function LibraryControls({
         </label>
 
         <label className={styles.selectLabel}>
-          <span>判断の切り口</span>
+          <span>切り口</span>
           <select
             value={frameType ?? ""}
             onChange={(event) => {
@@ -228,7 +228,7 @@ export default function LibraryControls({
             }}
             className={styles.select}
           >
-            <option value="">すべての判断の切り口</option>
+            <option value="">すべての切り口</option>
             {options.frameTypes.map((item) => (
               <option key={item} value={item}>
                 {formatFrameTypeLabel(item, item)}

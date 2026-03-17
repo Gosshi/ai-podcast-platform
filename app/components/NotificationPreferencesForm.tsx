@@ -92,7 +92,7 @@ export default function NotificationPreferencesForm({
         />
         <div>
           <h3>結果の記録リマインド</h3>
-          <p>結果未入力の判断を `/history` と `/alerts` から見直せるようにします。</p>
+          <p>結果未入力のアクションを履歴と通知から見直せるようにします。</p>
         </div>
       </label>
 

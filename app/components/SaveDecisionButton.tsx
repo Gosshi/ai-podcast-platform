@@ -98,7 +98,7 @@ export default function SaveDecisionButton({
         } else if (apiError === "unauthorized") {
           setError("保存するにはログインが必要です。");
         } else {
-          setError("判断の保存に失敗しました。時間をおいて再度お試しください。");
+          setError("保存に失敗しました。時間をおいて再度お試しください。");
         }
         return;
       }
@@ -125,7 +125,7 @@ export default function SaveDecisionButton({
       });
       router.refresh();
     } catch {
-      setError("判断の保存に失敗しました。時間をおいて再度お試しください。");
+      setError("保存に失敗しました。時間をおいて再度お試しください。");
     } finally {
       setIsSubmitting(false);
     }
@@ -143,7 +143,7 @@ export default function SaveDecisionButton({
         {isSubmitting ? "保存中..." : isSaved ? savedStateLabel : resolvedButtonLabel}
       </button>
       {showHint ? (
-        <p className={styles.hint}>{isSaved ? "履歴で結果を更新できます。" : "採用した判断をあとで振り返れます。"}</p>
+        <p className={styles.hint}>{isSaved ? "履歴で結果を更新できます。" : "採用したアクションをあとで振り返れます。"}</p>
       ) : null}
       {error ? <p className={styles.error}>{error}</p> : null}
     </div>

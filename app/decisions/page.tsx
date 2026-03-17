@@ -79,10 +79,10 @@ export default async function DecisionsPage({
         <section className={styles.recommendationSection}>
           <div className={styles.recommendationHeader}>
             <div>
-              <p className={styles.sectionEyebrow}>判断カード</p>
-              <h2>エピソードの判断ポイント</h2>
+              <p className={styles.sectionEyebrow}>トピックカード</p>
+              <h2>エピソードのポイント</h2>
               <p className={styles.sectionCaption}>
-                今日のエピソードから抽出された判断カードです。
+                今日のエピソードから抽出されたトピックカードです。
               </p>
             </div>
             <div className={styles.countRow}>
@@ -154,7 +154,7 @@ export default async function DecisionsPage({
       ) : latestEpisode ? (
         <section className={styles.recommendationSection}>
           <p className={styles.emptyText}>
-            このエピソードには判断カードがまだ生成されていません。
+            このエピソードにはトピックカードがまだ生成されていません。
           </p>
         </section>
       ) : null}
@@ -165,7 +165,7 @@ export default async function DecisionsPage({
           <p className={styles.sectionEyebrow}>アーカイブ</p>
           <h3>過去のエピソードはこちらから</h3>
           <p className={styles.sectionCaption}>
-            すべてのエピソードと判断カードを一覧で確認できます。
+            すべてのエピソードとトピックカードを一覧で確認できます。
           </p>
         </div>
         <TrackedLink
@@ -227,7 +227,7 @@ export default async function DecisionsPage({
             <p className={styles.paywallEyebrow}>Premium</p>
             <h2>有料版でフルスクリプトと行動提案を確認</h2>
             <p>
-              無料版はエピソード再生と判断カードの概要まで。有料版でスクリプト全文、行動提案、アーカイブが使えます。
+              無料版はエピソード再生とトピックカードの概要まで。有料版でスクリプト全文、行動提案、アーカイブが使えます。
             </p>
           </div>
           <TrackedLink

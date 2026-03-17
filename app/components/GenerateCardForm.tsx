@@ -148,7 +148,7 @@ export default function GenerateCardForm({ isPaid, showWelcome = false }: Genera
     } else if (apiError === "ai_timeout") {
       setError("AIの応答がタイムアウトしました。時間をおいて再度お試しください。");
     } else {
-      setError("判断カードの生成に失敗しました。時間をおいて再度お試しください。");
+      setError("カードの生成に失敗しました。時間をおいて再度お試しください。");
     }
   };
 
@@ -178,7 +178,7 @@ export default function GenerateCardForm({ isPaid, showWelcome = false }: Genera
       // SSE stream
       const reader = response.body?.getReader();
       if (!reader) {
-        setError("判断カードの生成に失敗しました。時間をおいて再度お試しください。");
+        setError("カードの生成に失敗しました。時間をおいて再度お試しください。");
         setStreamPhase("idle");
         setIsSubmitting(false);
         return;
@@ -232,7 +232,7 @@ export default function GenerateCardForm({ isPaid, showWelcome = false }: Genera
 
       setStreamPhase("idle");
     } catch {
-      setError("判断カードの生成に失敗しました。時間をおいて再度お試しください。");
+      setError("カードの生成に失敗しました。時間をおいて再度お試しください。");
       setStreamPhase("idle");
     } finally {
       setIsSubmitting(false);
@@ -280,14 +280,14 @@ export default function GenerateCardForm({ isPaid, showWelcome = false }: Genera
         <div className={styles.welcomeBanner}>
           <p className={styles.welcomeTitle}>🎉 設定が完了しました！</p>
           <p className={styles.welcomeBody}>
-            さっそく迷っていることを入力してみましょう。AIがあなたの好みに合わせた判断カードを作ります。
+            さっそく迷っていることを入力してみましょう。AIがあなたの好みに合わせたトピックカードを作ります。
           </p>
         </div>
       ) : null}
-      <p className={styles.eyebrow}>AI判断</p>
-      <h2 className={styles.heading}>AIに判断を相談する</h2>
+      <p className={styles.eyebrow}>AI相談</p>
+      <h2 className={styles.heading}>AIに相談する</h2>
       <p className={styles.caption}>
-        迷っていることを入力すると、AIが判断カードを生成します。
+        迷っていることを入力すると、AIがトピックカードを生成します。
       </p>
 
       <div className={styles.form}>
@@ -307,7 +307,7 @@ export default function GenerateCardForm({ isPaid, showWelcome = false }: Genera
             onClick={() => void onSubmit()}
             disabled={isSubmitting || inputText.trim().length < 5}
           >
-            {isSubmitting ? "生成中..." : "判断カードを生成"}
+            {isSubmitting ? "生成中..." : "トピックカードを生成"}
           </button>
           {remaining !== null ? (
             <span className={styles.remaining}>

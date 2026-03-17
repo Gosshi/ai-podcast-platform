@@ -94,7 +94,7 @@ export default async function WatchlistPage({
           <p className={styles.eyebrow}>保存済み</p>
           <h1>気になるトピックを保存して、あとで見直す。</h1>
           <p className={styles.lead}>
-            エピソードで気になった判断カードをブックマークしておく場所です。
+            エピソードで気になったトピックをブックマークしておく場所です。
             あとから振り返りたい内容だけをまとめて確認できます。
           </p>
 
