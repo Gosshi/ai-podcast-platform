@@ -285,7 +285,7 @@ export const buildDecisionReplayInsights = (
   if (replay.outcome === "regret") {
     candidates.push({
       key: "outcome-regret",
-      title: "この判断は後悔として残りました",
+      title: "このアクションは後悔として残りました",
       body: "結果は「後悔」でした。どの条件を軽く見たかを学びとして残しておくと、次回のおすすめ改善に使いやすくなります。",
       tone: "caution",
       score: 60
@@ -296,8 +296,8 @@ export const buildDecisionReplayInsights = (
     if (replay.outcome === "success" && decisionTypeStat.successRate >= 67) {
       candidates.push({
         key: `decision-type-success:${replay.decision_type}`,
-        title: `「${replay.decision_type === "use_now" ? "採用" : replay.decision_type === "watch" ? "後で考える" : "見送る"}」判断は相性が良いかもしれません`,
-        body: `この判断タイプは履歴${decisionTypeStat.count}件中${decisionTypeStat.successCount}件が満足です。今回も同じ型で良い結果になっています。`,
+        title: `「${replay.decision_type === "use_now" ? "採用" : replay.decision_type === "watch" ? "後で考える" : "見送る"}」は相性が良いかもしれません`,
+        body: `このアクションタイプは履歴${decisionTypeStat.count}件中${decisionTypeStat.successCount}件が満足です。今回も同じ型で良い結果になっています。`,
         tone: "positive",
         score: decisionTypeStat.successRate + decisionTypeStat.count * 4
       });
@@ -306,8 +306,8 @@ export const buildDecisionReplayInsights = (
     if (replay.outcome === "regret" && decisionTypeStat.regretRate >= 50) {
       candidates.push({
         key: `decision-type-regret:${replay.decision_type}`,
-        title: `「${replay.decision_type === "use_now" ? "採用" : replay.decision_type === "watch" ? "後で考える" : "見送る"}」判断は見直し余地がありそうです`,
-        body: `この判断タイプは履歴${decisionTypeStat.count}件中${decisionTypeStat.regretCount}件が後悔です。今回も同じ流れなら、判断前の終了条件を明確にすると見直しやすくなります。`,
+        title: `「${replay.decision_type === "use_now" ? "採用" : replay.decision_type === "watch" ? "後で考える" : "見送る"}」は見直し余地がありそうです`,
+        body: `このアクションタイプは履歴${decisionTypeStat.count}件中${decisionTypeStat.regretCount}件が後悔です。今回も同じ流れなら、事前に終了条件を明確にすると見直しやすくなります。`,
         tone: "caution",
         score: decisionTypeStat.regretRate + decisionTypeStat.count * 4
       });
@@ -350,7 +350,7 @@ export const buildDecisionReplayInsights = (
     candidates.push({
       key: "deadline-missing",
       title: "次回は期限を重視したほうが良いかもしれません",
-      body: "この学びには明確な期限が残っていません。期限がない判断は、比較や再評価のタイミングを逃しやすくなります。",
+      body: "この学びには明確な期限が残っていません。期限がないアクションは、比較や再評価のタイミングを逃しやすくなります。",
       tone: "caution",
       score: 72
     });
@@ -359,8 +359,8 @@ export const buildDecisionReplayInsights = (
   if (replay.deadline_at && replay.outcome === "success") {
     candidates.push({
       key: "deadline-helped",
-      title: "期限がある判断は見直しやすい傾向です",
-      body: "今回は期限を置いたまま満足につながりました。再確認日がある判断は、傾向の学習にも活かしやすくなります。",
+      title: "期限があるアクションは見直しやすい傾向です",
+      body: "今回は期限を置いたまま満足につながりました。再確認日があるアクションは、傾向の学習にも活かしやすくなります。",
       tone: "positive",
       score: 70
     });
@@ -369,8 +369,8 @@ export const buildDecisionReplayInsights = (
   if (replay.watch_points.length > 0 && replay.outcome === "success") {
     candidates.push({
       key: "watch-points-helped",
-      title: "見直しポイントを残した判断は再現しやすそうです",
-      body: "見直しポイントが残っている判断は、何を見て決めたかを再利用しやすくなります。今回の満足もその整理が効いていた可能性があります。",
+      title: "見直しポイントを残したアクションは再現しやすそうです",
+      body: "見直しポイントが残っているアクションは、何を見て決めたかを再利用しやすくなります。今回の満足もその整理が効いていた可能性があります。",
       tone: "neutral",
       score: 64
     });
@@ -379,7 +379,7 @@ export const buildDecisionReplayInsights = (
   if (replay.watch_points.length === 0 && replay.outcome === "regret") {
     candidates.push({
       key: "watch-points-missing",
-      title: "判断条件をもう少し言語化すると良さそうです",
+      title: "条件をもう少し言語化すると良さそうです",
       body: "この学びでは見直しポイントが残っていません。次回は比較観点を2つか3つだけでも残すと、後悔理由を切り分けやすくなります。",
       tone: "neutral",
       score: 62
