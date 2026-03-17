@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/decisions", label: "今日のエピソード", mobileLabel: "今日" },
   { href: "/episodes", label: "アーカイブ", mobileLabel: "一覧" },
   { href: "/saved", label: "保存済み", mobileLabel: "保存" },
+  { href: "/history", label: "履歴", mobileLabel: "履歴" },
   { href: "/alerts", label: "通知", mobileLabel: "通知" },
   { href: "/account", label: "アカウント", mobileLabel: "設定" }
 ];
@@ -34,6 +35,13 @@ const NAV_ICONS: Record<(typeof NAV_ITEMS)[number]["href"], JSX.Element> = {
   "/saved": (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M7.25 5.75h9.5a1 1 0 0 1 1 1v11.5l-5.75-3-5.75 3V6.75a1 1 0 0 1 1-1Z" />
+    </svg>
+  ),
+  "/history": (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 8v4l3 2" />
+      <path d="M5.63 7.16A7.25 7.25 0 1 1 4.75 12" />
+      <path d="M4.75 4.75v3.5h3.5" />
     </svg>
   ),
   "/alerts": (
