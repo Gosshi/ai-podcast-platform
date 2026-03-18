@@ -42,8 +42,8 @@ export default async function DecisionsPage({
     <main className={styles.page}>
       <AnalyticsPageView page="/decisions" pageEventName="decisions_view" />
 
-      {/* --- Today's Episode Hero --- */}
-      <section className={styles.hero}>
+      {/* --- Episode Player Hero (merged) --- */}
+      <section className={styles.playerHero}>
         <AnalyticsEventOnRender
           eventName="podcast_hero_impression"
           properties={{
@@ -54,21 +54,18 @@ export default async function DecisionsPage({
             episode_id: latestEpisode?.id ?? undefined
           }}
         />
-        <div className={styles.heroCopy}>
+
+        <div className={styles.playerHeroMeta}>
           <p className={styles.eyebrow}>Today&apos;s Podcast</p>
-          <h1>{latestEpisode?.title ?? "今日のエピソードを準備中です"}</h1>
           {latestEpisode?.description ? (
-            <p className={styles.lead}>{latestEpisode.description}</p>
+            <p className={styles.playerHeroLead}>{latestEpisode.description}</p>
           ) : !latestEpisode ? (
-            <p className={styles.lead}>
+            <p className={styles.playerHeroLead}>
               あなたの関心に合わせた最新エピソードをまもなくお届けします。
             </p>
           ) : null}
         </div>
-      </section>
 
-      {/* --- Audio Player --- */}
-      <section className={styles.playerSection}>
         <PostListenCTA
           src={latestEpisode?.audio_url ?? null}
           title={latestEpisode?.title ?? "エピソード準備中"}
@@ -77,8 +74,9 @@ export default async function DecisionsPage({
           page="/decisions"
           episodeId={latestEpisode?.id}
         />
+
         {latestEpisode ? (
-          <div className={styles.shareRow}>
+          <div className={styles.playerHeroActions}>
             <ShareButton
               title={latestEpisode.title ?? "AI Podcast"}
               text={latestEpisode.description ?? undefined}
@@ -87,11 +85,29 @@ export default async function DecisionsPage({
               source="podcast_hero"
               episodeId={latestEpisode.id}
             />
+            <TrackedLink
+              href={`/decisions/${latestEpisode.id}`}
+              className={styles.detailLink}
+              eventName="nav_click"
+              eventProperties={{
+                page: "/decisions",
+                source: "player_hero_detail_link",
+                destination: `/decisions/${latestEpisode.id}`
+              }}
+            >
+              エピソード詳細 →
+            </TrackedLink>
           </div>
         ) : null}
       </section>
 
-      {/* --- Judgment Cards from Episode --- */}
+      {error ? (
+        <p className={styles.errorText}>
+          エピソードの読み込みに失敗しました。時間をおいて再度お試しください。
+        </p>
+      ) : null}
+
+      {/* --- Topic Cards --- */}
       {judgmentCards.length > 0 ? (
         <section id="topic-cards" className={styles.recommendationSection}>
           <div className={styles.recommendationHeader}>
@@ -173,15 +189,11 @@ export default async function DecisionsPage({
         </section>
       ) : null}
 
-      {/* --- All Episodes Link --- */}
-      <div className={styles.allLinkPanel}>
-        <div>
-          <p className={styles.sectionEyebrow}>アーカイブ</p>
-          <h3>過去のエピソード一覧</h3>
-        </div>
+      {/* --- Quick Links --- */}
+      <div className={styles.quickLinksRow}>
         <TrackedLink
           href="/episodes"
-          className={styles.inlineUpgradeLink}
+          className={styles.quickLink}
           eventName="nav_click"
           eventProperties={{
             page: "/decisions",
@@ -189,20 +201,15 @@ export default async function DecisionsPage({
             destination: "/episodes"
           }}
         >
-          すべてのエピソードを見る
+          <span className={styles.quickLinkIcon}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.75 5.75h14.5" /><path d="M4.75 9.75h14.5" /><path d="M4.75 13.75h8.5" /><path d="M4.75 17.75h8.5" /></svg>
+          </span>
+          過去のエピソード
         </TrackedLink>
-      </div>
-
-      {/* --- Onboarding Prompt --- */}
-      {viewer.needsOnboarding ? (
-        <div className={styles.allLinkPanel}>
-          <div>
-            <p className={styles.sectionEyebrow}>設定</p>
-            <h3>好みを設定して、あなた専用のエピソードを受け取ろう</h3>
-          </div>
+        {viewer.needsOnboarding ? (
           <TrackedLink
             href={onboardingPath}
-            className={styles.inlineUpgradeLink}
+            className={styles.quickLink}
             eventName="onboarding_entry_click"
             eventProperties={{
               page: "/decisions",
@@ -210,10 +217,29 @@ export default async function DecisionsPage({
               destination: onboardingPath
             }}
           >
+            <span className={styles.quickLinkIcon}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.75v14.5" /><path d="M18.25 12H5.75" /></svg>
+            </span>
             好みを設定する
           </TrackedLink>
-        </div>
-      ) : null}
+        ) : null}
+        {!isPaid ? (
+          <TrackedLink
+            href="/account"
+            className={styles.quickLink}
+            eventName="subscribe_cta_click"
+            eventProperties={{
+              page: "/decisions",
+              source: "podcast_dashboard_upgrade_link"
+            }}
+          >
+            <span className={styles.quickLinkIcon}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.75l2.5 5 5.5.8-4 3.9.94 5.5L12 17.25l-4.94 2.7.94-5.5-4-3.9 5.5-.8Z" /></svg>
+            </span>
+            有料版にアップグレード
+          </TrackedLink>
+        ) : null}
+      </div>
 
       {showWelcome ? (
         <AnalyticsEventOnRender
@@ -222,38 +248,8 @@ export default async function DecisionsPage({
         />
       ) : null}
 
-      {error ? (
-        <p className={styles.errorText}>
-          エピソードの読み込みに失敗しました。時間をおいて再度お試しください。
-        </p>
-      ) : null}
-
       {/* --- AI Consult --- */}
       <GenerateCardForm isPaid={isPaid} showWelcome={showWelcome} />
-
-      {/* --- Paywall Banner --- */}
-      {!isPaid ? (
-        <section className={styles.paywallBanner}>
-          <div>
-            <p className={styles.paywallEyebrow}>Premium</p>
-            <h2>有料版でフルスクリプトと行動提案を確認</h2>
-            <p>
-              無料版はエピソード再生とトピックカードの概要まで。有料版でスクリプト全文、行動提案、アーカイブが使えます。
-            </p>
-          </div>
-          <TrackedLink
-            href="/account"
-            className={styles.paywallLink}
-            eventName="subscribe_cta_click"
-            eventProperties={{
-              page: "/decisions",
-              source: "podcast_dashboard_paywall_banner"
-            }}
-          >
-            プランを見る
-          </TrackedLink>
-        </section>
-      ) : null}
     </main>
   );
 }
