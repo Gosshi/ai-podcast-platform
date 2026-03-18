@@ -1,6 +1,7 @@
 import { verifyCsrfOrigin } from "@/app/lib/csrf";
-import { getViewerFromCookies } from "@/app/lib/viewer";
-import { createServiceRoleClient } from "@/app/lib/supabaseClients";
+import { jsonResponse, toNonEmptyString } from "@/app/lib/apiResponse";
+import { getAccessTokenFromCookies, getViewerFromAccessToken } from "@/app/lib/viewer";
+import { createUserClient } from "@/app/lib/supabaseClients";
 import {
   INTEREST_TOPIC_LABELS,
   ACTIVE_SUBSCRIPTION_LABELS
@@ -12,19 +13,6 @@ const FREE_DAILY_LIMIT = 3;
 const PAID_DAILY_LIMIT = 20;
 const MAX_INPUT_LENGTH = 500;
 const MIN_INPUT_LENGTH = 5;
-
-const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" }
-  });
-};
-
-const toNonEmptyString = (value: unknown): string | null => {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
 
 const todayStartJST = (): string => {
   const now = new Date();
@@ -229,8 +217,9 @@ export async function POST(request: Request) {
     return jsonResponse({ ok: false, error: csrf.error }, 403);
   }
 
-  const viewer = await getViewerFromCookies();
-  if (!viewer) {
+  const accessToken = await getAccessTokenFromCookies();
+  const viewer = await getViewerFromAccessToken(accessToken);
+  if (!viewer || !accessToken) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);
   }
 
@@ -248,7 +237,7 @@ export async function POST(request: Request) {
     return jsonResponse({ ok: false, error: "input_too_long", maxLength: MAX_INPUT_LENGTH }, 400);
   }
 
-  const supabase = createServiceRoleClient();
+  const supabase = createUserClient(accessToken);
 
   // Rate limit check
   const dailyLimit = viewer.isPaid ? PAID_DAILY_LIMIT : FREE_DAILY_LIMIT;
@@ -381,12 +370,13 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  const viewer = await getViewerFromCookies();
-  if (!viewer) {
+  const accessToken = await getAccessTokenFromCookies();
+  const viewer = await getViewerFromAccessToken(accessToken);
+  if (!viewer || !accessToken) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);
   }
 
-  const supabase = createServiceRoleClient();
+  const supabase = createUserClient(accessToken);
 
   const { data, error } = await supabase
     .from("user_generated_cards")

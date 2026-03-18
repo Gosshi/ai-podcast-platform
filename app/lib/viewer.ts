@@ -120,8 +120,12 @@ export const getViewerFromRequest = async (request: Request): Promise<ViewerStat
   return getViewerFromAccessToken(accessToken);
 };
 
-export const getViewerFromCookies = async (): Promise<ViewerState | null> => {
+export const getAccessTokenFromCookies = async (): Promise<string | null> => {
   const cookieStore = await cookies();
-  const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value ?? null;
+  return cookieStore.get(ACCESS_TOKEN_COOKIE)?.value ?? null;
+};
+
+export const getViewerFromCookies = async (): Promise<ViewerState | null> => {
+  const accessToken = await getAccessTokenFromCookies();
   return getViewerFromAccessToken(accessToken);
 };

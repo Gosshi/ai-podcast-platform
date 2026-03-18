@@ -53,22 +53,7 @@ type StripeWebhookDeps = {
   findSubscriptionByStripeSubscriptionId: (subscriptionId: string) => Promise<UserLookup | null>;
 };
 
-const getRequiredEnv = (name: string): string => {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`${name} is required`);
-  }
-  return value;
-};
-
-const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json"
-    }
-  });
-};
+import { jsonResponse, getRequiredEnv } from "@/app/lib/apiResponse";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

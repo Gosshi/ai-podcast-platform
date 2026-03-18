@@ -25,12 +25,7 @@ const resolveFunctionsBaseUrl = (supabaseUrl: string | null): string | null => {
   return supabaseUrl ? `${supabaseUrl}/functions/v1` : null;
 };
 
-const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" }
-  });
-};
+import { jsonResponse } from "@/app/lib/apiResponse";
 
 export async function POST(request: Request) {
   const { verifyCronSecret } = await import("@/app/lib/cronAuth");

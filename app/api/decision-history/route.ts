@@ -1,27 +1,13 @@
 import { FREE_DECISION_HISTORY_LIMIT } from "@/app/lib/decisionHistory";
 import { verifyCsrfOrigin } from "@/app/lib/csrf";
-import { getViewerFromCookies } from "@/app/lib/viewer";
-import { createServiceRoleClient } from "@/app/lib/supabaseClients";
+import { jsonResponse, toNonEmptyString } from "@/app/lib/apiResponse";
+import { getAccessTokenFromCookies, getViewerFromAccessToken } from "@/app/lib/viewer";
+import { createUserClient } from "@/app/lib/supabaseClients";
 
 export const runtime = "nodejs";
 
 type SaveDecisionRequest = {
   judgmentCardId?: unknown;
-};
-
-const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json"
-    }
-  });
-};
-
-const toNonEmptyString = (value: unknown): string | null => {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
 };
 
 export async function POST(request: Request) {
@@ -30,8 +16,9 @@ export async function POST(request: Request) {
     return jsonResponse({ ok: false, error: csrf.error }, 403);
   }
 
-  const viewer = await getViewerFromCookies();
-  if (!viewer) {
+  const accessToken = await getAccessTokenFromCookies();
+  const viewer = await getViewerFromAccessToken(accessToken);
+  if (!viewer || !accessToken) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);
   }
 
@@ -41,7 +28,7 @@ export async function POST(request: Request) {
     return jsonResponse({ ok: false, error: "judgment_card_id_required" }, 400);
   }
 
-  const supabase = createServiceRoleClient();
+  const supabase = createUserClient(accessToken);
 
   const { data: existingDecision, error: existingDecisionError } = await supabase
     .from("user_decisions")
