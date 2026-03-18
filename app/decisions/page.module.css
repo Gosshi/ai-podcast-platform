@@ -16,7 +16,7 @@
 
 .playerHeroLead {
   margin: 0;
-  color: #475569;
+  color: var(--color-text-secondary);
   font-size: 0.95rem;
   line-height: 1.55;
 }
@@ -29,7 +29,7 @@
 }
 
 .detailLink {
-  color: #0369a1;
+  color: var(--color-accent);
   font-size: 0.88rem;
   font-weight: 700;
   text-decoration: none;
@@ -55,7 +55,7 @@
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   background: rgba(255, 255, 255, 0.88);
-  color: #0f172a;
+  color: var(--color-text-primary);
   text-decoration: none;
   font-size: 0.88rem;
   font-weight: 700;
@@ -63,7 +63,7 @@
 }
 
 .quickLink:hover {
-  background: #f1f5f9;
+  background: var(--color-bg-subtle);
   border-color: rgba(148, 163, 184, 0.35);
 }
 
@@ -112,7 +112,7 @@
 .sectionHeading h2,
 .paywallBanner h2 {
   margin: 0;
-  color: #0f172a;
+  color: var(--color-text-primary);
 }
 
 .heroCopy h1 {
@@ -126,7 +126,7 @@
 .summary,
 .emptyText,
 .errorText {
-  color: #475569;
+  color: var(--color-text-secondary);
 }
 
 .lead {
@@ -141,7 +141,7 @@
   gap: 0.75rem;
   align-items: center;
   margin-top: 0.85rem;
-  color: #334155;
+  color: var(--color-text-body);
   font-weight: 600;
 }
 
@@ -168,7 +168,7 @@
 
 .secondaryHeroLink {
   background: #ffffff;
-  color: #0f172a;
+  color: var(--color-text-primary);
   border: 1px solid #cbd5e1;
 }
 
@@ -222,7 +222,7 @@
 }
 
 .paywallLink {
-  color: #0f172a;
+  color: var(--color-text-primary);
   background: #f8fafc;
   text-decoration: none;
   font-weight: 700;
@@ -248,7 +248,7 @@
   list-style: none;
   padding: 1rem 1.15rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--color-text-primary);
 }
 
 .expandSummary::-webkit-details-marker {
@@ -318,7 +318,7 @@
 }
 
 .recommendationEpisodeLabel {
-  color: #64748b;
+  color: var(--color-text-tertiary);
   font-size: 0.88rem;
   font-weight: 700;
   text-align: right;
@@ -335,7 +335,7 @@
 
 .urgencyBadge_critical {
   background: #fee2e2;
-  color: #b91c1c;
+  color: var(--color-error);
 }
 
 .urgencyBadge_high {
@@ -350,7 +350,7 @@
 
 .urgencyBadge_low {
   background: #e2e8f0;
-  color: #475569;
+  color: var(--color-text-secondary);
 }
 
 .reasonTagList {
@@ -366,15 +366,15 @@
   min-height: 1.85rem;
   padding: 0.35rem 0.75rem;
   border-radius: 999px;
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-primary);
   font-size: 0.8rem;
   font-weight: 700;
 }
 
 .episodeLinkText {
   margin: 0;
-  color: #0369a1;
+  color: var(--color-accent);
   font-weight: 800;
 }
 
@@ -404,7 +404,7 @@
 .inlineUpgradeLink {
   display: inline-flex;
   margin-top: 0.9rem;
-  color: #0f172a;
+  color: var(--color-text-primary);
   background: #f8fafc;
   text-decoration: none;
   font-weight: 800;
@@ -426,7 +426,7 @@
 
 .allLinkPanel h3 {
   margin: 0;
-  color: #0f172a;
+  color: var(--color-text-primary);
 }
 
 .sectionHeading {
@@ -452,7 +452,7 @@
   min-height: 2rem;
   padding: 0 0.85rem;
   background: #e2e8f0;
-  color: #0f172a;
+  color: var(--color-text-primary);
   font-size: 0.9rem;
   font-weight: 700;
 }
@@ -522,14 +522,14 @@
 
 .badge_skip {
   background: #fee2e2;
-  color: #b91c1c;
+  color: var(--color-error);
 }
 
 .genreTag {
   min-height: 1.85rem;
   padding: 0 0.75rem;
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
   font-size: 0.8rem;
   font-weight: 700;
 }
@@ -538,7 +538,7 @@
   margin: 0;
   font-size: 1.12rem;
   line-height: 1.4;
-  color: #0f172a;
+  color: var(--color-text-primary);
 }
 
 .summary {
@@ -615,7 +615,7 @@
   padding-left: 1.1rem;
   display: grid;
   gap: 0.35rem;
-  color: #475569;
+  color: var(--color-text-secondary);
 }
 
 .masked {

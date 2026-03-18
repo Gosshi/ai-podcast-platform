@@ -1,6 +1,10 @@
 import { verifyCsrfOrigin } from "@/app/lib/csrf";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
+import {
+  INTEREST_TOPIC_LABELS,
+  ACTIVE_SUBSCRIPTION_LABELS
+} from "@/src/lib/userPreferences";
 
 export const runtime = "nodejs";
 
@@ -63,27 +67,7 @@ const SYSTEM_PROMPT = `あなたはユーザーの悩みに対してアドバイ
 - 日本語で回答する
 - JSON以外は出力しない`;
 
-const INTEREST_TOPIC_LABELS: Record<string, string> = {
-  games: "ゲーム",
-  streaming: "サブスク",
-  anime: "アニメ",
-  movies: "映画",
-  tech: "テック",
-  lifestyle: "生活",
-  work: "仕事・タスク",
-  shopping: "買い物"
-};
-
-const ACTIVE_SUBSCRIPTION_LABELS: Record<string, string> = {
-  netflix: "Netflix",
-  prime: "Prime Video",
-  disney: "Disney+",
-  spotify: "Spotify",
-  youtube: "YouTube",
-  chatgpt: "ChatGPT",
-  notion: "Notion",
-  github: "GitHub"
-};
+// Labels imported from src/lib/userPreferences.ts
 
 const buildUserContext = (profile: {
   decisionPriority?: string;
@@ -115,7 +99,7 @@ const buildUserContext = (profile: {
   // Interest topics
   if (profile.interestTopics && profile.interestTopics.length > 0) {
     const topicLabels = profile.interestTopics
-      .map((t) => INTEREST_TOPIC_LABELS[t])
+      .map((t) => (INTEREST_TOPIC_LABELS as Record<string, string>)[t])
       .filter(Boolean)
       .slice(0, 4);
     if (topicLabels.length > 0) {
@@ -127,7 +111,7 @@ const buildUserContext = (profile: {
   if (profile.activeSubscriptions && profile.activeSubscriptions.length > 0) {
     const subLabels = profile.activeSubscriptions
       .filter((s) => s !== "none" && s !== "other")
-      .map((s) => ACTIVE_SUBSCRIPTION_LABELS[s])
+      .map((s) => (ACTIVE_SUBSCRIPTION_LABELS as Record<string, string>)[s])
       .filter(Boolean)
       .slice(0, 4);
     if (subLabels.length > 0) {

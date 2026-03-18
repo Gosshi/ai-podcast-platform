@@ -1,7 +1,7 @@
 import type { JudgmentCard, JudgmentThresholdJson, JudgmentType } from "../../src/lib/judgmentCards";
+import { OUTCOME_LABELS, type DecisionOutcomeValue } from "../../src/lib/labels.ts";
 import type { DecisionProfile, DecisionProfileEntry } from "../../src/lib/decisionProfile";
 
-export type DecisionOutcomeValue = "success" | "regret" | "neutral";
 export type DecisionOutcome = DecisionOutcomeValue | null;
 
 export type SavedDecisionRecord = {
@@ -82,11 +82,7 @@ export const DECISION_TYPE_LABELS: Record<string, string> = {
   skip: "見送り"
 };
 
-export const OUTCOME_LABELS: Record<DecisionOutcomeValue, string> = {
-  success: "満足",
-  regret: "後悔",
-  neutral: "普通"
-};
+export { OUTCOME_LABELS, type DecisionOutcomeValue } from "../../src/lib/labels.ts";
 
 const createEmptyDecisionProfile = (): DecisionProfile => ({
   totalDecisions: 0,

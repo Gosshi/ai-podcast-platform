@@ -47,7 +47,7 @@
 }
 
 .cardEyebrow {
-  color: #64748b;
+  color: var(--color-text-tertiary);
 }
 
 .heroCopy h1,
@@ -55,7 +55,7 @@
 .historyCard h3,
 .noticePanel h2 {
   margin: 0;
-  color: #0f172a;
+  color: var(--color-text-primary);
 }
 
 .heroCopy h1 {
@@ -69,7 +69,7 @@
 .noticePanel p,
 .emptyText,
 .errorText {
-  color: #475569;
+  color: var(--color-text-secondary);
   line-height: 1.7;
 }
 
@@ -103,14 +103,14 @@
 .outcomeLabel {
   font-size: 0.78rem;
   font-weight: 700;
-  color: #64748b;
+  color: var(--color-text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
 .statValue {
   font-size: 1.85rem;
-  color: #0f172a;
+  color: var(--color-text-primary);
 }
 
 .limitText {
@@ -170,7 +170,7 @@
   min-height: 2rem;
   padding: 0 0.85rem;
   background: #e2e8f0;
-  color: #0f172a;
+  color: var(--color-text-primary);
   font-weight: 700;
 }
 
@@ -207,7 +207,7 @@
 
 .profilePanel h3 {
   margin: 0;
-  color: #0f172a;
+  color: var(--color-text-primary);
 }
 
 .profileStatGrid {
@@ -227,14 +227,14 @@
 .ratioLabel {
   font-size: 0.78rem;
   font-weight: 700;
-  color: #64748b;
+  color: var(--color-text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
 .profileStatGrid dd {
   margin: 0;
-  color: #0f172a;
+  color: var(--color-text-primary);
   font-weight: 700;
 }
 
@@ -248,19 +248,19 @@
   min-width: 7rem;
   border-radius: 16px;
   padding: 0.75rem 0.85rem;
-  background: #ffffff;
+  background: var(--color-bg-card);
   border: 1px solid rgba(148, 163, 184, 0.18);
   display: grid;
   gap: 0.2rem;
 }
 
 .ratioChip span {
-  color: #64748b;
+  color: var(--color-text-tertiary);
   font-size: 0.85rem;
 }
 
 .ratioChip strong {
-  color: #0f172a;
+  color: var(--color-text-primary);
 }
 
 .profileList,
@@ -275,7 +275,7 @@
 .profileList li {
   border-radius: 16px;
   padding: 0.8rem 0.9rem;
-  background: #ffffff;
+  background: var(--color-bg-card);
   border: 1px solid rgba(148, 163, 184, 0.16);
 }
 
@@ -283,12 +283,12 @@
 .profileEmpty,
 .insightItem p,
 .profileFootnote {
-  color: #475569;
+  color: var(--color-text-secondary);
 }
 
 .profileList strong,
 .insightItem strong {
-  color: #0f172a;
+  color: var(--color-text-primary);
 }
 
 .profileEmpty,
@@ -302,7 +302,7 @@
   border-radius: 18px;
   padding: 0.95rem 1rem;
   border: 1px solid rgba(148, 163, 184, 0.16);
-  background: #ffffff;
+  background: var(--color-bg-card);
   display: grid;
   gap: 0.35rem;
 }
@@ -353,7 +353,7 @@
 
 .badge_skip {
   background: #fee2e2;
-  color: #b91c1c;
+  color: var(--color-error);
 }
 
 .badge_ai {
@@ -370,10 +370,10 @@
 .inputTextPreview {
   margin: 0 0 0.75rem;
   padding: 0.6rem 0.8rem;
-  background: #f1f5f9;
+  background: var(--color-bg-subtle);
   border-radius: 8px;
   font-size: 0.82rem;
-  color: #475569;
+  color: var(--color-text-secondary);
   line-height: 1.5;
 }
 
@@ -392,7 +392,7 @@
 .metaGrid dd,
 .outcomeValue {
   margin: 0;
-  color: #0f172a;
+  color: var(--color-text-primary);
   font-weight: 600;
 }
 

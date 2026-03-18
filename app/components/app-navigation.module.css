@@ -18,7 +18,7 @@
 }
 
 .brand {
-  color: #0f172a;
+  color: var(--color-text-primary);
   text-decoration: none;
   font-size: 1rem;
   font-weight: 800;
@@ -39,7 +39,7 @@
 }
 
 .link {
-  color: #475569;
+  color: var(--color-text-secondary);
   text-decoration: none;
   font-size: 0.92rem;
   font-weight: 600;
@@ -52,7 +52,7 @@
 
 .link:hover {
   background: rgba(226, 232, 240, 0.9);
-  color: #0f172a;
+  color: var(--color-text-primary);
 }
 
 .linkActive {
@@ -138,7 +138,7 @@
 
   .mobileLinkActive {
     background: #f8fafc;
-    color: #0f172a;
+    color: var(--color-text-primary);
   }
 
   .mobileNavSpacer {

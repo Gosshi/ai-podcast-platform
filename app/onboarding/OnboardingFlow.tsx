@@ -297,7 +297,7 @@ export default function OnboardingFlow({ initialPreferences, nextPath, isFirstRu
 
   return (
     <section className={styles.panel}>
-      <div className={styles.progressRow}>
+      <div className={styles.progressRow} role="progressbar" aria-valuenow={step + 1} aria-valuemin={1} aria-valuemax={STEP_TITLES.length} aria-label={`ステップ ${step + 1} / ${STEP_TITLES.length}`}>
         {STEP_TITLES.map((item, index) => (
           <div key={item.title} className={styles.progressItem}>
             <span

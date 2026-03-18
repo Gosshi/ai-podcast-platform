@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { track } from "@/src/lib/analytics";
+import { GENRE_LABELS, JUDGMENT_TYPE_BADGE_LABELS, OUTCOME_LABELS } from "@/src/lib/labels";
 import styles from "./generate-card-form.module.css";
 
 type GeneratedCard = {
@@ -48,26 +49,7 @@ type SSEErrorData = {
   error?: string;
 };
 
-const JUDGMENT_TYPE_LABELS: Record<string, string> = {
-  use_now: "おすすめ: 今すぐ",
-  watch: "おすすめ: 様子見",
-  skip: "おすすめ: 見送り"
-};
-
-const OUTCOME_LABELS: Record<string, string> = {
-  success: "満足",
-  neutral: "普通",
-  regret: "後悔"
-};
-
-const GENRE_LABELS: Record<string, string> = {
-  streaming: "サブスク",
-  tech: "テック",
-  shopping: "買い物",
-  lifestyle: "生活",
-  work: "仕事",
-  entertainment: "エンタメ"
-};
+// Labels imported from src/lib/labels.ts
 
 const parseSSELines = (
   text: string,
@@ -357,7 +339,7 @@ export default function GenerateCardForm({ isPaid, showWelcome = false }: Genera
             >
               <div className={styles.cardTopRow}>
                 <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`]}`.trim()}>
-                  {JUDGMENT_TYPE_LABELS[card.judgment_type] ?? card.judgment_type}
+                  {JUDGMENT_TYPE_BADGE_LABELS[card.judgment_type] ?? card.judgment_type}
                 </span>
                 {card.genre ? (
                   <span className={styles.genreTag}>

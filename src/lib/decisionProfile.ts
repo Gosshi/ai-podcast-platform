@@ -1,4 +1,5 @@
-import type { JudgmentThresholdJson, JudgmentType } from "./judgmentCards";
+import type { JudgmentThresholdJson, JudgmentType } from "./judgmentCards.ts";
+import { FRAME_TYPE_LABELS, GENRE_LABELS } from "./labels.ts";
 
 export type DecisionOutcome = "success" | "regret" | "neutral";
 
@@ -111,27 +112,7 @@ const DECISION_TYPE_LABELS: Record<JudgmentType, string> = {
   skip: "見送る"
 };
 
-const FRAME_TYPE_LABELS: Record<string, string> = {
-  "Frame A": "使う時間で比較",
-  "Frame B": "月額の見直し",
-  "Frame C": "セール時の比較",
-  "Frame D": "広告負担の見直し"
-};
-
-const GENRE_LABELS: Record<string, string> = {
-  entertainment: "エンタメ",
-  games: "エンタメ",
-  streaming: "サブスク",
-  anime: "エンタメ",
-  movies: "エンタメ",
-  movie: "エンタメ",
-  tech: "テック",
-  tools: "ツール",
-  tool: "ツール",
-  general: "生活",
-  life: "生活",
-  travel: "生活"
-};
+// FRAME_TYPE_LABELS and GENRE_LABELS imported from labels.ts
 
 export const MIN_PROFILE_HISTORY = 5;
 export const MIN_SEGMENT_HISTORY = 3;
