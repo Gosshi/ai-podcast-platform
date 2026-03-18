@@ -106,17 +106,11 @@ const jsonResponse = (body: Record<string, unknown>, status = 200): Response => 
 };
 
 export async function POST(request: Request) {
-  // Authenticate via CRON_SECRET
-  const cronSecret = process.env.CRON_SECRET?.trim();
-  if (!cronSecret) {
-    return jsonResponse({ ok: false, error: "cron_secret_not_configured" }, 503);
-  }
-
-  const authHeader = request.headers.get("authorization");
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
-
-  if (token !== cronSecret) {
-    return jsonResponse({ ok: false, error: "unauthorized" }, 401);
+  // Authenticate via CRON_SECRET (timing-safe comparison)
+  const { verifyCronSecret } = await import("@/app/lib/cronAuth");
+  const cronAuth = verifyCronSecret(request);
+  if (!cronAuth.ok) {
+    return jsonResponse({ ok: false, error: cronAuth.error }, cronAuth.status);
   }
 
   const supabase = createServiceRoleClient();

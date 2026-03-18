@@ -1,4 +1,5 @@
 import { countActiveWatchlistItems } from "@/app/lib/watchlist";
+import { verifyCsrfOrigin } from "@/app/lib/csrf";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import {
@@ -26,6 +27,11 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrf = verifyCsrfOrigin(request);
+  if (!csrf.ok) {
+    return jsonResponse({ ok: false, error: csrf.error }, 403);
+  }
+
   const viewer = await getViewerFromCookies();
   if (!viewer) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);
@@ -104,9 +110,14 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrf = verifyCsrfOrigin(request);
+  if (!csrf.ok) {
+    return jsonResponse({ ok: false, error: csrf.error }, 403);
+  }
+
   const viewer = await getViewerFromCookies();
   if (!viewer) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);

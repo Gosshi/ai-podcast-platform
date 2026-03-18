@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { verifyCsrfOrigin } from "@/app/lib/csrf";
 import { getViewerFromCookies } from "../../../lib/viewer";
 import { recordAnalyticsEvent } from "@/src/lib/analytics";
 
@@ -36,6 +37,11 @@ const getOrigin = (request: Request): string => {
 };
 
 export async function POST(request: Request): Promise<Response> {
+  const csrf = verifyCsrfOrigin(request);
+  if (!csrf.ok) {
+    return jsonResponse({ ok: false, error: csrf.error }, 403);
+  }
+
   const viewer = await getViewerFromCookies();
   if (!viewer) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);

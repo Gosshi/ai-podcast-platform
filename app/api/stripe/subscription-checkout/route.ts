@@ -1,3 +1,4 @@
+import { verifyCsrfOrigin } from "@/app/lib/csrf";
 import { getViewerFromCookies } from "../../../lib/viewer";
 import { createServiceRoleClient } from "../../../lib/supabaseClients";
 import { recordAnalyticsEvent } from "@/src/lib/analytics";
@@ -91,6 +92,11 @@ const insertPendingSubscription = async (params: {
 };
 
 export async function POST(request: Request): Promise<Response> {
+  const csrf = verifyCsrfOrigin(request);
+  if (!csrf.ok) {
+    return jsonResponse({ ok: false, error: csrf.error }, 403);
+  }
+
   const viewer = await getViewerFromCookies();
   if (!viewer) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);
