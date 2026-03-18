@@ -1,3 +1,4 @@
+import { verifyCsrfOrigin } from "@/app/lib/csrf";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 
@@ -20,6 +21,11 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrf = verifyCsrfOrigin(request);
+  if (!csrf.ok) {
+    return jsonResponse({ ok: false, error: csrf.error }, 403);
+  }
+
   const { id } = await params;
 
   const viewer = await getViewerFromCookies();

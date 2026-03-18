@@ -124,9 +124,11 @@ export default function GenerateCardForm({ isPaid, showWelcome = false }: Genera
       if (data?.ok) {
         setCards(data.cards);
         setRemaining(data.remaining);
+      } else {
+        console.warn("generate-card list load failed:", data && !data.ok ? data.error : "unknown");
       }
-    } catch {
-      // Silent fail on initial load
+    } catch (err) {
+      console.warn("generate-card list load error:", err);
     }
   }, []);
 
@@ -260,8 +262,8 @@ export default function GenerateCardForm({ isPaid, showWelcome = false }: Genera
           card_id: cardId
         });
       }
-    } catch {
-      // Silent fail
+    } catch (err) {
+      console.warn("generate-card outcome update error:", err);
     } finally {
       setUpdatingOutcome(null);
     }

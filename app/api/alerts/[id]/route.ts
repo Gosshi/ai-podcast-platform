@@ -1,4 +1,5 @@
 import { updateUserAlertState } from "@/app/lib/alerts";
+import { verifyCsrfOrigin } from "@/app/lib/csrf";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 
 export const runtime = "nodejs";
@@ -24,6 +25,11 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrf = verifyCsrfOrigin(request);
+  if (!csrf.ok) {
+    return jsonResponse({ ok: false, error: csrf.error }, 403);
+  }
+
   const viewer = await getViewerFromCookies();
   if (!viewer) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);

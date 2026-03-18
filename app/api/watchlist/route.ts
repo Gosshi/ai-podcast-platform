@@ -1,4 +1,5 @@
 import { countActiveWatchlistItems } from "@/app/lib/watchlist";
+import { verifyCsrfOrigin } from "@/app/lib/csrf";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import {
@@ -35,6 +36,11 @@ const resolveRequestedStatus = (value: unknown): WatchlistStatus | null => {
 };
 
 export async function POST(request: Request) {
+  const csrf = verifyCsrfOrigin(request);
+  if (!csrf.ok) {
+    return jsonResponse({ ok: false, error: csrf.error }, 403);
+  }
+
   const viewer = await getViewerFromCookies();
   if (!viewer) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);

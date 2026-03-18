@@ -21,8 +21,9 @@ export default function AnalyticsEventOnRender({
     }
 
     hasTrackedRef.current = true;
-    track(eventName, properties ?? {});
-  }, [eventName, properties, serializedProperties]);
+    const parsed = JSON.parse(serializedProperties) as AnalyticsTrackProperties;
+    track(eventName, parsed);
+  }, [eventName, serializedProperties]);
 
   return null;
 }

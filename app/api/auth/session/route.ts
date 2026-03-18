@@ -1,10 +1,15 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from "@/app/lib/authCookies";
+import { verifyCsrfOrigin } from "@/app/lib/csrf";
 
 const json = (body: Record<string, unknown>, status = 200) => NextResponse.json(body, { status });
 
 export async function POST(request: Request) {
+  const csrf = verifyCsrfOrigin(request);
+  if (!csrf.ok) {
+    return json({ ok: false, error: csrf.error }, 403);
+  }
   const body = (await request.json().catch(() => ({}))) as {
     accessToken?: unknown;
     refreshToken?: unknown;
