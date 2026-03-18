@@ -6,8 +6,8 @@ import styles from "./home.module.css";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
-  title: "あなた専用のAIポッドキャストを毎日届ける | AI Podcast",
-  description: "関心に合わせてAIが毎日ポッドキャストを生成。聴くだけで情報が整理され、要点も一目でわかる。"
+  title: "通勤中に聴くだけで、今日の情報が整理される | AI Podcast",
+  description: "あなたの関心に合わせてAIが毎日ポッドキャストを生成。聴くだけで情報が整理され、要点をカードで確認できる。"
 };
 
 const SAMPLE_EPISODES = [
@@ -53,10 +53,10 @@ export default async function HomePage() {
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <p className={styles.eyebrow}>AI Podcast</p>
-            <h1>欲しい情報だけを、毎日ポッドキャストで届ける。</h1>
+            <h1>通勤中に聴くだけで、今日の情報が整理される。</h1>
             <p className={styles.lead}>
-              あなたの関心に合わせてAIがエピソードを生成。
-              通勤中や家事の合間に聴くだけで、情報が整理され要点も見えてきます。
+              あなたの関心に合わせてAIがエピソードを毎日生成。
+              イヤホンで聴くだけで、最新情報のキャッチアップが終わります。
             </p>
 
             <div className={styles.ctaRow}>
@@ -70,7 +70,7 @@ export default async function HomePage() {
                   destination: startHref
                 }}
               >
-                {startLabel}
+                ▶ {startLabel}
               </TrackedLink>
               <TrackedLink
                 href={secondaryHref}
@@ -88,12 +88,12 @@ export default async function HomePage() {
 
             <div className={styles.stats}>
               <article className={styles.stat}>
-                <span>毎日更新</span>
-                <strong>あなた専用のエピソード</strong>
+                <span>ながら聴き</span>
+                <strong>通勤・家事の合間に5〜10分</strong>
               </article>
               <article className={styles.stat}>
-                <span>ながら聴き</span>
-                <strong>通勤・家事の合間にインプット</strong>
+                <span>毎日更新</span>
+                <strong>あなた専用のエピソードをAIが生成</strong>
               </article>
               <article className={styles.stat}>
                 <span>トピックカード</span>
@@ -104,13 +104,27 @@ export default async function HomePage() {
 
           <aside className={styles.sampleCard}>
             <div className={styles.sampleHeader}>
-              <span className={styles.sampleLabel}>最新エピソード</span>
+              <span className={styles.sampleLabel}>Now Playing</span>
               <span className={styles.sampleBadge}>8分</span>
             </div>
             <h2>今週チェックすべきAIツール3選</h2>
             <p className={styles.sampleSummary}>
               話題のAIツールを実用性の視点で比較し、今すぐ試すべきかお伝えします。
             </p>
+            <div className={styles.sampleWave}>
+              <div className={styles.waveBar} />
+              <div className={styles.waveBar} />
+              <div className={styles.waveBar} />
+              <div className={styles.waveBar} />
+              <div className={styles.waveBar} />
+              <div className={styles.waveBar} />
+              <div className={styles.waveBar} />
+              <div className={styles.waveBar} />
+              <div className={styles.waveBar} />
+              <div className={styles.waveBar} />
+              <div className={styles.waveBar} />
+              <div className={styles.waveBar} />
+            </div>
             <dl className={styles.sampleMeta}>
               <div>
                 <dt>ジャンル</dt>
@@ -120,10 +134,6 @@ export default async function HomePage() {
                 <dt>トピックカード</dt>
                 <dd>3件のポイント</dd>
               </div>
-              <div>
-                <dt>更新</dt>
-                <dd>毎日あなたの関心に合わせて生成</dd>
-              </div>
             </dl>
           </aside>
         </section>
@@ -132,20 +142,20 @@ export default async function HomePage() {
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>仕組み</p>
-            <h2>聴くだけで情報が整理される</h2>
+            <h2>聴くだけで情報が整理される、3ステップ</h2>
           </div>
           <div className={styles.featureGrid}>
             <article className={styles.featureCard}>
-              <h3>1. 好みを伝える</h3>
-              <p>関心のあるジャンルやトピックを設定するだけ。AIがあなた専用のエピソードを毎日つくります。</p>
+              <h3>1. 好みを30秒で設定</h3>
+              <p>関心のあるジャンルを選ぶだけ。AIがあなた専用のエピソードを毎朝つくります。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>2. ポッドキャストを聴く</h3>
-              <p>通勤中、ランニング中、家事の合間に。ながら聴きで最新情報をキャッチアップできます。</p>
+              <h3>2. 通勤中にイヤホンで聴く</h3>
+              <p>5〜10分のエピソードだから、電車1駅分でインプット完了。ながら聴きに最適です。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>3. トピックカードで行動する</h3>
-              <p>エピソードから抽出されたポイントをカードで確認。聴いた内容をすぐ行動に変えられます。</p>
+              <h3>3. カードでポイントを確認</h3>
+              <p>聴き終わったらトピックカードで要点をチェック。採用するか見送るかをワンタップで整理。</p>
             </article>
           </div>
         </section>
@@ -154,8 +164,7 @@ export default async function HomePage() {
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>エピソード例</p>
-            <h2>こんなエピソードが届きます</h2>
-            <p className={styles.sectionLead}>テクノロジー、マネー、ニュースなど幅広いジャンルをカバー。あなたの関心に合わせて優先度が変わります。</p>
+            <h2>こんなエピソードが毎朝届きます</h2>
           </div>
           <div className={styles.sampleGrid}>
             {SAMPLE_EPISODES.map((episode) => (
@@ -182,15 +191,11 @@ export default async function HomePage() {
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>プラン</p>
             <h2>無料で聴ける。有料でもっと深く。</h2>
-            <p className={styles.sectionLead}>
-              エピソードの再生とトピックカード概要は無料。有料版ではフルスクリプト、行動提案、アーカイブが使えます。
-            </p>
           </div>
           <div className={styles.membershipGrid}>
             <article className={styles.membershipCard}>
               <span className={styles.membershipTier}>無料</span>
-              <h3>毎日のエピソードを聴いて情報をキャッチアップ</h3>
-              <p>ポッドキャスト再生、トピックカードの概要確認、好みの設定ができます。</p>
+              <h3>毎日聴いて情報をキャッチアップ</h3>
               <ul className={styles.membershipList}>
                 <li>毎日のエピソード再生</li>
                 <li>トピックカードのタイトルと概要</li>
@@ -200,11 +205,11 @@ export default async function HomePage() {
             <article className={styles.membershipCard}>
               <span className={styles.membershipTier}>有料</span>
               <h3>フルスクリプトと行動提案でもっと深く</h3>
-              <p>エピソードの文字起こし、具体的な行動提案、過去エピソードのアーカイブが利用できます。</p>
               <ul className={styles.membershipList}>
                 <li>エピソードのフルスクリプト</li>
                 <li>トピックカードの行動提案とタイミング</li>
                 <li>過去エピソードのアーカイブ</li>
+                <li>傾向分析とAI相談</li>
               </ul>
             </article>
           </div>
@@ -214,10 +219,7 @@ export default async function HomePage() {
         <section className={`${styles.section} ${styles.ctaSection}`.trim()}>
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>はじめよう</p>
-            <h2>今日のエピソードを聴いてみよう</h2>
-            <p className={styles.sectionLead}>
-              好みを設定して、あなた専用のポッドキャストを受け取りましょう。
-            </p>
+            <h2>明日の通勤から、聴くだけインプット。</h2>
           </div>
           <div className={styles.ctaRow}>
             <TrackedLink
@@ -230,7 +232,7 @@ export default async function HomePage() {
                 destination: startHref
               }}
             >
-              {startLabel}
+              ▶ {startLabel}
             </TrackedLink>
             <TrackedLink
               href={secondaryHref}
