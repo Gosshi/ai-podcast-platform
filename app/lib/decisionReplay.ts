@@ -117,7 +117,7 @@ const EMPTY_REPLAY_PROFILE: DecisionProfile = {
     },
     watch: {
       key: "watch",
-      label: "後で考える",
+      label: "様子見",
       count: 0,
       successCount: 0,
       regretCount: 0,
@@ -296,7 +296,7 @@ export const buildDecisionReplayInsights = (
     if (replay.outcome === "success" && decisionTypeStat.successRate >= 67) {
       candidates.push({
         key: `decision-type-success:${replay.decision_type}`,
-        title: `「${replay.decision_type === "use_now" ? "採用" : replay.decision_type === "watch" ? "後で考える" : "見送る"}」は相性が良いかもしれません`,
+        title: `「${replay.decision_type === "use_now" ? "採用" : replay.decision_type === "watch" ? "様子見" : "見送り"}」は相性が良いかもしれません`,
         body: `このアクションタイプは履歴${decisionTypeStat.count}件中${decisionTypeStat.successCount}件が満足です。今回も同じ型で良い結果になっています。`,
         tone: "positive",
         score: decisionTypeStat.successRate + decisionTypeStat.count * 4
@@ -306,7 +306,7 @@ export const buildDecisionReplayInsights = (
     if (replay.outcome === "regret" && decisionTypeStat.regretRate >= 50) {
       candidates.push({
         key: `decision-type-regret:${replay.decision_type}`,
-        title: `「${replay.decision_type === "use_now" ? "採用" : replay.decision_type === "watch" ? "後で考える" : "見送る"}」は見直し余地がありそうです`,
+        title: `「${replay.decision_type === "use_now" ? "採用" : replay.decision_type === "watch" ? "様子見" : "見送り"}」は見直し余地がありそうです`,
         body: `このアクションタイプは履歴${decisionTypeStat.count}件中${decisionTypeStat.regretCount}件が後悔です。今回も同じ流れなら、事前に終了条件を明確にすると見直しやすくなります。`,
         tone: "caution",
         score: decisionTypeStat.regretRate + decisionTypeStat.count * 4
@@ -340,7 +340,7 @@ export const buildDecisionReplayInsights = (
     candidates.push({
       key: "watch-regret",
       title: "保留を長く続けると後悔に寄りやすいかもしれません",
-      body: "今回は「後で考える」のまま後悔に着地しました。次回は保留の終了条件か期限を先に決めておくと、放置を減らしやすくなります。",
+      body: "今回は「様子見」のまま後悔に着地しました。次回は保留の終了条件か期限を先に決めておくと、放置を減らしやすくなります。",
       tone: "caution",
       score: 78
     });

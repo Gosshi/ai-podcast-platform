@@ -117,7 +117,7 @@ const resolveJudgmentLabel = (judgmentType: JudgmentType, locale: DecisionCalcul
   }
 
   if (judgmentType === "use_now") return "採用";
-  if (judgmentType === "watch") return "後で考える";
+  if (judgmentType === "watch") return "様子見";
   return "見送る";
 };
 

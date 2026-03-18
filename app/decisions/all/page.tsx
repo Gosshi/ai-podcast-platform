@@ -65,7 +65,7 @@ export default async function AllDecisionsPage() {
           <div>
             <p className={styles.sectionEyebrow}>一覧</p>
             <h2>公開中のトピックカード</h2>
-            <p className={styles.sectionCaption}>採用するか、後で考えるか、見送るかをここから整理できます。</p>
+            <p className={styles.sectionCaption}>採用するか見送るかをここから整理できます。</p>
           </div>
           <span className={styles.sectionCount}>{cards.length}件</span>
         </div>

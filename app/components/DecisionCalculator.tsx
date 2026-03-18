@@ -50,7 +50,7 @@ const copy = {
     resultLabel: "再判定結果",
     reasonLabel: "理由",
     metricLabel: "計算結果",
-    emptyState: "数字を入れると、採用 / 後で考える / 見送る を即時に再判定します。"
+    emptyState: "数字を入れると、採用 / 見送り を即時に再判定します。"
   },
   en: {
     title: "Re-run with Your Numbers",

@@ -107,7 +107,7 @@ const SIGNAL_LABELS: Record<ThresholdSignalKey, string> = {
 
 const DECISION_TYPE_LABELS: Record<JudgmentType, string> = {
   use_now: "採用",
-  watch: "後で考える",
+  watch: "様子見",
   skip: "見送る"
 };
 
@@ -329,8 +329,8 @@ const buildInsightCandidates = (profile: DecisionProfile): InsightCandidate[] =>
   if (watchPattern.count >= MIN_SEGMENT_HISTORY && watchPattern.regretRate >= 40 && watchPattern.regretCount >= 2) {
     candidates.push({
       key: "decision-watch-regret",
-      title: "後で考えるにした項目は後悔しやすい傾向があります",
-      body: `後で考えるを選んだ${watchPattern.count}件のうち${watchPattern.regretCount}件で後悔がありました。保留のままにせず、見直し条件を明確にすると改善しやすくなります。`,
+      title: "様子見にした項目は後悔しやすい傾向があります",
+      body: `様子見を選んだ${watchPattern.count}件のうち${watchPattern.regretCount}件で後悔がありました。保留のままにせず、見直し条件を明確にすると改善しやすくなります。`,
       tone: "caution",
       supportingCount: watchPattern.count,
       score: watchPattern.regretRate + watchPattern.count * 3

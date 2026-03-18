@@ -47,8 +47,8 @@ type WatchlistApiFailure = {
 type WatchlistApiResponse = WatchlistApiSuccess | WatchlistApiFailure;
 
 const STATUS_HINTS: Record<WatchlistStatus, string> = {
-  saved: "後で考えるトピックとして保存します。",
-  watching: "後で考えるトピックとして保存します。",
+  saved: "トピックを保存します。",
+  watching: "トピックを保存します。",
   archived: "今回は見送るトピックとして整理します。"
 };
 

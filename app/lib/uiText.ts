@@ -7,9 +7,9 @@ export const JUDGMENT_TYPE_LABELS: Record<JudgmentType, string> = {
 };
 
 export const WATCHLIST_STATUS_LABELS = {
-  saved: "後で考える",
-  watching: "後で考える",
-  archived: "見送る"
+  saved: "保存済み",
+  watching: "保存済み",
+  archived: "見送り"
 } as const;
 
 export const URGENCY_LABELS = {
