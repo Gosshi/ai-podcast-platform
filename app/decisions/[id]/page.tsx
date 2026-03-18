@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
-import AudioPlayer from "@/app/components/AudioPlayer";
+import PostListenCTA from "@/app/components/PostListenCTA";
 import DecisionCalculator from "@/app/components/DecisionCalculator";
 import JudgmentCardActions from "@/app/components/JudgmentCardActions";
 import MemberControls from "@/app/components/MemberControls";
@@ -88,10 +88,13 @@ export default async function EpisodeDetailPage({
             </div>
 
             <div className={styles.playerSection}>
-              <AudioPlayer
+              <PostListenCTA
                 src={episode.audio_url ?? null}
                 title={formatEpisodeTitle(episode.title)}
                 description={episode.description}
+                hasCards={episode.judgment_cards.length > 0}
+                page={`/decisions/${id}`}
+                episodeId={episode.id}
               />
               <div className={styles.shareRow}>
                 <ShareButton
@@ -114,7 +117,7 @@ export default async function EpisodeDetailPage({
             />
           </section>
 
-          <section className={styles.section}>
+          <section id="topic-cards" className={styles.section}>
             <div className={styles.sectionHeading}>
               <h2>トピックカード</h2>
               <span>{episode.judgment_card_count}件</span>

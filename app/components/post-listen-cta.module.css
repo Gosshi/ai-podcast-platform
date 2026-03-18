@@ -1,0 +1,76 @@
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  animation: slideIn 400ms ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bannerContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.bannerTitle {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #9a3412;
+}
+
+.bannerText {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  color: #c2410c;
+}
+
+.bannerButton {
+  flex-shrink: 0;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 999px;
+  background: #ea580c;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+}
+
+.bannerButton:hover {
+  background: #c2410c;
+  transform: translateY(-1px);
+}
+
+.bannerButton:active {
+  transform: scale(0.97);
+}
+
+@media (max-width: 720px) {
+  .banner {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .bannerButton {
+    align-self: center;
+  }
+}
