@@ -280,7 +280,7 @@ export const buildWatchlistDueSoonAlerts = (
           title: `保存中の「${item.topic_title}」を見直すタイミングです`,
           summary:
             item.status === "watching"
-              ? "後で考えるトピックです。期限前に詳細と保存一覧を見直してください。"
+              ? "保存中のトピックです。期限前に詳細と保存一覧を見直してください。"
               : "保存したトピックです。期限が来る前に保存一覧から再訪してください。",
           urgency: resolveUrgencyFromHours(hoursUntilDue),
           due_at: item.deadline_at,
@@ -380,7 +380,7 @@ export const buildWeeklyDigestReadyAlerts = (
       episode_id: null,
       title,
       summary: options.isPaid
-        ? `採用 ${digest.counts.use_now} / 後で考える ${digest.counts.watch} / 見送る ${digest.counts.skip} を週まとめで確認できます。`
+        ? `採用 ${digest.counts.use_now} / 様子見 ${digest.counts.watch} / 見送り ${digest.counts.skip} を週まとめで確認できます。`
         : "無料版では一部プレビューまで表示します。有料版で全体を確認できます。",
       urgency: "low",
       due_at: digest.windowEnd,
@@ -434,7 +434,7 @@ export const ALERT_TYPE_LABELS: Record<AlertType, string> = {
   deadline_due_soon: "期限あり",
   outcome_reminder: "結果の記録",
   weekly_digest_ready: "週ごとのまとめ",
-  watchlist_due_soon: "後で考える"
+  watchlist_due_soon: "保存済み"
 };
 
 export const ALERT_URGENCY_LABELS: Record<AlertUrgency, string> = {

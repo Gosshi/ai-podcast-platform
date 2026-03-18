@@ -5,8 +5,8 @@ import type { ViewerState } from "@/app/lib/viewer";
 import type { JudgmentType } from "@/src/lib/judgmentCards";
 import type { WatchlistStatus } from "@/src/lib/watchlist";
 import SaveDecisionButton from "./SaveDecisionButton";
+import SkipCardButton from "./SkipCardButton";
 import TrackedLink from "./TrackedLink";
-import WatchlistControls from "./WatchlistControls";
 import styles from "./judgment-card-actions.module.css";
 
 type JudgmentCardActionsProps = {
@@ -112,7 +112,7 @@ export default function JudgmentCardActions({
         loginButtonLabel="ログインして採用する"
         showHint={false}
       />
-      <WatchlistControls
+      <SkipCardButton
         judgmentCardId={judgmentCardId}
         viewer={viewer}
         initialItemId={initialItemId}
@@ -123,10 +123,6 @@ export default function JudgmentCardActions({
         genre={genre}
         frameType={frameType}
         judgmentType={judgmentType}
-        compact
-        savedLabel="後で考える"
-        archivedLabel="見送る"
-        showHint={false}
       />
     </div>
   );

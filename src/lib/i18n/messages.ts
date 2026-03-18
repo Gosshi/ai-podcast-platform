@@ -58,7 +58,7 @@ const episodes = {
     watchPointsLabel: "見直しポイント",
     thresholdLabel: "基準値",
     judgmentTypeUseNow: "今使う",
-    judgmentTypeWatch: "後で考える",
+    judgmentTypeWatch: "様子見",
     judgmentTypeSkip: "見送る",
     cardsUnit: "件",
     judgmentCardCountLabel: "トピック",

@@ -413,14 +413,6 @@ export default function GenerateCardForm({ isPaid, showWelcome = false }: Genera
                     onClick={() => void onOutcome(card.id, "neutral")}
                     disabled={updatingOutcome === card.id}
                   >
-                    後で考える
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.actionButton}
-                    onClick={() => void onOutcome(card.id, "regret")}
-                    disabled={updatingOutcome === card.id}
-                  >
                     見送る
                   </button>
                 </div>

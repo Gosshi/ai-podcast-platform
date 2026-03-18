@@ -14,14 +14,14 @@ export const dynamic = "force-dynamic";
 
 const JUDGMENT_TYPE_LABELS = {
   use_now: "今週の採用",
-  watch: "今週の後で考える",
-  skip: "今週の見送る"
+  watch: "今週の様子見",
+  skip: "今週の見送り"
 } as const;
 
 const JUDGMENT_TYPE_BADGES = {
   use_now: "採用",
-  watch: "後で考える",
-  skip: "見送る"
+  watch: "様子見",
+  skip: "見送り"
 } as const;
 
 const formatWindowLabel = (start: string, end: string): string => {
@@ -80,7 +80,7 @@ export default async function WeeklyDecisionsPage() {
             <span className={styles.heroBadge}>{isPaid ? "有料版" : "無料版"}</span>
             <span className={styles.stat}>{windowLabel}</span>
             <span className={styles.stat}>採用 {digest.counts.use_now}件</span>
-            <span className={styles.stat}>後で考える {digest.counts.watch}件</span>
+            <span className={styles.stat}>様子見 {digest.counts.watch}件</span>
             <span className={styles.stat}>見送る {digest.counts.skip}件</span>
           </div>
           <div className={styles.breakdownRow}>
