@@ -95,9 +95,6 @@ export default async function DecisionsPage({
             <div>
               <p className={styles.sectionEyebrow}>トピックカード</p>
               <h2>エピソードのポイント</h2>
-              <p className={styles.sectionCaption}>
-                今日のエピソードから抽出されたトピックカードです。
-              </p>
             </div>
             <div className={styles.countRow}>
               <span>{judgmentCards.length}件</span>
@@ -177,10 +174,7 @@ export default async function DecisionsPage({
       <div className={styles.allLinkPanel}>
         <div>
           <p className={styles.sectionEyebrow}>アーカイブ</p>
-          <h3>過去のエピソードはこちらから</h3>
-          <p className={styles.sectionCaption}>
-            すべてのエピソードとトピックカードを一覧で確認できます。
-          </p>
+          <h3>過去のエピソード一覧</h3>
         </div>
         <TrackedLink
           href="/episodes"
@@ -201,10 +195,7 @@ export default async function DecisionsPage({
         <div className={styles.allLinkPanel}>
           <div>
             <p className={styles.sectionEyebrow}>設定</p>
-            <h3>好みを設定して、あなた専用のポッドキャストを受け取ろう</h3>
-            <p className={styles.sectionCaption}>
-              関心のあるジャンルやトピックを設定すると、より精度の高いエピソードが届きます。
-            </p>
+            <h3>好みを設定して、あなた専用のエピソードを受け取ろう</h3>
           </div>
           <TrackedLink
             href={onboardingPath}

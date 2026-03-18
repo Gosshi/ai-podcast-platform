@@ -45,10 +45,7 @@ export default async function HistoryPage() {
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>履歴</p>
-          <h1>聴いたエピソードと行動を振り返る。</h1>
-          <p className={styles.lead}>
-            エピソードから得たアクションを記録し、あとから結果を振り返れます。自分の傾向を把握して、次に活かせます。
-          </p>
+          <h1>行動の記録と振り返り</h1>
 
           <div className={styles.statsGrid}>
             <article className={styles.statCard}>
@@ -83,7 +80,7 @@ export default async function HistoryPage() {
         <MemberControls
           viewer={viewer}
           title="プラン"
-          copy="実行したアクションに結果を残すことで、自分に合う行動パターンを見つけやすくなります。"
+          copy="アクションの結果を記録して傾向を把握できます。"
           analyticsSource="/history"
           variant="compact"
         />
@@ -122,10 +119,7 @@ export default async function HistoryPage() {
           <div className={styles.sectionHeading}>
             <div>
               <p className={styles.sectionEyebrow}>あなたの傾向</p>
-              <h2>エピソードから見えるあなたの行動傾向</h2>
-              <p className={styles.sectionLead}>
-                実行した記録を集計して、どんな行動が自分に合いやすいかを見やすくします。
-              </p>
+              <h2>行動傾向の分析</h2>
             </div>
             <span className={styles.sectionCount}>{profile.totalDecisions}件</span>
           </div>

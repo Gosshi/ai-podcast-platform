@@ -103,11 +103,7 @@ export default async function AccountPage({
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <p className={styles.eyebrow}>アカウント</p>
-            <h1>プランと請求を、迷わず確認して管理する。</h1>
-            <p className={styles.lead}>
-              現在のプラン、利用状態、次回更新日、支払い状態を一画面で確認できます。利用中は
-              支払い設定 から更新や解約も進められます。
-            </p>
+            <h1>プランと請求の管理</h1>
             {subscription === "success" && viewer?.isPaid ? (
               <p className={`${styles.statusMessage} ${styles.success}`}>
                 有料会員への切り替えが完了しました。フルスクリプト・行動提案・アーカイブ無制限が使えます。
@@ -128,7 +124,7 @@ export default async function AccountPage({
           <MemberControls
             viewer={viewer}
             title="会員管理"
-            copy="購読の開始、支払い方法の更新、解約確認まで、この画面を起点に迷わず進められるように整えています。"
+            copy="購読・支払い・解約をここで管理できます。"
             showBillingPortal
             analyticsSource="/account"
             authRedirectPath={authRedirectPath}
@@ -150,7 +146,6 @@ export default async function AccountPage({
           <div>
             <p className={styles.eyebrow}>会員情報</p>
             <h2>現在の会員状態</h2>
-            <p className={styles.sectionLead}>今のプランと次にできることを、ひと目で把握できるようにしています。</p>
           </div>
 
           <div className={styles.statsGrid}>
@@ -196,7 +191,6 @@ export default async function AccountPage({
           <div>
             <p className={styles.eyebrow}>有料版でできること</p>
             <h2>{viewer?.isPaid ? "有料会員で使えること" : "有料会員になるとできること"}</h2>
-            <p className={styles.sectionLead}>有料版で得られる成果を、わかりやすくまとめています。</p>
           </div>
 
           <div className={styles.featureGrid}>
@@ -224,7 +218,6 @@ export default async function AccountPage({
             <li>支払い方法の変更や解約も、この画面から進められます。</li>
           </ul>
 
-          <p className={styles.lead}>今日のエピソードを聴くか、アーカイブを探せます。</p>
           <div className={styles.ctaRow}>
             <Link href="/decisions" className={styles.primaryLink}>
               今日のエピソードへ
@@ -239,10 +232,7 @@ export default async function AccountPage({
           <section className={styles.section}>
             <div>
               <p className={styles.eyebrow}>好み設定</p>
-              <h2>ポッドキャストの好みを管理</h2>
-              <p className={styles.sectionLead}>
-                設定した好みに合わせて、毎日のエピソード内容がパーソナライズされます。
-              </p>
+              <h2>ポッドキャストの好み</h2>
             </div>
 
             <div className={styles.statsGrid}>
@@ -306,8 +296,7 @@ export default async function AccountPage({
           <section className={styles.section}>
             <div>
               <p className={styles.eyebrow}>お知らせ設定</p>
-              <h2>お知らせの受け取り方</h2>
-              <p className={styles.sectionLead}>必要なお知らせだけ受け取れるように切り替えられます。</p>
+              <h2>通知の管理</h2>
             </div>
 
             <NotificationPreferencesForm preferences={alertState.preferences} />
