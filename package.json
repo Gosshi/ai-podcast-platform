@@ -13,6 +13,7 @@
     "seed:demo": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/seed-demo-data.mts",
     "lint": "eslint app src --ext .ts,.tsx",
     "test": "node --experimental-strip-types --experimental-specifier-resolution=node --test tests/**/*.test.mts",
+    "test:e2e": "npx playwright test",
     "quality:check": "node --experimental-strip-types scripts/scriptQualityCheck.mts",
     "test:stripe-fixtures": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/test-stripe-webhook-fixtures.mts"
   },
@@ -25,6 +26,7 @@
     "stripe": "^18.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "^25.2.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
