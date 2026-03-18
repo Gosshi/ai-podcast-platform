@@ -16,7 +16,6 @@ type AlertsInboxProps = {
   lead?: string;
   emptyTitle?: string;
   emptyCopy?: string;
-  showViewAllLink?: boolean;
 };
 
 const formatDueAt = (value: string | null): string => {
@@ -54,8 +53,7 @@ export default function AlertsInbox({
   title = "通知",
   lead = "期限が近いものや見直したいトピックを、ここからまとめて確認できます。",
   emptyTitle = "今はお知らせがありません",
-  emptyCopy = "見直しタイミングが来たトピックや週次まとめがあると、ここに表示されます。",
-  showViewAllLink = false
+  emptyCopy = "見直しタイミングが来たトピックや週次まとめがあると、ここに表示されます。"
 }: AlertsInboxProps) {
   const router = useRouter();
   const [items, setItems] = useState(alerts);
@@ -119,11 +117,6 @@ export default function AlertsInbox({
 
         <div className={styles.headerActions}>
           <span className={styles.countBadge}>未読 {unreadCount}</span>
-          {showViewAllLink ? (
-            <Link href="/alerts" className={styles.viewAllLink}>
-              すべて見る
-            </Link>
-          ) : null}
         </div>
       </div>
 

@@ -2,7 +2,6 @@ import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import DecisionOutcomeSelect from "@/app/components/DecisionOutcomeSelect";
 import TrackedLink from "@/app/components/TrackedLink";
 import { DECISION_TYPE_LABELS, formatDecisionHistoryDate } from "@/app/lib/decisionHistory";
-import { buildDecisionReplayPath } from "@/app/lib/decisionReplay";
 import { formatFrameTypeLabel, formatTopicTitle } from "@/app/lib/uiText";
 import {
   formatOutcomeReminderTiming,
@@ -136,7 +135,7 @@ export default function OutcomeReminderSection({
                 実行したアクションを見る
               </TrackedLink>
               <TrackedLink
-                href={buildDecisionReplayPath(reminder.id)}
+                href={`/decisions/${reminder.episode_id}`}
                 className={styles.primaryLink}
                 eventName="outcome_reminder_to_replay_click"
                 eventProperties={{

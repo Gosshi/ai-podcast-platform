@@ -56,8 +56,8 @@ export default async function DemoLoginPage({
           free / paid をすぐ切り替えて検証する
         </h1>
         <p style={{ marginTop: 0, marginBottom: 24, color: "#334155", lineHeight: 1.7 }}>
-          ローカル開発専用の入口です。seed 済み demo user でログインし、`/decisions` `/library` `/history`
-          `/watchlist` `/alerts` `/account` をそのまま確認できます。
+          ローカル開発専用の入口です。seed 済み demo user でログインし、`/decisions` `/episodes` `/history`
+          `/account` をそのまま確認できます。
         </p>
 
         {error ? (
@@ -133,8 +133,8 @@ export default async function DemoLoginPage({
         <div style={{ marginTop: 24, display: "flex", gap: 16, flexWrap: "wrap" }}>
           <Link href="/account">Account</Link>
           <Link href="/decisions">Decisions</Link>
+          <Link href="/episodes">Episodes</Link>
           <Link href="/history">History</Link>
-          <Link href="/alerts">Alerts</Link>
           <Link href="/dev/demo-login?demo=free">FREEをURLで切替</Link>
           <Link href="/dev/demo-login?demo=paid">PAIDをURLで切替</Link>
         </div>
