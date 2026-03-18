@@ -544,7 +544,10 @@
 .summary {
   margin: 0.85rem 0 0;
   line-height: 1.7;
-  min-height: 4.75rem;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 
 .personalHint {
@@ -734,12 +737,7 @@
 
   .summary {
     margin-top: 0.55rem;
-    min-height: 0;
     line-height: 1.55;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-    overflow: hidden;
   }
 
   .metaList {
