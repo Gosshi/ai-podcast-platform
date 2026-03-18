@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
-import AudioPlayer from "@/app/components/AudioPlayer";
+import PostListenCTA from "@/app/components/PostListenCTA";
 import GenerateCardForm from "@/app/components/GenerateCardForm";
 import PremiumPreview from "@/app/components/PremiumPreview";
 import ShareButton from "@/app/components/ShareButton";
@@ -69,10 +69,13 @@ export default async function DecisionsPage({
 
       {/* --- Audio Player --- */}
       <section className={styles.playerSection}>
-        <AudioPlayer
+        <PostListenCTA
           src={latestEpisode?.audio_url ?? null}
           title={latestEpisode?.title ?? "エピソード準備中"}
           description={latestEpisode?.description}
+          hasCards={judgmentCards.length > 0}
+          page="/decisions"
+          episodeId={latestEpisode?.id}
         />
         {latestEpisode ? (
           <div className={styles.shareRow}>
@@ -90,7 +93,7 @@ export default async function DecisionsPage({
 
       {/* --- Judgment Cards from Episode --- */}
       {judgmentCards.length > 0 ? (
-        <section className={styles.recommendationSection}>
+        <section id="topic-cards" className={styles.recommendationSection}>
           <div className={styles.recommendationHeader}>
             <div>
               <p className={styles.sectionEyebrow}>トピックカード</p>
