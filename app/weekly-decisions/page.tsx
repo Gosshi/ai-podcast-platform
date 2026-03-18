@@ -75,10 +75,7 @@ export default async function WeeklyDecisionsPage() {
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>週ごとのまとめ</p>
-          <h1>毎日追えなくても、週単位でまとめてキャッチアップ。</h1>
-          <p className={styles.lead}>
-            直近7日間のトピックを「採用 / 後で考える / 見送る」ごとにまとめて、今週の傾向を一画面で見直せます。
-          </p>
+          <h1>今週のトピック一覧</h1>
           <div className={styles.heroMeta}>
             <span className={styles.heroBadge}>{isPaid ? "有料版" : "無料版"}</span>
             <span className={styles.stat}>{windowLabel}</span>

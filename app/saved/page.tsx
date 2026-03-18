@@ -92,11 +92,7 @@ export default async function WatchlistPage({
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>保存済み</p>
-          <h1>気になるトピックを保存して、あとで見直す。</h1>
-          <p className={styles.lead}>
-            エピソードで気になったトピックをブックマークしておく場所です。
-            あとから振り返りたい内容だけをまとめて確認できます。
-          </p>
+          <h1>ブックマークしたトピック</h1>
 
           <p className={styles.limitText}>
             {isPaid
@@ -150,8 +146,7 @@ export default async function WatchlistPage({
         <div className={styles.sectionHeading}>
           <div>
             <p className={styles.sectionEyebrow}>保存一覧</p>
-            <h2>ブックマークしたトピック</h2>
-            <p className={styles.sectionLead}>エピソードの詳細に戻りながら、見直したい内容を整理できます。</p>
+            <h2>保存したトピック</h2>
           </div>
         </div>
 

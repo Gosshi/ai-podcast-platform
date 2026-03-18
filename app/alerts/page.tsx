@@ -106,10 +106,7 @@ export default async function AlertsPage() {
       <section className={styles.supportSection}>
         <div>
           <p className={styles.eyebrow}>ナビゲーション</p>
-          <h2>エピソードを聴く・保存した内容を見直す</h2>
-          <p className={styles.lead}>
-            通知を確認したら、今日のエピソードを聴くか、過去のアーカイブを振り返れます。
-          </p>
+          <h2>エピソードを聴く・アーカイブを見る</h2>
         </div>
 
         <div className={styles.linkRow}>
