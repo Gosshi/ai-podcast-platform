@@ -142,6 +142,10 @@
   margin: 0.85rem 0 0;
   color: #475569;
   line-height: 1.7;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .cardActions {
@@ -199,7 +203,10 @@
   overflow-x: auto;
   white-space: pre-wrap;
   font-family: "SFMono-Regular", "Menlo", monospace;
+  font-size: 0.9rem;
   line-height: 1.7;
+  max-height: 60vh;
+  overflow-y: auto;
 }
 
 .lockedText {

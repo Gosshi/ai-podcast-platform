@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
+import CollapsibleSection from "@/app/components/CollapsibleSection";
 import PostListenCTA from "@/app/components/PostListenCTA";
 import DecisionCalculator from "@/app/components/DecisionCalculator";
 import JudgmentCardActions from "@/app/components/JudgmentCardActions";
@@ -165,15 +166,8 @@ export default async function EpisodeDetailPage({
                         judgmentType={card.judgment_type}
                       />
                     </div>
-                    <DecisionCalculator
-                      card={card}
-                      isPaid={viewer.isPaid}
-                      locale="ja"
-                      analyticsPage={`/decisions/${id}`}
-                      analyticsSource="episode_detail_card"
-                    />
                     {viewer.isPaid ? (
-                      <>
+                      <CollapsibleSection label="詳細を閉じる" collapsedLabel="詳細を見る">
                         <dl className={styles.metaList}>
                           {card.action_text ? (
                             <div>
@@ -181,10 +175,6 @@ export default async function EpisodeDetailPage({
                               <dd>{card.action_text}</dd>
                             </div>
                           ) : null}
-                          <div>
-                            <dt>詳細</dt>
-                            <dd>{card.judgment_summary}</dd>
-                          </div>
                           {card.deadline_at ? (
                             <div>
                               <dt>見直しタイミング</dt>
@@ -206,12 +196,18 @@ export default async function EpisodeDetailPage({
                             ))}
                           </ul>
                         ) : null}
-                      </>
+                        <DecisionCalculator
+                          card={card}
+                          isPaid={viewer.isPaid}
+                          locale="ja"
+                          analyticsPage={`/decisions/${id}`}
+                          analyticsSource="episode_detail_card"
+                        />
+                      </CollapsibleSection>
                     ) : (
                       <PremiumPreview
                         placeholders={[
                           { label: "次の行動", value: "具体的な行動を提案します" },
-                          { label: "詳細", value: "詳しい根拠を表示" },
                           { label: "見直しタイミング", value: "最適な見直し時期" }
                         ]}
                         message="詳細と行動提案を確認"
@@ -238,16 +234,16 @@ export default async function EpisodeDetailPage({
           </section>
 
           <section className={styles.section}>
-            <div className={styles.sectionHeading}>
-              <h2>{episode.full_script ? "詳しい内容" : "概要"}</h2>
-              <span>{episode.full_script ? "有料版" : "無料版"}</span>
-            </div>
-
-            {episode.full_script ?? episode.preview_text ? (
-              <pre className={styles.scriptBlock}>{episode.full_script ?? episode.preview_text}</pre>
-            ) : (
-              <p className={styles.emptyText}>台本はまだありません。</p>
-            )}
+            <CollapsibleSection
+              label={episode.full_script ? "台本を閉じる" : "概要を閉じる"}
+              collapsedLabel={episode.full_script ? "台本を読む" : "概要を読む"}
+            >
+              {episode.full_script ?? episode.preview_text ? (
+                <pre className={styles.scriptBlock}>{episode.full_script ?? episode.preview_text}</pre>
+              ) : (
+                <p className={styles.emptyText}>台本はまだありません。</p>
+              )}
+            </CollapsibleSection>
           </section>
         </>
       ) : null}
