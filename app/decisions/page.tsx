@@ -62,7 +62,7 @@ export default async function DecisionsPage({
             <p className={styles.playerHeroLead}>{latestEpisode.description}</p>
           ) : !latestEpisode ? (
             <p className={styles.playerHeroLead}>
-              あなたの関心に合わせた最新エピソードをまもなくお届けします。
+              最新エピソードをまもなくお届けします。
             </p>
           ) : null}
         </div>

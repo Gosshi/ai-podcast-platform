@@ -32,3 +32,21 @@ export const requireAdmin = async () => {
 
   return viewer;
 };
+
+/**
+ * Guard for admin API routes.
+ * Returns the viewer if admin, null otherwise (caller should return 401/403).
+ */
+export const verifyAdmin = async () => {
+  const viewer = await getViewerFromCookies();
+  if (!viewer) {
+    return null;
+  }
+
+  const adminEmails = resolveAdminEmails();
+  if (!viewer.email || !adminEmails.has(viewer.email.toLowerCase())) {
+    return null;
+  }
+
+  return viewer;
+};

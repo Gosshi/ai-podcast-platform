@@ -55,7 +55,7 @@ export default async function HomePage() {
             <p className={styles.eyebrow}>AI Podcast</p>
             <h1>通勤中に聴くだけで、今日の情報が整理される。</h1>
             <p className={styles.lead}>
-              あなたの関心に合わせてAIがエピソードを毎日生成。
+              最新トレンドからAIがエピソードを毎日生成。
               イヤホンで聴くだけで、最新情報のキャッチアップが終わります。
             </p>
 

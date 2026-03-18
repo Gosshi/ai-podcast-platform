@@ -40,7 +40,7 @@ export default async function LoginPage({
           <p className={styles.eyebrow}>ログイン</p>
           <h1>ログインして、毎日のポッドキャストを受け取る。</h1>
           <p className={styles.lead}>
-            ログイン後に好みを設定すると、関心に合わせたエピソードが毎日届きます。
+            ログイン後に好みを設定すると、エピソードをより活用できます。
           </p>
           <div className={styles.metaGrid}>
             <article className={styles.metaCard}>

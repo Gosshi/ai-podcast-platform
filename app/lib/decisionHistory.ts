@@ -1,6 +1,5 @@
 import type { JudgmentCard, JudgmentThresholdJson, JudgmentType } from "../../src/lib/judgmentCards";
 import type { DecisionProfile, DecisionProfileEntry } from "../../src/lib/decisionProfile";
-import { JUDGMENT_TYPE_LABELS } from "./uiText.ts";
 
 export type DecisionOutcomeValue = "success" | "regret" | "neutral";
 export type DecisionOutcome = DecisionOutcomeValue | null;
@@ -77,7 +76,11 @@ const SUPABASE_BATCH_SIZE = 80;
 
 export const FREE_DECISION_HISTORY_LIMIT = 10;
 export const UNRESOLVED_OUTCOME_LABEL = "未記録";
-export const DECISION_TYPE_LABELS = JUDGMENT_TYPE_LABELS;
+export const DECISION_TYPE_LABELS: Record<string, string> = {
+  use_now: "今すぐ",
+  watch: "様子見",
+  skip: "見送り"
+};
 
 export const OUTCOME_LABELS: Record<DecisionOutcomeValue, string> = {
   success: "満足",

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyAdmin } from "@/app/lib/adminGuard";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -41,11 +42,7 @@ const resolveFunctionsBaseUrl = (supabaseUrl: string | null): string | null => {
   return `${supabaseUrl}/functions/v1`;
 };
 
-const isLocalRetryAllowed = (supabaseUrl: string | null): boolean => {
-  if (process.env.ENABLE_OPS_RETRY === "true") {
-    return true;
-  }
-
+const isLocalEnvironment = (supabaseUrl: string | null): boolean => {
   if (process.env.NODE_ENV === "development") {
     return true;
   }
@@ -71,7 +68,8 @@ export async function POST(req: NextRequest) {
   const requestedDate = isRecord(body) && typeof body.episodeDate === "string" ? body.episodeDate : null;
   const episodeDate = requestedDate && DATE_PATTERN.test(requestedDate) ? requestedDate : fallbackEpisodeDate;
 
-  if (!isLocalRetryAllowed(supabaseUrl)) {
+  const admin = await verifyAdmin();
+  if (!admin && !isLocalEnvironment(supabaseUrl)) {
     return buildResponse(
       {
         ok: false,
@@ -79,7 +77,7 @@ export async function POST(req: NextRequest) {
         episodeDate,
         runId: null,
         status: 403,
-        error: "retry_disabled_outside_local"
+        error: "admin_auth_required"
       },
       403
     );
