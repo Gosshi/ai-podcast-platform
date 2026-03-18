@@ -42,7 +42,7 @@ export default async function OnboardingPage({
             <p className={styles.eyebrow}>はじめに</p>
             <h1>聴きたいジャンルを教えてください。</h1>
             <p className={styles.lead}>
-              関心のあるジャンルや使っているサービスを設定すると、あなた専用のエピソードが届きます。
+              関心のあるジャンルや使っているサービスを設定すると、エピソードをより活用できます。
               数問で終わるので、先に済ませておきましょう。
             </p>
             <div className={styles.metaGrid}>

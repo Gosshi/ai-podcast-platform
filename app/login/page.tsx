@@ -38,7 +38,7 @@ export default async function LoginPage({
       <section className={styles.hero}>
         <div className={styles.copy}>
           <p className={styles.eyebrow}>ログイン</p>
-          <h1>ログインして、あなた専用のポッドキャストを受け取る。</h1>
+          <h1>ログインして、毎日のポッドキャストを受け取る。</h1>
           <p className={styles.lead}>
             ログイン後に好みを設定すると、関心に合わせたエピソードが毎日届きます。
           </p>

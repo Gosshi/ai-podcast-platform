@@ -7,7 +7,7 @@ import styles from "./home.module.css";
 export const dynamic = "force-dynamic";
 export const metadata = {
   title: "通勤中に聴くだけで、今日の情報が整理される | AI Podcast",
-  description: "あなたの関心に合わせてAIが毎日ポッドキャストを生成。聴くだけで情報が整理され、要点をカードで確認できる。"
+  description: "最新トレンドからAIが毎日ポッドキャストを生成。聴くだけで情報が整理され、要点をカードで確認できる。"
 };
 
 const SAMPLE_EPISODES = [
@@ -93,7 +93,7 @@ export default async function HomePage() {
               </article>
               <article className={styles.stat}>
                 <span>毎日更新</span>
-                <strong>あなた専用のエピソードをAIが生成</strong>
+                <strong>AIが毎朝エピソードを自動生成</strong>
               </article>
               <article className={styles.stat}>
                 <span>トピックカード</span>
@@ -147,7 +147,7 @@ export default async function HomePage() {
           <div className={styles.featureGrid}>
             <article className={styles.featureCard}>
               <h3>1. 好みを30秒で設定</h3>
-              <p>関心のあるジャンルを選ぶだけ。AIがあなた専用のエピソードを毎朝つくります。</p>
+              <p>関心のあるジャンルを選ぶだけ。AIが最新トレンドからエピソードを毎朝つくります。</p>
             </article>
             <article className={styles.featureCard}>
               <h3>2. 通勤中にイヤホンで聴く</h3>
