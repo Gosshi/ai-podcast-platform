@@ -147,9 +147,9 @@ export default async function HistoryPage() {
             </article>
 
             <article className={styles.profilePanel}>
-              <h3>アクションと結果の比率</h3>
+              <h3>採用カードと結果の比率</h3>
               <div className={styles.ratioGroup}>
-                <p className={styles.ratioLabel}>アクションの傾向</p>
+                <p className={styles.ratioLabel}>採用したカードの推奨タイプ</p>
                 <div className={styles.ratioRow}>
                   {(["use_now", "watch", "skip"] as const).map((decisionType) => (
                     <div key={decisionType} className={styles.ratioChip}>
