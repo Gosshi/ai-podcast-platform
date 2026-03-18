@@ -4,6 +4,85 @@
   padding: 1.4rem 0 4rem;
 }
 
+.playerHero {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.playerHeroMeta {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.playerHeroLead {
+  margin: 0;
+  color: #475569;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.playerHeroActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.detailLink {
+  color: #0369a1;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.detailLink:hover {
+  text-decoration: underline;
+}
+
+.quickLinksRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.quickLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.88);
+  color: #0f172a;
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 700;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.quickLink:hover {
+  background: #f1f5f9;
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.quickLinkIcon {
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+}
+
+.quickLinkIcon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .hero {
   display: block;
 }
