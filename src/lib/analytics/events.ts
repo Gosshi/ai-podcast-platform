@@ -71,7 +71,11 @@ export const ANALYTICS_EVENT_NAMES = [
   "share_complete",
   "episode_listen_complete",
   "post_listen_cta_click",
-  "welcome_shown"
+  "welcome_shown",
+  "tutorial_open",
+  "tutorial_step",
+  "tutorial_skip",
+  "tutorial_complete"
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];
