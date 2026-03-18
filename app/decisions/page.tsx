@@ -6,6 +6,7 @@ import GenerateCardForm from "@/app/components/GenerateCardForm";
 import PremiumPreview from "@/app/components/PremiumPreview";
 import ShareButton from "@/app/components/ShareButton";
 import TrackedLink from "@/app/components/TrackedLink";
+import WelcomeTutorial from "@/app/components/WelcomeTutorial";
 import { loadPublishedEpisodes } from "@/app/lib/episodes";
 import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
 import { formatGenreLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS } from "@/app/lib/uiText";
@@ -241,12 +242,7 @@ export default async function DecisionsPage({
         ) : null}
       </div>
 
-      {showWelcome ? (
-        <AnalyticsEventOnRender
-          eventName="welcome_shown"
-          properties={{ page: "/decisions" }}
-        />
-      ) : null}
+      {showWelcome ? <WelcomeTutorial page="/decisions" /> : null}
 
       {/* --- AI Consult --- */}
       <GenerateCardForm isPaid={isPaid} showWelcome={showWelcome} />

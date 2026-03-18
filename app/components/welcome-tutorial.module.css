@@ -1,0 +1,119 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  padding: 1rem;
+  animation: fadeIn 0.25s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.card {
+  position: relative;
+  width: min(400px, 100%);
+  padding: 2rem 1.75rem 1.5rem;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.18);
+  text-align: center;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.skipButton {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.skipButton:hover {
+  color: #475569;
+  background: #f1f5f9;
+}
+
+.icon {
+  font-size: 2.5rem;
+  line-height: 1;
+  margin-bottom: 0.75rem;
+}
+
+.title {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.4;
+}
+
+.body {
+  margin: 0 0 1.25rem;
+  color: #475569;
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.progress {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.dotActive {
+  background: #0369a1;
+  transform: scale(1.25);
+}
+
+.dotDone {
+  background: #7dd3fc;
+}
+
+.nextButton {
+  display: block;
+  width: 100%;
+  padding: 0.7rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: #0369a1;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.nextButton:hover {
+  background: #075985;
+}
