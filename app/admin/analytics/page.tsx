@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireAdmin } from "@/app/lib/adminGuard";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import { buildAnalyticsOverview, type AnalyticsEventRow } from "@/src/lib/analytics";
 import styles from "./page.module.css";
@@ -38,6 +39,7 @@ const loadAnalyticsEvents = async (): Promise<{ rows: AnalyticsEventRow[]; error
 };
 
 export default async function AdminAnalyticsPage() {
+  await requireAdmin();
   const { rows, error } = await loadAnalyticsEvents();
   const overview = buildAnalyticsOverview(rows, WINDOW_DAYS);
 

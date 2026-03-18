@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireAdmin } from "@/app/lib/adminGuard";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import { resolveLocale } from "@/src/lib/i18n/locale";
 import { getMessages } from "@/src/lib/i18n/messages";
@@ -434,6 +435,7 @@ export default async function JobRunsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  await requireAdmin();
   const params = await searchParams;
   const locale = resolveLocale(readFirstParam(params.lang));
   const messageSet = getMessages(locale);

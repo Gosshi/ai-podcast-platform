@@ -93,11 +93,6 @@ export default function AppNavigation() {
 
   const closeMore = useCallback(() => setMoreOpen(false), []);
 
-  // Close on route change
-  useEffect(() => {
-    setMoreOpen(false);
-  }, [pathname]);
-
   // Close on outside click
   useEffect(() => {
     if (!moreOpen) return;
@@ -213,6 +208,7 @@ export default function AppNavigation() {
                 key={item.href}
                 href={item.href}
                 className={`${styles.moreLink} ${isActivePath(pathname, item.href) ? styles.moreLinkActive : ""}`.trim()}
+                onClick={closeMore}
                 eventName="nav_click"
                 eventProperties={{
                   page: pathname,
