@@ -1,4 +1,3 @@
-import { buildDecisionReplayPath } from "@/app/lib/decisionReplay";
 import { formatDecisionOutcomeLabel, type DecisionOutcome } from "@/app/lib/decisionHistory";
 import { resolveJudgmentCardActionState } from "@/app/lib/judgmentCardState";
 import type { ViewerState } from "@/app/lib/viewer";
@@ -47,7 +46,7 @@ export default function JudgmentCardActions({
     return (
       <div className={styles.panel}>
         <TrackedLink
-          href={buildDecisionReplayPath(savedDecisionId)}
+          href={`/decisions/${episodeId}`}
           className={`${styles.statusLink} ${styles.statusLinkRecorded}`.trim()}
           eventName="decision_action_click"
           eventProperties={{

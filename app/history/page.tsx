@@ -13,7 +13,6 @@ import {
   loadDecisionHistory,
   OUTCOME_LABELS
 } from "@/app/lib/decisionHistory";
-import { buildDecisionReplayPath } from "@/app/lib/decisionReplay";
 import { formatEpisodeTitle, formatFrameTypeLabel, formatGenreLabel, formatTopicTitle } from "@/app/lib/uiText";
 import { buildLoginPath } from "@/app/lib/onboarding";
 import { EMPTY_DECISION_PROFILE } from "@/src/lib/decisionProfile";
@@ -327,7 +326,7 @@ export default async function HistoryPage() {
                 {entry.source === "episode" ? (
                   <div className={styles.cardFooter}>
                     <TrackedLink
-                      href={buildDecisionReplayPath(entry.id)}
+                      href={`/decisions/${entry.episode_id}`}
                       className={styles.replayLink}
                       eventName="decision_replay_from_history_click"
                       eventProperties={{

@@ -229,8 +229,7 @@ export const buildDeadlineDueSoonAlerts = (
           metadata: {
             judgment_card_id: card.id,
             links: [
-              { href: `/decisions/${card.episode_id}`, label: "詳細" },
-              { href: "/decisions/library", label: "保存一覧" }
+              { href: `/decisions/${card.episode_id}`, label: "詳細" }
             ]
           }
         } satisfies UserAlertCandidate
@@ -289,7 +288,6 @@ export const buildWatchlistDueSoonAlerts = (
             judgment_card_id: item.judgment_card_id,
             user_decision_id: item.history_decision_id,
             links: [
-              { href: "/saved", label: "保存一覧" },
               { href: `/decisions/${item.episode_id}`, label: "詳細" }
             ]
           }
@@ -336,8 +334,7 @@ export const buildOutcomeReminderAlerts = (
             judgment_card_id: candidate.judgment_card_id,
             user_decision_id: candidate.id,
             links: [
-              { href: `/history#decision-${candidate.id}`, label: "履歴" },
-              { href: `/history/replay/${candidate.id}`, label: "学びを見る" },
+              { href: `/history`, label: "履歴" },
               { href: `/decisions/${candidate.episode_id}`, label: "詳細" }
             ]
           }
@@ -390,8 +387,8 @@ export const buildWeeklyDigestReadyAlerts = (
         window_start: digest.windowStart,
         window_end: digest.windowEnd,
         links: [
-          { href: "/weekly-decisions", label: "週ごとのまとめ" },
-          { href: "/decisions", label: "今日のおすすめ" }
+          { href: "/history", label: "履歴" },
+          { href: "/decisions", label: "今日のエピソード" }
         ]
       }
     }

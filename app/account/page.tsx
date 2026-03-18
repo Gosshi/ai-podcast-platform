@@ -137,7 +137,6 @@ export default async function AccountPage({
             page="/account"
             title="継続チェック"
             lead="期限が近いものや見直したい項目を、アカウントからまとめて確認できます。"
-            showViewAllLink={alertState.alerts.length > 4}
           />
         ) : null}
         {alertState.error ? <p className={styles.sectionLead}>{resolveAlertsErrorMessage(alertState.error)}</p> : null}

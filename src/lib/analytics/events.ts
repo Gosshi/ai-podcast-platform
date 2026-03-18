@@ -79,13 +79,8 @@ export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];
 export const ANALYTICS_PAGE_NAMES = [
   "/",
   "/decisions",
-  "/alerts",
-  "/decisions/library",
-  "/saved",
   "/episodes",
   "/history",
-  "/history/replay",
-  "/weekly-decisions",
   "/account",
   "/onboarding"
 ] as const;

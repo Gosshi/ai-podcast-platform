@@ -58,7 +58,7 @@ export default function NotificationPreferencesForm({
         />
         <div>
           <h3>週ごとのまとめ</h3>
-          <p>週次まとめを `/alerts` と `/account` に表示します。</p>
+          <p>週次まとめをアカウントページに表示します。</p>
         </div>
       </label>
 
