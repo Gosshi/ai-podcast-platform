@@ -1,6 +1,7 @@
 import { FREE_DECISION_HISTORY_LIMIT } from "@/app/lib/decisionHistory";
 import { verifyCsrfOrigin } from "@/app/lib/csrf";
-import { jsonResponse, toNonEmptyString } from "@/app/lib/apiResponse";
+import { jsonResponse, toNonEmptyString, checkRateLimit } from "@/app/lib/apiResponse";
+import { generalLimiter, extractRateLimitKey } from "@/app/lib/rateLimit";
 import { getAccessTokenFromCookies, getViewerFromAccessToken } from "@/app/lib/viewer";
 import { createUserClient } from "@/app/lib/supabaseClients";
 
@@ -11,6 +12,9 @@ type SaveDecisionRequest = {
 };
 
 export async function POST(request: Request) {
+  const rateLimitResponse = checkRateLimit(generalLimiter, extractRateLimitKey(request));
+  if (rateLimitResponse) return rateLimitResponse;
+
   const csrf = verifyCsrfOrigin(request);
   if (!csrf.ok) {
     return jsonResponse({ ok: false, error: csrf.error }, 403);

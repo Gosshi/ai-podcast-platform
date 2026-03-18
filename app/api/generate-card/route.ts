@@ -1,5 +1,6 @@
 import { verifyCsrfOrigin } from "@/app/lib/csrf";
-import { jsonResponse, toNonEmptyString } from "@/app/lib/apiResponse";
+import { jsonResponse, toNonEmptyString, checkRateLimit } from "@/app/lib/apiResponse";
+import { expensiveLimiter, extractRateLimitKey } from "@/app/lib/rateLimit";
 import { getAccessTokenFromCookies, getViewerFromAccessToken } from "@/app/lib/viewer";
 import { createUserClient } from "@/app/lib/supabaseClients";
 import {
@@ -212,6 +213,9 @@ const parseGeneratedCard = (raw: GeneratedCardJson) => {
 };
 
 export async function POST(request: Request) {
+  const rateLimitResponse = checkRateLimit(expensiveLimiter, extractRateLimitKey(request));
+  if (rateLimitResponse) return rateLimitResponse;
+
   const csrf = verifyCsrfOrigin(request);
   if (!csrf.ok) {
     return jsonResponse({ ok: false, error: csrf.error }, 403);

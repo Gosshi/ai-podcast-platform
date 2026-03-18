@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { verifyCsrfOrigin } from "@/app/lib/csrf";
-import { jsonResponse, getRequiredEnv } from "@/app/lib/apiResponse";
+import { jsonResponse, getRequiredEnv, checkRateLimit } from "@/app/lib/apiResponse";
+import { paymentLimiter, extractRateLimitKey } from "@/app/lib/rateLimit";
 import { getViewerFromCookies } from "../../../lib/viewer";
 import { recordAnalyticsEvent } from "@/src/lib/analytics";
 
@@ -21,6 +22,9 @@ const getOrigin = (request: Request): string => {
 };
 
 export async function POST(request: Request): Promise<Response> {
+  const rateLimitResponse = checkRateLimit(paymentLimiter, extractRateLimitKey(request));
+  if (rateLimitResponse) return rateLimitResponse;
+
   const csrf = verifyCsrfOrigin(request);
   if (!csrf.ok) {
     return jsonResponse({ ok: false, error: csrf.error }, 403);

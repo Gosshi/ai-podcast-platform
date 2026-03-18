@@ -1,5 +1,6 @@
 import { getViewerFromCookies } from "@/app/lib/viewer";
-import { jsonResponse, toNonEmptyString } from "@/app/lib/apiResponse";
+import { jsonResponse, toNonEmptyString, checkRateLimit } from "@/app/lib/apiResponse";
+import { analyticsLimiter, extractRateLimitKey } from "@/app/lib/rateLimit";
 import { isAnalyticsEventName, recordAnalyticsEvent } from "@/src/lib/analytics";
 
 export const runtime = "nodejs";
@@ -11,6 +12,9 @@ type TrackAnalyticsRequest = {
 };
 
 export async function POST(request: Request): Promise<Response> {
+  const rateLimitResponse = checkRateLimit(analyticsLimiter, extractRateLimitKey(request));
+  if (rateLimitResponse) return rateLimitResponse;
+
   const viewer = await getViewerFromCookies();
   const body = (await request.json().catch(() => ({}))) as TrackAnalyticsRequest;
 
