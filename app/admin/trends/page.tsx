@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireAdmin } from "@/app/lib/adminGuard";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import styles from "./trends.module.css";
 
@@ -81,6 +82,7 @@ const loadTrends = async (): Promise<{ rows: TrendRow[]; error: string | null }>
 };
 
 export default async function AdminTrendsPage() {
+  await requireAdmin();
   const { rows, error } = await loadTrends();
 
   return (
