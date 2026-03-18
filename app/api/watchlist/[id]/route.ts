@@ -1,7 +1,8 @@
 import { countActiveWatchlistItems } from "@/app/lib/watchlist";
 import { verifyCsrfOrigin } from "@/app/lib/csrf";
-import { createServiceRoleClient } from "@/app/lib/supabaseClients";
-import { getViewerFromCookies } from "@/app/lib/viewer";
+import { jsonResponse } from "@/app/lib/apiResponse";
+import { createUserClient } from "@/app/lib/supabaseClients";
+import { getAccessTokenFromCookies, getViewerFromAccessToken } from "@/app/lib/viewer";
 import {
   FREE_WATCHLIST_LIMIT,
   hasReachedWatchlistLimit,
@@ -14,15 +15,6 @@ type UpdateWatchlistRequest = {
   status?: unknown;
 };
 
-const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json"
-    }
-  });
-};
-
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -32,8 +24,9 @@ export async function PATCH(
     return jsonResponse({ ok: false, error: csrf.error }, 403);
   }
 
-  const viewer = await getViewerFromCookies();
-  if (!viewer) {
+  const accessToken = await getAccessTokenFromCookies();
+  const viewer = await getViewerFromAccessToken(accessToken);
+  if (!viewer || !accessToken) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);
   }
 
@@ -47,7 +40,7 @@ export async function PATCH(
     return jsonResponse({ ok: false, error: "invalid_status" }, 400);
   }
 
-  const supabase = createServiceRoleClient();
+  const supabase = createUserClient(accessToken);
   const { data: existingItem, error: existingItemError } = await supabase
     .from("user_watchlist_items")
     .select("id, status")
@@ -118,8 +111,9 @@ export async function DELETE(
     return jsonResponse({ ok: false, error: csrf.error }, 403);
   }
 
-  const viewer = await getViewerFromCookies();
-  if (!viewer) {
+  const accessToken = await getAccessTokenFromCookies();
+  const viewer = await getViewerFromAccessToken(accessToken);
+  if (!viewer || !accessToken) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);
   }
 
@@ -128,7 +122,7 @@ export async function DELETE(
     return jsonResponse({ ok: false, error: "watchlist_item_id_required" }, 400);
   }
 
-  const supabase = createServiceRoleClient();
+  const supabase = createUserClient(accessToken);
   const { data, error } = await supabase
     .from("user_watchlist_items")
     .delete()

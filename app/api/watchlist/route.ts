@@ -1,7 +1,8 @@
 import { countActiveWatchlistItems } from "@/app/lib/watchlist";
 import { verifyCsrfOrigin } from "@/app/lib/csrf";
-import { createServiceRoleClient } from "@/app/lib/supabaseClients";
-import { getViewerFromCookies } from "@/app/lib/viewer";
+import { jsonResponse, toNonEmptyString } from "@/app/lib/apiResponse";
+import { createUserClient } from "@/app/lib/supabaseClients";
+import { getAccessTokenFromCookies, getViewerFromAccessToken } from "@/app/lib/viewer";
 import {
   FREE_WATCHLIST_LIMIT,
   hasReachedWatchlistLimit,
@@ -16,21 +17,6 @@ type CreateWatchlistRequest = {
   status?: unknown;
 };
 
-const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json"
-    }
-  });
-};
-
-const toNonEmptyString = (value: unknown): string | null => {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
-
 const resolveRequestedStatus = (value: unknown): WatchlistStatus | null => {
   return isWatchlistStatus(value) ? value : null;
 };
@@ -41,8 +27,9 @@ export async function POST(request: Request) {
     return jsonResponse({ ok: false, error: csrf.error }, 403);
   }
 
-  const viewer = await getViewerFromCookies();
-  if (!viewer) {
+  const accessToken = await getAccessTokenFromCookies();
+  const viewer = await getViewerFromAccessToken(accessToken);
+  if (!viewer || !accessToken) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);
   }
 
@@ -58,7 +45,7 @@ export async function POST(request: Request) {
     return jsonResponse({ ok: false, error: "invalid_status" }, 400);
   }
 
-  const supabase = createServiceRoleClient();
+  const supabase = createUserClient(accessToken);
   const { data: existingItem, error: existingItemError } = await supabase
     .from("user_watchlist_items")
     .select("id, status, created_at, updated_at")

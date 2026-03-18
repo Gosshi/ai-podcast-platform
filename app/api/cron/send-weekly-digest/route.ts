@@ -108,12 +108,7 @@ const resolveJoinedEpisode = (
   return Array.isArray(value) ? value[0] ?? null : value;
 };
 
-const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" }
-  });
-};
+import { jsonResponse } from "@/app/lib/apiResponse";
 
 export async function POST(request: Request) {
   // Authenticate via CRON_SECRET (timing-safe comparison)

@@ -41,3 +41,22 @@ export const createServiceRoleClient = () => {
     }
   });
 };
+
+/**
+ * Create a Supabase client authenticated as the user.
+ * Uses the anon key so RLS policies are enforced, with the user's JWT
+ * passed via Authorization header so auth.uid() resolves correctly.
+ */
+export const createUserClient = (accessToken: string) => {
+  return createClient(getSupabaseUrl(), getAnonKey(), {
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    },
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+};

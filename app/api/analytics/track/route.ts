@@ -1,4 +1,5 @@
 import { getViewerFromCookies } from "@/app/lib/viewer";
+import { jsonResponse, toNonEmptyString } from "@/app/lib/apiResponse";
 import { isAnalyticsEventName, recordAnalyticsEvent } from "@/src/lib/analytics";
 
 export const runtime = "nodejs";
@@ -9,21 +10,6 @@ type TrackAnalyticsRequest = {
   properties?: unknown;
 };
 
-const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json"
-    }
-  });
-};
-
-const toOptionalString = (value: unknown): string | null => {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
-
 export async function POST(request: Request): Promise<Response> {
   const viewer = await getViewerFromCookies();
   const body = (await request.json().catch(() => ({}))) as TrackAnalyticsRequest;
@@ -32,7 +18,7 @@ export async function POST(request: Request): Promise<Response> {
     return jsonResponse({ ok: false, error: "invalid_event_name" }, 400);
   }
 
-  const anonymousId = toOptionalString(body.anonymousId);
+  const anonymousId = toNonEmptyString(body.anonymousId);
   if (!viewer && !anonymousId) {
     return jsonResponse({ ok: false, error: "anonymous_id_required" }, 400);
   }

@@ -1,21 +1,13 @@
 import { isDecisionOutcomeValue } from "@/app/lib/decisionHistory";
 import { verifyCsrfOrigin } from "@/app/lib/csrf";
-import { createServiceRoleClient } from "@/app/lib/supabaseClients";
-import { getViewerFromCookies } from "@/app/lib/viewer";
+import { jsonResponse } from "@/app/lib/apiResponse";
+import { createUserClient } from "@/app/lib/supabaseClients";
+import { getAccessTokenFromCookies, getViewerFromAccessToken } from "@/app/lib/viewer";
 
 export const runtime = "nodejs";
 
 type UpdateDecisionRequest = {
   outcome?: unknown;
-};
-
-const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json"
-    }
-  });
 };
 
 export async function PATCH(
@@ -27,8 +19,9 @@ export async function PATCH(
     return jsonResponse({ ok: false, error: csrf.error }, 403);
   }
 
-  const viewer = await getViewerFromCookies();
-  if (!viewer) {
+  const accessToken = await getAccessTokenFromCookies();
+  const viewer = await getViewerFromAccessToken(accessToken);
+  if (!viewer || !accessToken) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);
   }
 
@@ -42,7 +35,7 @@ export async function PATCH(
     return jsonResponse({ ok: false, error: "invalid_outcome" }, 400);
   }
 
-  const supabase = createServiceRoleClient();
+  const supabase = createUserClient(accessToken);
   const { data, error } = await supabase
     .from("user_decisions")
     .update({
@@ -76,8 +69,9 @@ export async function DELETE(
     return jsonResponse({ ok: false, error: csrf.error }, 403);
   }
 
-  const viewer = await getViewerFromCookies();
-  if (!viewer) {
+  const accessToken = await getAccessTokenFromCookies();
+  const viewer = await getViewerFromAccessToken(accessToken);
+  if (!viewer || !accessToken) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);
   }
 
@@ -86,7 +80,7 @@ export async function DELETE(
     return jsonResponse({ ok: false, error: "decision_id_required" }, 400);
   }
 
-  const supabase = createServiceRoleClient();
+  const supabase = createUserClient(accessToken);
   const { data, error } = await supabase
     .from("user_decisions")
     .delete()

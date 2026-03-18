@@ -1,15 +1,9 @@
 import { verifyCsrfOrigin } from "@/app/lib/csrf";
-import { getViewerFromCookies } from "@/app/lib/viewer";
-import { createServiceRoleClient } from "@/app/lib/supabaseClients";
+import { jsonResponse } from "@/app/lib/apiResponse";
+import { getAccessTokenFromCookies, getViewerFromAccessToken } from "@/app/lib/viewer";
+import { createUserClient } from "@/app/lib/supabaseClients";
 
 export const runtime = "nodejs";
-
-const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" }
-  });
-};
 
 const VALID_OUTCOMES = new Set(["success", "regret", "neutral"]);
 
@@ -28,8 +22,9 @@ export async function PATCH(
 
   const { id } = await params;
 
-  const viewer = await getViewerFromCookies();
-  if (!viewer) {
+  const accessToken = await getAccessTokenFromCookies();
+  const viewer = await getViewerFromAccessToken(accessToken);
+  if (!viewer || !accessToken) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);
   }
 
@@ -40,7 +35,7 @@ export async function PATCH(
     return jsonResponse({ ok: false, error: "invalid_outcome" }, 400);
   }
 
-  const supabase = createServiceRoleClient();
+  const supabase = createUserClient(accessToken);
 
   const { data, error } = await supabase
     .from("user_generated_cards")

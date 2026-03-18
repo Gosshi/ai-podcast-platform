@@ -1,4 +1,5 @@
 import { verifyCsrfOrigin } from "@/app/lib/csrf";
+import { jsonResponse } from "@/app/lib/apiResponse";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import { upsertUserPreferences } from "@/app/lib/userPreferences";
 import { recordAnalyticsEvent } from "@/src/lib/analytics";
@@ -15,15 +16,6 @@ type UserPreferencesRequest = {
   decisionPriority?: unknown;
   dailyAvailableTime?: unknown;
   budgetSensitivity?: unknown;
-};
-
-const jsonResponse = (body: Record<string, unknown>, status = 200): Response => {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json"
-    }
-  });
 };
 
 export async function GET() {
