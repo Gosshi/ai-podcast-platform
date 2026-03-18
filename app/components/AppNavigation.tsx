@@ -1,6 +1,7 @@
 "use client";
 
 import type { JSX } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import TrackedLink from "@/app/components/TrackedLink";
 import styles from "./app-navigation.module.css";
@@ -12,10 +13,13 @@ const NAV_ITEMS = [
   { href: "/history", label: "履歴", mobileLabel: "履歴" },
   { href: "/alerts", label: "通知", mobileLabel: "通知" },
   { href: "/account", label: "アカウント", mobileLabel: "設定" }
-];
-const MOBILE_NAV_ITEMS = NAV_ITEMS;
+] as const;
 
-const NAV_ICONS: Record<(typeof NAV_ITEMS)[number]["href"], JSX.Element> = {
+// Bottom nav shows first 3 + alerts + "more" button
+const MOBILE_BOTTOM_ITEMS = NAV_ITEMS.slice(0, 3);
+const MOBILE_MORE_ITEMS = [NAV_ITEMS[3], NAV_ITEMS[4], NAV_ITEMS[5]];
+
+const NAV_ICONS: Record<string, JSX.Element> = {
   "/decisions": (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M12 4.75a7.25 7.25 0 1 0 0 14.5 7.25 7.25 0 0 0 0-14.5Z" />
@@ -58,6 +62,14 @@ const NAV_ICONS: Record<(typeof NAV_ITEMS)[number]["href"], JSX.Element> = {
   )
 };
 
+const MORE_ICON = (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <circle cx="12" cy="6" r="1.5" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="18" r="1.5" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 const isActivePath = (pathname: string, href: string): boolean => {
   if (href === "/saved") {
     return pathname === "/saved" || pathname.startsWith("/saved/") || pathname.startsWith("/decisions/library");
@@ -76,10 +88,33 @@ const isActivePath = (pathname: string, href: string): boolean => {
 
 export default function AppNavigation() {
   const pathname = usePathname();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  const closeMore = useCallback(() => setMoreOpen(false), []);
+
+  // Close on route change
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    window.addEventListener("click", onClick, { capture: true });
+    return () => window.removeEventListener("click", onClick, { capture: true });
+  }, [moreOpen]);
 
   if (pathname.startsWith("/auth/callback")) {
     return null;
   }
+
+  const moreHasActive = MOBILE_MORE_ITEMS.some((item) => isActivePath(pathname, item.href));
 
   return (
     <header className={styles.header}>
@@ -117,8 +152,9 @@ export default function AppNavigation() {
         </nav>
       </div>
 
+      {/* Mobile bottom navigation */}
       <nav className={styles.mobileNav} aria-label="Mobile primary">
-        {MOBILE_NAV_ITEMS.map((item) => (
+        {MOBILE_BOTTOM_ITEMS.map((item) => (
           <TrackedLink
             key={item.href}
             href={item.href}
@@ -136,7 +172,63 @@ export default function AppNavigation() {
             <span className={styles.mobileLabel}>{item.mobileLabel}</span>
           </TrackedLink>
         ))}
+
+        {/* Alerts direct link */}
+        <TrackedLink
+          href="/alerts"
+          className={`${styles.mobileLink} ${isActivePath(pathname, "/alerts") ? styles.mobileLinkActive : ""}`.trim()}
+          aria-label="通知"
+          eventName="nav_click"
+          eventProperties={{
+            page: pathname,
+            source: "mobile_bottom_nav",
+            destination: "/alerts",
+            label: "通知"
+          }}
+        >
+          <span className={styles.mobileIcon}>{NAV_ICONS["/alerts"]}</span>
+          <span className={styles.mobileLabel}>通知</span>
+        </TrackedLink>
+
+        {/* More button */}
+        <button
+          type="button"
+          className={`${styles.mobileLink} ${moreHasActive && !moreOpen ? styles.mobileLinkActive : ""}`.trim()}
+          onClick={() => setMoreOpen(!moreOpen)}
+          aria-label="その他のメニュー"
+          aria-expanded={moreOpen}
+        >
+          <span className={styles.mobileIcon}>{MORE_ICON}</span>
+          <span className={styles.mobileLabel}>その他</span>
+        </button>
       </nav>
+
+      {/* More sheet */}
+      {moreOpen ? (
+        <>
+          <div className={styles.moreOverlay} onClick={closeMore} />
+          <div ref={sheetRef} className={styles.moreSheet}>
+            {MOBILE_MORE_ITEMS.map((item) => (
+              <TrackedLink
+                key={item.href}
+                href={item.href}
+                className={`${styles.moreLink} ${isActivePath(pathname, item.href) ? styles.moreLinkActive : ""}`.trim()}
+                eventName="nav_click"
+                eventProperties={{
+                  page: pathname,
+                  source: "mobile_more_sheet",
+                  destination: item.href,
+                  label: item.label
+                }}
+              >
+                <span className={styles.moreIcon}>{NAV_ICONS[item.href]}</span>
+                <span>{item.label}</span>
+              </TrackedLink>
+            ))}
+          </div>
+        </>
+      ) : null}
+
       <div className={styles.mobileNavSpacer} />
     </header>
   );
