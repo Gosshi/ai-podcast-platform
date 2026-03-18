@@ -1,5 +1,6 @@
 import { verifyCsrfOrigin } from "@/app/lib/csrf";
-import { jsonResponse } from "@/app/lib/apiResponse";
+import { jsonResponse, checkRateLimit } from "@/app/lib/apiResponse";
+import { generalLimiter, extractRateLimitKey } from "@/app/lib/rateLimit";
 import { getAccessTokenFromCookies, getViewerFromAccessToken } from "@/app/lib/viewer";
 import { createUserClient } from "@/app/lib/supabaseClients";
 
@@ -15,6 +16,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const rateLimitResponse = checkRateLimit(generalLimiter, extractRateLimitKey(request));
+  if (rateLimitResponse) return rateLimitResponse;
+
   const csrf = verifyCsrfOrigin(request);
   if (!csrf.ok) {
     return jsonResponse({ ok: false, error: csrf.error }, 403);

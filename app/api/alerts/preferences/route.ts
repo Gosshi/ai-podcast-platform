@@ -1,5 +1,6 @@
 import { verifyCsrfOrigin } from "@/app/lib/csrf";
-import { jsonResponse } from "@/app/lib/apiResponse";
+import { jsonResponse, checkRateLimit } from "@/app/lib/apiResponse";
+import { generalLimiter, extractRateLimitKey } from "@/app/lib/rateLimit";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import {
   loadUserNotificationPreferences,
@@ -36,6 +37,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const rateLimitResponse = checkRateLimit(generalLimiter, extractRateLimitKey(request));
+  if (rateLimitResponse) return rateLimitResponse;
+
   const csrf = verifyCsrfOrigin(request);
   if (!csrf.ok) {
     return jsonResponse({ ok: false, error: csrf.error }, 403);

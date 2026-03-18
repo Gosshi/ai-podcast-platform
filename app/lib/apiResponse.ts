@@ -26,3 +26,27 @@ export const getRequiredEnv = (name: string): string => {
   }
   return value;
 };
+
+/**
+ * Check a rate limiter and return a 429 response if the limit is exceeded.
+ * Returns null if the request is allowed.
+ */
+export const checkRateLimit = (
+  limiter: { check: (key: string) => { allowed: boolean; remaining: number; retryAfterMs?: number } },
+  key: string
+): Response | null => {
+  const result = limiter.check(key);
+  if (!result.allowed) {
+    return new Response(
+      JSON.stringify({ ok: false, error: "rate_limit_exceeded" }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Retry-After": String(Math.ceil((result.retryAfterMs ?? 60_000) / 1000))
+        }
+      }
+    );
+  }
+  return null;
+};
