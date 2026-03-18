@@ -81,6 +81,7 @@ export default function AppNavigation() {
               key={item.href}
               href={item.href}
               className={`${styles.link} ${isActivePath(pathname, item.href) ? styles.linkActive : ""}`.trim()}
+              aria-current={isActivePath(pathname, item.href) ? "page" : undefined}
               eventName="nav_click"
               eventProperties={{
                 page: pathname,
@@ -103,6 +104,7 @@ export default function AppNavigation() {
             href={item.href}
             className={`${styles.mobileLink} ${isActivePath(pathname, item.href) ? styles.mobileLinkActive : ""}`.trim()}
             aria-label={item.label}
+            aria-current={isActivePath(pathname, item.href) ? "page" : undefined}
             eventName="nav_click"
             eventProperties={{
               page: pathname,

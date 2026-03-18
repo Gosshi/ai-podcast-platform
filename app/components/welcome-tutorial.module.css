@@ -45,14 +45,14 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: #94a3b8;
+  color: var(--color-text-muted);
   font-size: 0.8rem;
   cursor: pointer;
 }
 
 .skipButton:hover {
-  color: #475569;
-  background: #f1f5f9;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-subtle);
 }
 
 .icon {
@@ -65,13 +65,13 @@
   margin: 0 0 0.5rem;
   font-size: 1.15rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text-primary);
   line-height: 1.4;
 }
 
 .body {
   margin: 0 0 1.25rem;
-  color: #475569;
+  color: var(--color-text-secondary);
   font-size: 0.9rem;
   line-height: 1.65;
 }
@@ -87,12 +87,12 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #e2e8f0;
+  background: var(--color-bg-muted);
   transition: background 0.2s, transform 0.2s;
 }
 
 .dotActive {
-  background: #0369a1;
+  background: var(--color-accent);
   transform: scale(1.25);
 }
 
@@ -106,7 +106,7 @@
   padding: 0.7rem;
   border: none;
   border-radius: 0.5rem;
-  background: #0369a1;
+  background: var(--color-accent);
   color: #fff;
   font-size: 0.95rem;
   font-weight: 600;
@@ -115,7 +115,7 @@
 }
 
 .nextButton:hover {
-  background: #075985;
+  background: var(--color-accent-hover);
 }
 
 .triggerButton {
@@ -126,7 +126,7 @@
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   background: rgba(255, 255, 255, 0.88);
-  color: #0f172a;
+  color: var(--color-text-primary);
   font-size: 0.88rem;
   font-weight: 500;
   cursor: pointer;
@@ -134,14 +134,14 @@
 }
 
 .triggerButton:hover {
-  background: #f1f5f9;
+  background: var(--color-bg-subtle);
 }
 
 .triggerIcon {
   display: flex;
   width: 1.1rem;
   height: 1.1rem;
-  color: #64748b;
+  color: var(--color-text-tertiary);
 }
 
 .triggerIcon svg {

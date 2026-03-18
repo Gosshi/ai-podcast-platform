@@ -1,10 +1,10 @@
-import type { JudgmentType } from "@/src/lib/judgmentCards";
+import {
+  FRAME_TYPE_LABELS,
+  GENRE_LABELS,
+  JUDGMENT_TYPE_BADGE_LABELS
+} from "@/src/lib/labels";
 
-export const JUDGMENT_TYPE_LABELS: Record<JudgmentType, string> = {
-  use_now: "おすすめ: 今すぐ",
-  watch: "おすすめ: 様子見",
-  skip: "おすすめ: 見送り"
-};
+export const JUDGMENT_TYPE_LABELS = JUDGMENT_TYPE_BADGE_LABELS;
 
 export const WATCHLIST_STATUS_LABELS = {
   saved: "保存済み",
@@ -17,33 +17,6 @@ export const URGENCY_LABELS = {
   due_soon: "まもなく期限",
   no_deadline: "期限なし"
 } as const;
-
-const FRAME_TYPE_LABELS: Record<string, string> = {
-  "Frame A": "使う時間で比較",
-  "Frame B": "月額の見直し",
-  "Frame C": "セール時の比較",
-  "Frame D": "広告負担の見直し"
-};
-
-const GENRE_LABELS: Record<string, string> = {
-  entertainment: "エンタメ",
-  games: "エンタメ",
-  anime: "エンタメ",
-  movies: "エンタメ",
-  movie: "エンタメ",
-  drama: "エンタメ",
-  streaming: "サブスク",
-  subscription: "サブスク",
-  tools: "ツール",
-  tool: "ツール",
-  tech: "テック",
-  technology: "テック",
-  general: "生活",
-  life: "生活",
-  travel: "生活",
-  personal: "生活",
-  productivity: "生活"
-};
 
 const EPISODE_TITLE_MAP: Record<string, string> = {
   "Streaming Triage: ad-free, catch-up, and duplicates": "配信サービス整理",
