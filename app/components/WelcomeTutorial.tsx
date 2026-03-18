@@ -24,15 +24,11 @@ const STEPS = [
 
 type WelcomeTutorialProps = {
   page: string;
+  onClose: () => void;
 };
 
-export default function WelcomeTutorial({ page }: WelcomeTutorialProps) {
+export default function WelcomeTutorial({ page, onClose }: WelcomeTutorialProps) {
   const [step, setStep] = useState(0);
-  const [dismissed, setDismissed] = useState(false);
-
-  if (dismissed) {
-    return null;
-  }
 
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
@@ -51,7 +47,7 @@ export default function WelcomeTutorial({ page }: WelcomeTutorialProps) {
         source: "welcome_tutorial",
         total_steps: STEPS.length
       });
-      setDismissed(true);
+      onClose();
       return;
     }
 
@@ -65,7 +61,7 @@ export default function WelcomeTutorial({ page }: WelcomeTutorialProps) {
       skipped_at_step: step + 1,
       total_steps: STEPS.length
     });
-    setDismissed(true);
+    onClose();
   };
 
   return (

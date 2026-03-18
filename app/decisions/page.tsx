@@ -6,7 +6,7 @@ import GenerateCardForm from "@/app/components/GenerateCardForm";
 import PremiumPreview from "@/app/components/PremiumPreview";
 import ShareButton from "@/app/components/ShareButton";
 import TrackedLink from "@/app/components/TrackedLink";
-import WelcomeTutorial from "@/app/components/WelcomeTutorial";
+import TutorialTrigger from "@/app/components/TutorialTrigger";
 import { loadPublishedEpisodes } from "@/app/lib/episodes";
 import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
 import { formatGenreLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS } from "@/app/lib/uiText";
@@ -240,9 +240,8 @@ export default async function DecisionsPage({
             有料版にアップグレード
           </TrackedLink>
         ) : null}
+        <TutorialTrigger page="/decisions" autoOpen={showWelcome} />
       </div>
-
-      {showWelcome ? <WelcomeTutorial page="/decisions" /> : null}
 
       {/* --- AI Consult --- */}
       <GenerateCardForm isPaid={isPaid} showWelcome={showWelcome} />

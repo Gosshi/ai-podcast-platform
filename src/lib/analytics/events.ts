@@ -72,6 +72,7 @@ export const ANALYTICS_EVENT_NAMES = [
   "episode_listen_complete",
   "post_listen_cta_click",
   "welcome_shown",
+  "tutorial_open",
   "tutorial_step",
   "tutorial_skip",
   "tutorial_complete"
