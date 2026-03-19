@@ -78,7 +78,7 @@ export default function RemoveDecisionButton({
       <button type="button" className={styles.buttonDanger} onClick={() => void onClick()} disabled={isSubmitting}>
         {isSubmitting ? "削除中..." : "採用履歴から削除"}
       </button>
-      {error ? <p className={styles.error}>{error}</p> : null}
+      {error ? <p className={styles.error} role="alert">{error}</p> : null}
     </div>
   );
 }

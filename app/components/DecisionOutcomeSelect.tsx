@@ -139,7 +139,7 @@ export default function DecisionOutcomeSelect({
             </button>
           ))}
         </div>
-        {error ? <p className={styles.error}>{error}</p> : null}
+        {error ? <p className={styles.error} role="alert">{error}</p> : null}
       </div>
     );
   }
@@ -162,7 +162,7 @@ export default function DecisionOutcomeSelect({
           </option>
         ))}
       </select>
-      {error ? <p className={styles.error}>{error}</p> : null}
+      {error ? <p className={styles.error} role="alert">{error}</p> : null}
     </div>
   );
 }

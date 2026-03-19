@@ -285,7 +285,7 @@ export default function AudioPlayer({ src, title, description, onEnded }: AudioP
         </button>
       </div>
 
-      {error ? <p className={styles.error}>{error}</p> : null}
+      {error ? <p className={styles.error} role="alert">{error}</p> : null}
     </div>
   );
 }

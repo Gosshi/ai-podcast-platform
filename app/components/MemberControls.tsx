@@ -359,8 +359,8 @@ export default function MemberControls({
             </form>
           )}
 
-          {message ? <p className={styles.message}>{message}</p> : null}
-          {error ? <p className={`${styles.message} ${styles.error}`}>{error}</p> : null}
+          {message ? <p className={styles.message} aria-live="polite">{message}</p> : null}
+          {error ? <p className={`${styles.message} ${styles.error}`} role="alert">{error}</p> : null}
         </>
       )}
     </section>

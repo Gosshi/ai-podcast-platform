@@ -181,6 +181,7 @@ export default function WatchlistControls({
           }`.trim()}
           onClick={() => void (viewer ? upsertStatus("saved") : router.push(buildLoginPath(page)))}
           disabled={isSubmitting}
+          aria-pressed={status === "saved" || status === "watching"}
         >
           {viewer ? savedLabel : `ログインして${savedLabel}`}
         </button>
@@ -191,6 +192,7 @@ export default function WatchlistControls({
           } ${!viewer ? styles.buttonGhost : ""}`.trim()}
           onClick={() => void (viewer ? upsertStatus("archived") : router.push(buildLoginPath(page)))}
           disabled={isSubmitting}
+          aria-pressed={status === "archived"}
         >
           {viewer ? archivedLabel : `ログインして${archivedLabel}`}
         </button>
@@ -205,7 +207,7 @@ export default function WatchlistControls({
               : STATUS_HINTS.saved}
         </p>
       ) : null}
-      {error ? <p className={styles.error}>{error}</p> : null}
+      {error ? <p className={styles.error} role="alert">{error}</p> : null}
     </div>
   );
 }
