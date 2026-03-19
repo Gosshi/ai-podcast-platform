@@ -323,6 +323,79 @@
   color: var(--color-text-body);
 }
 
+.membershipCardHighlighted {
+  border: 2px solid #f97316;
+  box-shadow: 0 8px 32px rgba(249, 115, 22, 0.12);
+}
+
+.membershipBadgeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.membershipRecommendBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.membershipPrice {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--color-text-primary);
+}
+
+.membershipPriceSuffix {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-text-body);
+}
+
+.membershipPriceTax {
+  margin: -0.5rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-text-tertiary);
+}
+
+.membershipTrialBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.membershipCta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.9rem;
+  border-radius: 999px;
+  padding: 0.82rem 1.25rem;
+  font-weight: 700;
+  text-decoration: none;
+  background: #0f172a;
+  color: #ffffff;
+  text-align: center;
+}
+
 .featureCard h3,
 .samplePanel h3 {
   margin: 0 0 0.55rem;
