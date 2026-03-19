@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import { buildLoginPath, resolveSafeNextPath } from "@/app/lib/onboarding";
+
+export const metadata: Metadata = {
+  title: "初回設定",
+  description: "30秒で好みのジャンルを設定。あなた専用のポッドキャストが毎朝届きます。"
+};
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import OnboardingFlow from "./OnboardingFlow";
 import styles from "./page.module.css";

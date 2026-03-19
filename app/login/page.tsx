@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
 import { buildOnboardingPath, resolveSafeNextPath } from "@/app/lib/onboarding";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./page.module.css";
+
+export const metadata: Metadata = {
+  title: "ログイン",
+  description: "メールアドレスだけで簡単ログイン。好みを設定して、毎朝パーソナライズされたポッドキャストを受け取ろう。"
+};
 
 type SearchParams = {
   next?: string | string[];

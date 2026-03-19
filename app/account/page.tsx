@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = {
+  title: "アカウント設定",
+  description: "プラン管理、通知設定、プロフィール情報の確認と変更。"
+};
 import AlertsInbox from "@/app/components/AlertsInbox";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import MemberControls from "@/app/components/MemberControls";
