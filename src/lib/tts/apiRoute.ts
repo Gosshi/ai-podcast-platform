@@ -4,6 +4,7 @@ import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import {
   localTtsProvider,
   openAiTtsProvider,
+  voicevoxTtsProvider,
   resolveConfiguredTtsProvider,
   type SynthesizeInput,
   type TtsAudioFormat,
@@ -25,6 +26,7 @@ type RequestBody = {
 
 type EpisodeScriptRow = {
   script: string | null;
+  script_polished: string | null;
 };
 
 const EPISODE_ID_PATTERN = /^[0-9a-fA-F-]{8,64}$/;
@@ -124,7 +126,7 @@ const fetchEpisodeScript = async (episodeId: string, lang: TtsLang): Promise<str
   const serviceRoleClient = getServiceRoleClient();
   const { data, error } = await serviceRoleClient
     .from("episodes")
-    .select("script")
+    .select("script, script_polished")
     .eq("id", episodeId)
     .eq("lang", lang)
     .maybeSingle<EpisodeScriptRow>();
@@ -137,7 +139,9 @@ const fetchEpisodeScript = async (episodeId: string, lang: TtsLang): Promise<str
     throw new TtsApiError(404, "episode_not_found", "Episode not found");
   }
 
-  const script = typeof data.script === "string" ? data.script.trim() : "";
+  const polished = typeof data.script_polished === "string" ? data.script_polished.trim() : "";
+  const raw = typeof data.script === "string" ? data.script.trim() : "";
+  const script = polished || raw;
   if (!script) {
     throw new TtsApiError(400, "script_missing", "Episode script is empty");
   }
@@ -270,6 +274,9 @@ const synthesizeWithProvider = async (
   voice?: string;
   format: TtsAudioFormat;
 }> => {
+  if (provider === "voicevox") {
+    return voicevoxTtsProvider.synthesize(input);
+  }
   if (provider === "local") {
     ensureLocalProviderAvailable();
     return localTtsProvider.synthesize(input);
@@ -305,7 +312,21 @@ export async function handleTtsRequest(request: Request): Promise<Response> {
 
   try {
     let result: Awaited<ReturnType<typeof synthesizeWithProvider>>;
-    if (requestedProvider === "openai") {
+    if (requestedProvider === "voicevox") {
+      try {
+        result = await synthesizeWithProvider("voicevox", payload.synthesizeInput);
+      } catch (voicevoxError) {
+        const errorMessage = voicevoxError instanceof Error ? voicevoxError.message : "voicevox_tts_failed";
+        try {
+          result = await synthesizeWithProvider("local", payload.synthesizeInput);
+          fallbackReason = errorMessage;
+        } catch (fallbackError) {
+          const fallbackMessage =
+            fallbackError instanceof Error ? fallbackError.message : "local_fallback_failed";
+          throw new Error(`${errorMessage}; fallback:${fallbackMessage}`);
+        }
+      }
+    } else if (requestedProvider === "openai") {
       try {
         result = await synthesizeWithProvider("openai", payload.synthesizeInput);
       } catch (openAiError) {

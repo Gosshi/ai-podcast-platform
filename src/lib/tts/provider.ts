@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 export type TtsLang = "ja" | "en";
-export type TtsProviderName = "openai" | "local";
+export type TtsProviderName = "openai" | "voicevox" | "local";
 export type TtsAudioFormat = "mp3" | "opus" | "aac" | "flac" | "wav" | "pcm";
 
 export type SynthesizeInput = {
@@ -554,6 +554,161 @@ export const openAiTtsProvider: TtsProvider = {
   }
 };
 
+// ---------------------------------------------------------------------------
+// VOICEVOX provider – calls the local VOICEVOX Engine HTTP API
+// ---------------------------------------------------------------------------
+
+const resolveVoicevoxUrl = (): string => {
+  return process.env.VOICEVOX_URL?.trim() || "http://127.0.0.1:50021";
+};
+
+const resolveVoicevoxSpeakerId = (lang: TtsLang): number => {
+  const envKey = lang === "ja" ? "VOICEVOX_SPEAKER_ID_JA" : "VOICEVOX_SPEAKER_ID_EN";
+  const raw = process.env[envKey]?.trim();
+  if (raw) {
+    const parsed = Number.parseInt(raw, 10);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  // Default: 玄野武宏 ノーマル
+  return 11;
+};
+
+const resolveVoicevoxSpeed = (speed?: number): number => {
+  if (typeof speed === "number" && Number.isFinite(speed)) {
+    return Math.min(2, Math.max(0.5, speed));
+  }
+  const configured = process.env.VOICEVOX_SPEED?.trim();
+  if (configured) {
+    const parsed = Number(configured);
+    if (Number.isFinite(parsed)) return Math.min(2, Math.max(0.5, parsed));
+  }
+  return 1.05;
+};
+
+const voicevoxSynthesizeSentence = async (
+  baseUrl: string,
+  text: string,
+  speakerId: number,
+  speedScale: number
+): Promise<Uint8Array> => {
+  const queryParams = new URLSearchParams({ text, speaker: String(speakerId) });
+  const queryResp = await fetch(`${baseUrl}/audio_query?${queryParams}`, {
+    method: "POST",
+    signal: AbortSignal.timeout(30_000)
+  });
+  if (!queryResp.ok) {
+    throw new Error(`voicevox_audio_query_failed:${queryResp.status}`);
+  }
+  const query = (await queryResp.json()) as Record<string, unknown>;
+  query.speedScale = speedScale;
+
+  const synthParams = new URLSearchParams({ speaker: String(speakerId) });
+  const synthResp = await fetch(`${baseUrl}/synthesis?${synthParams}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(query),
+    signal: AbortSignal.timeout(120_000)
+  });
+  if (!synthResp.ok) {
+    throw new Error(`voicevox_synthesis_failed:${synthResp.status}`);
+  }
+  return new Uint8Array(await synthResp.arrayBuffer());
+};
+
+const voicevoxExtractPcm = (
+  wavBytes: Uint8Array
+): { pcm: Uint8Array; header: Uint8Array } => {
+  const view = new DataView(wavBytes.buffer, wavBytes.byteOffset, wavBytes.byteLength);
+  let cursor = 12;
+  while (cursor + 8 <= wavBytes.length) {
+    const id = String.fromCharCode(
+      view.getUint8(cursor),
+      view.getUint8(cursor + 1),
+      view.getUint8(cursor + 2),
+      view.getUint8(cursor + 3)
+    );
+    const chunkSize = view.getUint32(cursor + 4, true);
+    if (id === "data") {
+      return {
+        pcm: wavBytes.slice(cursor + 8, cursor + 8 + chunkSize),
+        header: wavBytes.slice(0, cursor + 8)
+      };
+    }
+    cursor += 8 + chunkSize;
+  }
+  return { pcm: wavBytes.slice(44), header: wavBytes.slice(0, 44) };
+};
+
+const voicevoxConcatWavs = (wavList: Uint8Array[]): Uint8Array => {
+  if (wavList.length === 0) return new Uint8Array();
+  if (wavList.length === 1) return wavList[0];
+
+  const parts: Uint8Array[] = [];
+  let headerTemplate: Uint8Array | null = null;
+  let totalPcmBytes = 0;
+
+  for (const wav of wavList) {
+    const { pcm, header } = voicevoxExtractPcm(wav);
+    if (!headerTemplate) headerTemplate = header;
+    parts.push(pcm);
+    totalPcmBytes += pcm.length;
+  }
+
+  const header = headerTemplate!;
+  const out = new Uint8Array(header.length + totalPcmBytes);
+  out.set(header, 0);
+  let offset = header.length;
+  for (const pcm of parts) {
+    out.set(pcm, offset);
+    offset += pcm.length;
+  }
+
+  const outView = new DataView(out.buffer, out.byteOffset, out.byteLength);
+  outView.setUint32(4, out.length - 8, true);
+  outView.setUint32(header.length - 4, totalPcmBytes, true);
+  return out;
+};
+
+const splitJaSentences = (text: string): string[] => {
+  const sentences = text
+    .replace(/\r\n/g, "\n")
+    .split(/(?<=[。！？!?])/u)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  return sentences.length > 0 ? sentences : [text.trim()];
+};
+
+export const voicevoxTtsProvider: TtsProvider = {
+  async synthesize(input) {
+    const baseUrl = resolveVoicevoxUrl();
+    const speakerId = resolveVoicevoxSpeakerId(input.lang);
+    const speedScale = resolveVoicevoxSpeed(input.speed);
+    const sentences = splitJaSentences(input.text);
+
+    const wavChunks: Uint8Array[] = [];
+    for (const sentence of sentences) {
+      wavChunks.push(await voicevoxSynthesizeSentence(baseUrl, sentence, speakerId, speedScale));
+    }
+
+    const bytes = voicevoxConcatWavs(wavChunks);
+    return {
+      bytes,
+      contentType: "audio/wav",
+      provider: "voicevox" as const,
+      model: "voicevox",
+      voice: `speaker_${speakerId}`,
+      format: "wav" as const
+    };
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Provider resolution
+// ---------------------------------------------------------------------------
+
 export const resolveConfiguredTtsProvider = (): TtsProviderName => {
-  return process.env.TTS_PROVIDER?.trim().toLowerCase() === "openai" ? "openai" : "local";
+  const raw = process.env.TTS_PROVIDER?.trim().toLowerCase();
+  if (raw === "openai") return "openai";
+  if (raw === "voicevox") return "voicevox";
+  return "local";
 };
