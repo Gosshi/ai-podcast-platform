@@ -1,3 +1,11 @@
+/**
+ * Episode loading and transformation utilities.
+ *
+ * Judgment cards are read from the `episode_judgment_cards` table (normalised,
+ * source of truth). The `episodes.judgment_cards` JSONB column is a
+ * denormalised cache maintained by Edge Functions and seed scripts for
+ * backward-compat only — application code must NOT read from it.
+ */
 import type { JudgmentCard, JudgmentThresholdJson, JudgmentType } from "@/src/lib/judgmentCards";
 import type { WatchlistCardState } from "@/src/lib/watchlist";
 import { isWithinFreeAccessWindow } from "./contentAccess";
