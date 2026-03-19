@@ -20,7 +20,8 @@ export const metadata: Metadata = {
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
     locale: "ja_JP",
-    url: SITE_URL
+    url: SITE_URL,
+    images: [{ url: "/api/og", width: 1200, height: 630, alt: "判断のじかん — AI Podcast" }]
   },
   twitter: {
     card: "summary_large_image",

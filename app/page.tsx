@@ -195,6 +195,9 @@ export default async function HomePage() {
           <div className={styles.membershipGrid}>
             <article className={styles.membershipCard}>
               <span className={styles.membershipTier}>無料</span>
+              <div className={styles.membershipPrice}>
+                <span>¥0</span>
+              </div>
               <h3>毎日聴いて情報をキャッチアップ</h3>
               <ul className={styles.membershipList}>
                 <li>毎日のエピソード再生</li>
@@ -202,8 +205,17 @@ export default async function HomePage() {
                 <li>好みの設定とおすすめの最適化</li>
               </ul>
             </article>
-            <article className={styles.membershipCard}>
-              <span className={styles.membershipTier}>有料</span>
+            <article className={`${styles.membershipCard} ${styles.membershipCardHighlighted}`}>
+              <div className={styles.membershipBadgeRow}>
+                <span className={styles.membershipTier}>有料</span>
+                <span className={styles.membershipRecommendBadge}>おすすめ</span>
+              </div>
+              <div className={styles.membershipPrice}>
+                <span>月額 ¥780</span>
+                <span className={styles.membershipPriceSuffix}>/ 月</span>
+              </div>
+              <p className={styles.membershipPriceTax}>(税込)</p>
+              <span className={styles.membershipTrialBadge}>7日間無料で試す</span>
               <h3>フルスクリプトと行動提案でもっと深く</h3>
               <ul className={styles.membershipList}>
                 <li>エピソードのフルスクリプト</li>
@@ -211,6 +223,18 @@ export default async function HomePage() {
                 <li>過去エピソードのアーカイブ</li>
                 <li>傾向分析とAI相談</li>
               </ul>
+              <TrackedLink
+                href="/login?next=/account"
+                className={styles.membershipCta}
+                eventName="landing_cta_click"
+                eventProperties={{
+                  page: "/",
+                  source: "landing_pricing",
+                  destination: "/login?next=/account"
+                }}
+              >
+                有料版をはじめる
+              </TrackedLink>
             </article>
           </div>
         </section>

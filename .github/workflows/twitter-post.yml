@@ -1,0 +1,39 @@
+name: Post Episode to Twitter/X
+
+on:
+  # Run after the daily-publish workflow completes, or manually
+  workflow_run:
+    workflows: ["Scheduled Daily Publish"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  post-tweet:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Generate tweet content
+        id: generate
+        run: |
+          RESPONSE=$(curl -sf \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_BASE_URL }}/api/social/twitter-post")
+          echo "tweet=$(echo "$RESPONSE" | jq -r '.tweet')" >> "$GITHUB_OUTPUT"
+          echo "episode_id=$(echo "$RESPONSE" | jq -r '.episodeId')" >> "$GITHUB_OUTPUT"
+          echo "og_image_url=$(echo "$RESPONSE" | jq -r '.ogImageUrl')" >> "$GITHUB_OUTPUT"
+
+      - name: Post to Twitter/X
+        if: steps.generate.outputs.tweet != ''
+        env:
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+        run: |
+          echo "Tweet content generated for episode: ${{ steps.generate.outputs.episode_id }}"
+          echo "---"
+          echo "${{ steps.generate.outputs.tweet }}"
+          echo "---"
+          echo "OG Image: ${{ steps.generate.outputs.og_image_url }}"
+          echo ""
+          echo "Configure Twitter API credentials in repository secrets to enable auto-posting."

@@ -35,7 +35,7 @@ export async function generateMetadata({
   const supabase = createServiceRoleClient();
   const { data } = await supabase
     .from("episodes")
-    .select("title, description")
+    .select("title, description, genre")
     .eq("id", id)
     .eq("status", "published")
     .maybeSingle();
@@ -44,12 +44,15 @@ export async function generateMetadata({
     return { title: "エピソード" };
   }
 
+  const ogImageUrl = `/api/og?title=${encodeURIComponent(data.title)}${data.genre ? `&genre=${encodeURIComponent(data.genre)}` : ""}`;
+
   return {
     title: data.title,
     description: data.description ?? undefined,
     openGraph: {
       title: data.title,
-      description: data.description ?? undefined
+      description: data.description ?? undefined,
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: data.title }]
     }
   };
 }
