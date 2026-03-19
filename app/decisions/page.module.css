@@ -280,8 +280,8 @@
 
 .recommendationGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
 }
 
 .recommendationCard {
@@ -302,9 +302,10 @@
 }
 
 .recommendationLink {
-  display: grid;
-  gap: 0.9rem;
-  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 1rem 1.15rem;
   color: inherit;
   text-decoration: none;
 }
@@ -542,12 +543,14 @@
 }
 
 .summary {
-  margin: 0.85rem 0 0;
-  line-height: 1.7;
+  margin: 0.5rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.6;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   overflow: hidden;
+  color: var(--color-text-secondary);
 }
 
 .personalHint {
@@ -669,7 +672,6 @@
     align-items: flex-start;
   }
 
-  .recommendationGrid,
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -698,7 +700,6 @@
     align-items: flex-start;
   }
 
-  .recommendationGrid,
   .grid {
     grid-template-columns: 1fr;
   }
