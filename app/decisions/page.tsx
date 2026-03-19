@@ -57,7 +57,7 @@ export default async function DecisionsPage({
         />
 
         <div className={styles.playerHeroMeta}>
-          <p className={styles.eyebrow}>Today&apos;s Podcast</p>
+          <p className={styles.eyebrow}>今日のポッドキャスト</p>
           {latestEpisode?.description ? (
             <p className={styles.playerHeroLead}>{latestEpisode.description}</p>
           ) : !latestEpisode ? (

@@ -324,7 +324,7 @@ export default function EpisodesView({
   const [activeEpisodeId, setActiveEpisodeId] = useState<string | null>(null);
   const [pendingAutoPlay, setPendingAutoPlay] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMiniPlayerHidden, setIsMiniPlayerHidden] = useState(false);
+  const [isMiniPlayerHidden, setIsMiniPlayerHidden] = useState(true);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -438,6 +438,7 @@ export default function EpisodesView({
 
     setActiveEpisodeId(episode.id);
     setPendingAutoPlay(true);
+    setIsMiniPlayerHidden(false);
 
     if (shouldAutoScroll) {
       scrollToEpisodeCard(episode.id, false);
@@ -607,11 +608,9 @@ export default function EpisodesView({
                             {isPlayingCard ? <span className={styles.liveBadge}>{t.activeBadge}</span> : null}
                           </div>
 
-                          <h3>{episode.title ?? t.untitled}</h3>
-
-                          <p className={styles.episodeMetaText}>
-                            {t.publishedAt}: {formatDateTime(episode.published_at, locale)}
-                          </p>
+                          {rows.length > 1 || stripLangSuffix(episode.title) !== group.topic ? (
+                            <h3>{episode.title ?? t.untitled}</h3>
+                          ) : null}
 
                           {episode.preview_text ? (
                             <p className={styles.previewText}>{episode.preview_text}</p>
