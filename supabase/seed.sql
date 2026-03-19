@@ -458,4 +458,84 @@ from (
 ) as patch(id, deadline_at, created_at, updated_at)
 where card.id = patch.id;
 
+-- =================================================================
+-- Demo auth users (password: local-demo-pass)
+-- =================================================================
+-- Clean up any existing demo users first
+delete from auth.users where email in ('demo-free@local.test', 'demo-paid@local.test');
+
+insert into auth.users (
+  id, instance_id, aud, role, email,
+  encrypted_password, email_confirmed_at,
+  created_at, updated_at,
+  raw_app_meta_data, raw_user_meta_data,
+  confirmation_token, recovery_token,
+  email_change, email_change_token_new, email_change_token_current,
+  email_change_confirm_status,
+  phone, phone_change, phone_change_token,
+  reauthentication_token,
+  is_super_admin, is_sso_user, is_anonymous
+)
+values
+  (
+    'a0000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated',
+    'demo-free@local.test',
+    crypt('local-demo-pass', gen_salt('bf')),
+    now(), now(), now(),
+    '{"provider":"email","providers":["email"]}',
+    '{"display_name":"デモ無料ユーザー"}',
+    '', '',
+    '', '', '', 0,
+    null, '', '',
+    '',
+    false, false, false
+  ),
+  (
+    'a0000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated',
+    'demo-paid@local.test',
+    crypt('local-demo-pass', gen_salt('bf')),
+    now(), now(), now(),
+    '{"provider":"email","providers":["email"]}',
+    '{"display_name":"デモ有料ユーザー"}',
+    '', '',
+    '', '', '', 0,
+    null, '', '',
+    '',
+    false, false, false
+  );
+
+-- Ensure identities exist (required for Supabase Auth login)
+insert into auth.identities (
+  id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at
+)
+values
+  (
+    'a0000000-0000-0000-0000-000000000001',
+    'a0000000-0000-0000-0000-000000000001',
+    'demo-free@local.test',
+    '{"sub":"a0000000-0000-0000-0000-000000000001","email":"demo-free@local.test"}',
+    'email', now(), now(), now()
+  ),
+  (
+    'a0000000-0000-0000-0000-000000000002',
+    'a0000000-0000-0000-0000-000000000002',
+    'demo-paid@local.test',
+    '{"sub":"a0000000-0000-0000-0000-000000000002","email":"demo-paid@local.test"}',
+    'email', now(), now(), now()
+  );
+
+-- Grant paid subscription to demo-paid user
+insert into public.subscriptions (user_id, plan_type, status, current_period_end)
+values (
+  'a0000000-0000-0000-0000-000000000002',
+  'pro_monthly',
+  'active',
+  now() + interval '1 year'
+)
+on conflict do nothing;
+
 commit;
