@@ -506,6 +506,7 @@ export default function EpisodesView({
                 type="button"
                 className={`${styles.toggleButton} ${locale === "ja" ? styles.toggleActive : ""}`.trim()}
                 onClick={() => setLocale("ja")}
+                aria-pressed={locale === "ja"}
               >
                 {messageSet.common.languageJa}
               </button>
@@ -513,6 +514,7 @@ export default function EpisodesView({
                 type="button"
                 className={`${styles.toggleButton} ${locale === "en" ? styles.toggleActive : ""}`.trim()}
                 onClick={() => setLocale("en")}
+                aria-pressed={locale === "en"}
               >
                 {messageSet.common.languageEn}
               </button>
@@ -528,6 +530,7 @@ export default function EpisodesView({
                   type="button"
                   onClick={() => setViewLangFilter(tab.value)}
                   className={`${styles.toggleButton} ${viewLang === tab.value ? styles.toggleActive : ""}`.trim()}
+                  aria-pressed={viewLang === tab.value}
                 >
                   {tab.label}
                 </button>
@@ -819,6 +822,7 @@ export default function EpisodesView({
           type="button"
           className={styles.showPlayerButton}
           onClick={() => setIsMiniPlayerHidden(false)}
+          aria-label={t.showPlayer}
         >
           {t.showPlayer}
         </button>
@@ -855,6 +859,7 @@ export default function EpisodesView({
               className={styles.secondaryButton}
               onClick={() => playRelative(-1)}
               disabled={activePlayableIndex <= 0}
+              aria-label={t.previous}
             >
               {t.previous}
             </button>
@@ -864,6 +869,7 @@ export default function EpisodesView({
               className={styles.secondaryButton}
               onClick={() => playRelative(1)}
               disabled={activePlayableIndex < 0 || activePlayableIndex >= playableEpisodes.length - 1}
+              aria-label={t.next}
             >
               {t.next}
             </button>

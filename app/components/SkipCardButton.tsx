@@ -103,10 +103,11 @@ export default function SkipCardButton({
         className={buttonClass}
         onClick={() => void skip()}
         disabled={isSubmitting || isSkipped}
+        aria-pressed={isSkipped}
       >
         {isSubmitting ? "保存中..." : isSkipped ? "見送り済み" : viewer ? "見送る" : "ログインして見送る"}
       </button>
-      {error ? <p className={styles.error}>{error}</p> : null}
+      {error ? <p className={styles.error} role="alert">{error}</p> : null}
     </div>
   );
 }

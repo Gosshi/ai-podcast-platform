@@ -299,7 +299,7 @@ export default function GenerateCardForm({ isPaid, showWelcome = false }: Genera
             </span>
           ) : null}
         </div>
-        {error ? <p className={styles.error}>{error}</p> : null}
+        {error ? <p className={styles.error} role="alert">{error}</p> : null}
       </div>
 
       {streamPhase === "generating" || streamPhase === "connecting" ? (

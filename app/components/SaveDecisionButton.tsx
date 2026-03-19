@@ -145,7 +145,7 @@ export default function SaveDecisionButton({
       {showHint ? (
         <p className={styles.hint}>{isSaved ? "履歴で結果を更新できます。" : "採用したアクションをあとで振り返れます。"}</p>
       ) : null}
-      {error ? <p className={styles.error}>{error}</p> : null}
+      {error ? <p className={styles.error} role="alert">{error}</p> : null}
     </div>
   );
 }

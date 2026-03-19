@@ -100,7 +100,7 @@ export default function NotificationPreferencesForm({
         <button type="button" className={styles.submitButton} disabled={isPending} onClick={() => void save()}>
           保存する
         </button>
-        {status ? <p className={styles.status}>{status}</p> : null}
+        {status ? <p className={styles.status} aria-live="polite">{status}</p> : null}
       </div>
     </div>
   );
