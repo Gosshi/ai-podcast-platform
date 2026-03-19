@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import DecisionOutcomeSelect from "@/app/components/DecisionOutcomeSelect";
+
+export const metadata: Metadata = {
+  title: "判断の履歴",
+  description: "過去に記録した判断の一覧と結果。成功率やジャンル傾向を振り返って、判断の精度を高めよう。"
+};
 import MemberControls from "@/app/components/MemberControls";
 import OutcomeReminderSection from "@/app/components/OutcomeReminderSection";
 import RemoveDecisionButton from "@/app/components/RemoveDecisionButton";

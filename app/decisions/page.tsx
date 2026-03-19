@@ -7,11 +7,17 @@ import PremiumPreview from "@/app/components/PremiumPreview";
 import ShareButton from "@/app/components/ShareButton";
 import TrackedLink from "@/app/components/TrackedLink";
 import TutorialTrigger from "@/app/components/TutorialTrigger";
+import type { Metadata } from "next";
 import { loadPublishedEpisodes } from "@/app/lib/episodes";
 import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
 import { formatGenreLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import styles from "./page.module.css";
+
+export const metadata: Metadata = {
+  title: "今日のエピソード",
+  description: "今日のAIポッドキャストとトピックカード。聴いた内容をもとに「やる・様子見・見送り」を判断できます。"
+};
 
 export const dynamic = "force-dynamic";
 

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
@@ -20,9 +21,38 @@ import {
   JUDGMENT_TYPE_LABELS
 } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
+import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = createServiceRoleClient();
+  const { data } = await supabase
+    .from("episodes")
+    .select("title, description")
+    .eq("id", id)
+    .eq("status", "published")
+    .maybeSingle();
+
+  if (!data) {
+    return { title: "エピソード" };
+  }
+
+  return {
+    title: data.title,
+    description: data.description ?? undefined,
+    openGraph: {
+      title: data.title,
+      description: data.description ?? undefined
+    }
+  };
+}
 
 const formatDateTime = (value: string | null): string => {
   if (!value) return "-";
