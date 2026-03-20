@@ -8,6 +8,7 @@ import {
 } from "./adminAccessToken";
 
 export const ADMIN_ACCESS_COOKIE = "app_admin_access";
+export { ADMIN_ACCESS_COOKIE_MAX_AGE_SECONDS, normalizeAdminNextPath };
 
 const getAdminAccessSecret = (): string | null => {
   const value = process.env.ADMIN_ACCESS_SECRET?.trim();
