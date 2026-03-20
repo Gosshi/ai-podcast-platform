@@ -435,7 +435,7 @@ export default async function JobRunsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  await requireAdmin();
+  await requireAdmin("/admin/job-runs");
   const params = await searchParams;
   const locale = resolveLocale(readFirstParam(params.lang));
   const messageSet = getMessages(locale);

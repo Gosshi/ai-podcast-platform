@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
 import { getViewerFromCookies } from "./viewer";
+import { hasValidAdminAccessCookie, isAdminAccessGateEnabled, normalizeAdminNextPath } from "./adminAccess";
 
 /**
  * Resolves the set of admin emails from the ADMIN_EMAILS environment variable.
  * Expects a comma-separated list: "alice@example.com,bob@example.com"
  */
-const resolveAdminEmails = (): Set<string> => {
+export const resolveAdminEmails = (): Set<string> => {
   const raw = process.env.ADMIN_EMAILS ?? "";
   const emails = raw
     .split(",")
@@ -14,12 +15,7 @@ const resolveAdminEmails = (): Set<string> => {
   return new Set(emails);
 };
 
-/**
- * Guard for admin pages (Server Components).
- * Redirects to /login if not authenticated, to /decisions if not an admin.
- * Returns the authenticated viewer on success.
- */
-export const requireAdmin = async () => {
+export const requireAdminIdentity = async () => {
   const viewer = await getViewerFromCookies();
   if (!viewer) {
     redirect("/login");
@@ -28,6 +24,24 @@ export const requireAdmin = async () => {
   const adminEmails = resolveAdminEmails();
   if (!viewer.email || !adminEmails.has(viewer.email.toLowerCase())) {
     redirect("/decisions");
+  }
+
+  return viewer;
+};
+
+/**
+ * Guard for admin pages (Server Components).
+ * Redirects to /login if not authenticated, to /decisions if not an admin.
+ * Returns the authenticated viewer on success.
+ */
+export const requireAdmin = async (nextPath = "/admin/trends") => {
+  const viewer = await requireAdminIdentity();
+
+  if (isAdminAccessGateEnabled()) {
+    const hasAccess = await hasValidAdminAccessCookie(viewer.userId);
+    if (!hasAccess) {
+      redirect(`/admin/access?next=${encodeURIComponent(normalizeAdminNextPath(nextPath))}`);
+    }
   }
 
   return viewer;
@@ -46,6 +60,13 @@ export const verifyAdmin = async () => {
   const adminEmails = resolveAdminEmails();
   if (!viewer.email || !adminEmails.has(viewer.email.toLowerCase())) {
     return null;
+  }
+
+  if (isAdminAccessGateEnabled()) {
+    const hasAccess = await hasValidAdminAccessCookie(viewer.userId);
+    if (!hasAccess) {
+      return null;
+    }
   }
 
   return viewer;
