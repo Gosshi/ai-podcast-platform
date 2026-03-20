@@ -3,8 +3,9 @@ export const runtime = "nodejs";
 import { jsonResponse } from "@/app/lib/apiResponse";
 import { verifyCronSecret } from "@/app/lib/cronAuth";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
+import { DEFAULT_SITE_URL } from "@/src/lib/brand";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://handan-no-jikan.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL;
 
 const HASHTAGS = "#判断のじかん #AIポッドキャスト";
 

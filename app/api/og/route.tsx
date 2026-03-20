@@ -1,11 +1,12 @@
 import { ImageResponse } from "@vercel/og";
 import { NextRequest } from "next/server";
+import { BRAND_NAME, PRODUCT_NAME, SITE_NAME } from "@/src/lib/brand";
 
 export const runtime = "edge";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const title = searchParams.get("title") ?? "判断のじかん — AI Podcast";
+  const title = searchParams.get("title") ?? SITE_NAME;
   const genre = searchParams.get("genre");
   const date = searchParams.get("date");
   const cards = searchParams.get("cards");
@@ -106,10 +107,10 @@ export async function GET(request: NextRequest) {
                 textTransform: "uppercase" as const,
               }}
             >
-              AI PODCAST
+              {BRAND_NAME}
             </span>
             <span style={{ fontSize: "28px", fontWeight: 700 }}>
-              判断のじかん
+              {PRODUCT_NAME}
             </span>
           </div>
           <div

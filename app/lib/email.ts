@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { BRAND_NAME } from "@/src/lib/brand";
 
 const getResendClient = (): Resend | null => {
   const apiKey = process.env.RESEND_API_KEY?.trim();
@@ -7,7 +8,7 @@ const getResendClient = (): Resend | null => {
 };
 
 const EMAIL_FROM =
-  process.env.EMAIL_FROM?.trim() || "AI Podcast <noreply@example.com>";
+  process.env.EMAIL_FROM?.trim() || `${BRAND_NAME} <noreply@signal-move.com>`;
 
 type SendEmailParams = {
   to: string;

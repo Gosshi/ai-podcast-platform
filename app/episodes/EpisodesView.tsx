@@ -9,6 +9,7 @@ import ShareButton from "@/app/components/ShareButton";
 import { isWithinFreeAccessWindow } from "@/app/lib/contentAccess";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { formatFrameTypeLabel } from "@/app/lib/uiText";
+import { PRODUCT_NAME } from "@/src/lib/brand";
 import { getMessages } from "@/src/lib/i18n/messages";
 import type { Locale } from "@/src/lib/i18n/locale";
 import { useLocale } from "@/src/lib/i18n/useLocale";
@@ -603,7 +604,7 @@ export default function EpisodesView({
                               {isSelected ? t.hideScript : t.viewScript}
                             </button>
                             <ShareButton
-                              title={episode.title ?? "AI Podcast"}
+                              title={episode.title ?? PRODUCT_NAME}
                               text={episode.preview_text ?? undefined}
                               url={`/decisions/${episode.id}`}
                               page="/episodes"

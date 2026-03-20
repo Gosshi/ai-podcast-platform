@@ -1,15 +1,16 @@
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
+import { DEFAULT_SITE_URL, PRODUCT_NAME, SITE_NAME } from "@/src/lib/brand";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600; // Cache for 1 hour
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://handan-no-jikan.com";
-const PODCAST_TITLE = "判断のじかん — AI Podcast";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL;
+const PODCAST_TITLE = SITE_NAME;
 const PODCAST_DESCRIPTION =
   "AIが毎朝ポッドキャストを自動生成。通勤中に聴くだけで、サブスク・買い物・エンタメの判断が整理される。";
 const PODCAST_LANGUAGE = "ja";
-const PODCAST_AUTHOR = "判断のじかん";
-const PODCAST_EMAIL = "hello@handan-no-jikan.com";
+const PODCAST_AUTHOR = PRODUCT_NAME;
+const PODCAST_EMAIL = "hello@signal-move.com";
 const PODCAST_CATEGORY = "Technology";
 const PODCAST_IMAGE = `${SITE_URL}/api/og/cover`;
 

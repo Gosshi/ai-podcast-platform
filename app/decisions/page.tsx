@@ -11,6 +11,7 @@ import { loadPublishedEpisodes } from "@/app/lib/episodes";
 import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
 import { formatGenreLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
+import { PRODUCT_NAME } from "@/src/lib/brand";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
@@ -77,7 +78,7 @@ export default async function DecisionsPage({
         {latestEpisode ? (
           <div className={styles.playerHeroActions}>
             <ShareButton
-              title={latestEpisode.title ?? "AI Podcast"}
+              title={latestEpisode.title ?? PRODUCT_NAME}
               text={latestEpisode.description ?? undefined}
               url={`/decisions/${latestEpisode.id}`}
               page="/decisions"

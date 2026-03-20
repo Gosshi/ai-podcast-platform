@@ -2,11 +2,12 @@ import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import TrackedLink from "@/app/components/TrackedLink";
 import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
 import { getViewerFromCookies } from "@/app/lib/viewer";
+import { BRAND_NAME, SITE_NAME } from "@/src/lib/brand";
 import styles from "./home.module.css";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
-  title: "通勤中に聴くだけで、今日の情報が整理される | AI Podcast",
+  title: `通勤中に聴くだけで、今日の情報が整理される | ${SITE_NAME}`,
   description: "最新トレンドからAIが毎日ポッドキャストを生成。聴くだけで情報が整理され、要点をカードで確認できる。"
 };
 
@@ -52,7 +53,7 @@ export default async function HomePage() {
         {/* --- Hero --- */}
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>AI Podcast</p>
+            <p className={styles.eyebrow}>{BRAND_NAME}</p>
             <h1>通勤中に聴くだけで、今日の情報が整理される。</h1>
             <p className={styles.lead}>
               最新トレンドからAIがエピソードを毎日生成。
