@@ -3,6 +3,10 @@ import { jsonResponse, checkRateLimit } from "@/app/lib/apiResponse";
 import { generalLimiter, extractRateLimitKey } from "@/app/lib/rateLimit";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import {
+  describeNotificationPreferenceChanges,
+  notifyAccountChange
+} from "@/app/lib/accountSecurityNotifications";
+import {
   loadUserNotificationPreferences,
   upsertUserNotificationPreferences
 } from "@/app/lib/userNotificationPreferences";
@@ -59,6 +63,11 @@ export async function POST(request: Request) {
     return jsonResponse({ ok: false, error: "invalid_notification_preferences" }, 400);
   }
 
+  const current = await loadUserNotificationPreferences(viewer.userId);
+  if (current.error) {
+    return jsonResponse({ ok: false, error: current.error }, 500);
+  }
+
   const { preferences, error } = await upsertUserNotificationPreferences(viewer.userId, {
     weeklyDigestEnabled,
     deadlineAlertEnabled,
@@ -67,6 +76,23 @@ export async function POST(request: Request) {
 
   if (error) {
     return jsonResponse({ ok: false, error }, 500);
+  }
+
+  const changes = describeNotificationPreferenceChanges(current.preferences, preferences);
+  if (changes.length > 0) {
+    void notifyAccountChange({
+      email: viewer.email,
+      request,
+      changeLabel: "通知設定",
+      changes
+    }).then((notification) => {
+      if (!notification.ok && notification.error) {
+        console.error("notification_preferences_email_error", {
+          error: notification.error,
+          userId: viewer.userId
+        });
+      }
+    });
   }
 
   return jsonResponse({

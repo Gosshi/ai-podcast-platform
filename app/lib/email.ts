@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { BRAND_NAME } from "@/src/lib/brand";
+import { BRAND_NAME } from "../../src/lib/brand.ts";
 
 const getResendClient = (): Resend | null => {
   const apiKey = process.env.RESEND_API_KEY?.trim();

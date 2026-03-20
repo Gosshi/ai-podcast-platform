@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from "@/app/lib/authCookies";
 import { verifyCsrfOrigin } from "@/app/lib/csrf";
+import { notifyLoginIfNeeded } from "@/app/lib/accountSecurityNotifications";
+import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 
 const json = (body: Record<string, unknown>, status = 200) => NextResponse.json(body, { status });
 
@@ -32,6 +34,28 @@ export async function POST(request: Request) {
 
   if (typeof body.refreshToken === "string" && body.refreshToken.trim()) {
     cookieStore.set(REFRESH_TOKEN_COOKIE, body.refreshToken.trim(), common);
+  }
+
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase.auth.getUser(body.accessToken.trim());
+    if (!error && data.user) {
+      const notification = await notifyLoginIfNeeded({
+        user: data.user,
+        request
+      });
+
+      if (!notification.ok && notification.error) {
+        console.error("login_notification_error", {
+          error: notification.error,
+          userId: data.user.id
+        });
+      }
+    }
+  } catch (error) {
+    console.error("login_notification_unexpected_error", {
+      error: error instanceof Error ? error.message : "unknown_error"
+    });
   }
 
   return json({ ok: true });

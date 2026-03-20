@@ -1,0 +1,93 @@
+name: Weekly Security Scan
+
+on:
+  schedule:
+    # Monday 03:00 JST
+    - cron: "0 18 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Run npm audit
+        run: |
+          mkdir -p reports
+          set +e
+          npm audit --omit=dev --audit-level=high --json > reports/npm-audit.json
+          status=$?
+          echo "$status" > reports/npm-audit.exitcode
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "High severity vulnerability detected by npm audit."
+          fi
+
+      - name: Upload dependency audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-report
+          path: reports/npm-audit.*
+
+      - name: Fail when audit detects high severity issues
+        run: |
+          status=$(cat reports/npm-audit.exitcode)
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
+
+  zap-baseline:
+    runs-on: ubuntu-latest
+    env:
+      APP_URL: https://signal-move.com
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run ZAP baseline scan
+        run: |
+          mkdir -p reports
+          set +e
+          docker run --rm \
+            -v "$PWD/reports:/zap/wrk/:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t "$APP_URL" \
+            -J zap-report.json \
+            -w zap-report.md \
+            -x zap-report.xml \
+            -r zap-report.html
+          status=$?
+          echo "$status" > reports/zap.exitcode
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "ZAP baseline reported warnings or failures."
+          fi
+
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-baseline-report
+          path: reports/zap-report.*
+
+      - name: Fail when ZAP baseline reports issues
+        run: |
+          status=$(cat reports/zap.exitcode)
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
