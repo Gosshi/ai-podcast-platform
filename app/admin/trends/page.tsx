@@ -82,7 +82,7 @@ const loadTrends = async (): Promise<{ rows: TrendRow[]; error: string | null }>
 };
 
 export default async function AdminTrendsPage() {
-  await requireAdmin();
+  await requireAdmin("/admin/trends");
   const { rows, error } = await loadTrends();
 
   return (

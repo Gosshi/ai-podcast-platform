@@ -39,7 +39,7 @@ const loadAnalyticsEvents = async (): Promise<{ rows: AnalyticsEventRow[]; error
 };
 
 export default async function AdminAnalyticsPage() {
-  await requireAdmin();
+  await requireAdmin("/admin/analytics");
   const { rows, error } = await loadAnalyticsEvents();
   const overview = buildAnalyticsOverview(rows, WINDOW_DAYS);
 
@@ -168,4 +168,3 @@ export default async function AdminAnalyticsPage() {
     </main>
   );
 }
-

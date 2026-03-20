@@ -300,6 +300,11 @@ STRIPE_PRICE_PRO_MONTHLY=
 # Cron
 CRON_SECRET=                              # Cron エンドポイント認証
 
+# Admin
+ADMIN_EMAILS=your-email@example.com
+ADMIN_ACCESS_SECRET=replace-with-long-random-secret
+ADMIN_ACCESS_PASSCODE=replace-with-admin-passcode
+
 # エピソード生成
 GENERATE_INTERVAL_DAYS=2
 SCRIPT_TARGET_CHARS_JA=4600
