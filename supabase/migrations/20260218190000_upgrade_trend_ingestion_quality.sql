@@ -19,7 +19,7 @@ set
   normalized_title_hash = coalesce(
     normalized_title_hash,
     encode(
-      digest(
+      extensions.digest(
         lower(regexp_replace(coalesce(title, ''), '[[:punct:][:space:]]+', '', 'g')),
         'sha256'
       ),
@@ -29,7 +29,7 @@ set
   normalized_hash = coalesce(
     normalized_hash,
     encode(
-      digest(
+      extensions.digest(
         lower(regexp_replace(coalesce(title, ''), '[[:punct:][:space:]]+', '', 'g')),
         'sha256'
       ),
