@@ -1,0 +1,284 @@
+.page {
+  width: min(780px, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: 1.5rem 0 4rem;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--color-accent);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.pageTitle {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1.2;
+}
+
+.pageLead {
+  margin: 0 0 2rem;
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.section {
+  margin-top: 2.5rem;
+}
+
+.section h2 {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sectionIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.iconListen {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.iconCards {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.iconConsult {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.iconPlan {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.sectionBody {
+  color: var(--color-text-body);
+  line-height: 1.75;
+}
+
+.sectionBody p {
+  margin: 0 0 0.75rem;
+}
+
+.stepList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  counter-reset: step;
+}
+
+.stepItem {
+  counter-increment: step;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.stepItem::before {
+  content: counter(step);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #f8fafc;
+  font-size: 0.8rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.stepContent {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.stepContent strong {
+  font-size: 0.95rem;
+}
+
+.stepContent p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.judgmentGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.judgmentItem {
+  padding: 0.85rem;
+  border-radius: 16px;
+  text-align: center;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.judgmentItem strong {
+  font-size: 0.95rem;
+}
+
+.judgmentItem p {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.judgmentUseNow {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid rgba(22, 163, 74, 0.2);
+}
+
+.judgmentWatch {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.judgmentSkip {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.comparisonTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.comparisonTable th,
+.comparisonTable td {
+  padding: 0.65rem 0.85rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.comparisonTable th {
+  font-weight: 700;
+  color: var(--color-text-primary);
+  background: var(--color-bg-subtle);
+}
+
+.comparisonTable td:first-child {
+  font-weight: 600;
+}
+
+.checkMark {
+  color: #16a34a;
+}
+
+.faqList {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.faqItem {
+  padding: 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.faqItem dt {
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.faqItem dd {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: 1.65;
+  font-size: 0.92rem;
+}
+
+.ctaSection {
+  margin-top: 2.5rem;
+  padding: 1.5rem;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: #e2e8f0;
+  text-align: center;
+}
+
+.ctaSection h2 {
+  justify-content: center;
+  color: inherit;
+}
+
+.ctaSection p {
+  margin: 0.5rem 0 1rem;
+  color: #94a3b8;
+}
+
+.ctaButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0 1.5rem;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #0f172a;
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.ctaButton:hover {
+  background: #e2e8f0;
+}
+
+@media (max-width: 600px) {
+  .judgmentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .comparisonTable {
+    font-size: 0.82rem;
+  }
+
+  .comparisonTable th,
+  .comparisonTable td {
+    padding: 0.5rem 0.6rem;
+  }
+}
