@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import DecisionCalculator from "@/app/components/DecisionCalculator";
-import MemberControls from "@/app/components/MemberControls";
 import ShareButton from "@/app/components/ShareButton";
 import { isWithinFreeAccessWindow } from "@/app/lib/contentAccess";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
@@ -493,77 +492,46 @@ export default function EpisodesView({
         }}
       />
       <header className={styles.header}>
-        <div>
-          <h1>{t.pageTitle}</h1>
-          <p className={styles.caption}>{t.caption}</p>
-        </div>
+        <h1>{t.pageTitle}</h1>
 
-        <div className={styles.topControls}>
-          <div className={styles.controlBlock}>
-            <span className={styles.controlLabel}>{t.localeLabel}</span>
-            <div className={styles.toggleGroup} role="group" aria-label={t.localeLabel}>
+        <div className={styles.filterRow}>
+          <div className={styles.toggleGroup} role="group" aria-label={t.filterLabel}>
+            {tabItems.map((tab) => (
               <button
+                key={tab.value}
                 type="button"
-                className={`${styles.toggleButton} ${locale === "ja" ? styles.toggleActive : ""}`.trim()}
-                onClick={() => setLocale("ja")}
-                aria-pressed={locale === "ja"}
+                onClick={() => setViewLangFilter(tab.value)}
+                className={`${styles.toggleButton} ${viewLang === tab.value ? styles.toggleActive : ""}`.trim()}
+                aria-pressed={viewLang === tab.value}
               >
-                {messageSet.common.languageJa}
+                {tab.label}
               </button>
-              <button
-                type="button"
-                className={`${styles.toggleButton} ${locale === "en" ? styles.toggleActive : ""}`.trim()}
-                onClick={() => setLocale("en")}
-                aria-pressed={locale === "en"}
-              >
-                {messageSet.common.languageEn}
-              </button>
-            </div>
+            ))}
           </div>
-
-          <div className={styles.controlBlock}>
-            <span className={styles.controlLabel}>{t.filterLabel}</span>
-            <div className={styles.toggleGroup} role="group" aria-label={t.filterLabel}>
-              {tabItems.map((tab) => (
-                <button
-                  key={tab.value}
-                  type="button"
-                  onClick={() => setViewLangFilter(tab.value)}
-                  className={`${styles.toggleButton} ${viewLang === tab.value ? styles.toggleActive : ""}`.trim()}
-                  aria-pressed={viewLang === tab.value}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+          <div className={styles.toggleGroup} role="group" aria-label={t.localeLabel}>
+            <button
+              type="button"
+              className={`${styles.toggleButton} ${locale === "ja" ? styles.toggleActive : ""}`.trim()}
+              onClick={() => setLocale("ja")}
+              aria-pressed={locale === "ja"}
+            >
+              {messageSet.common.languageJa}
+            </button>
+            <button
+              type="button"
+              className={`${styles.toggleButton} ${locale === "en" ? styles.toggleActive : ""}`.trim()}
+              onClick={() => setLocale("en")}
+              aria-pressed={locale === "en"}
+            >
+              {messageSet.common.languageEn}
+            </button>
           </div>
         </div>
       </header>
 
-      <MemberControls viewer={viewer} analyticsSource="/episodes" variant="compact" />
-
       {loadError ? (
         <p className={styles.errorText}>
           {t.errorPrefix}: {loadError}
-        </p>
-      ) : null}
-
-      {!isPaid ? (
-        <section className={styles.paywallBanner}>
-          <div>
-            <h2>{t.paywallTitle}</h2>
-            <p>{t.paywallCopy}</p>
-          </div>
-          <div className={styles.paywallStats}>
-            <span>{t.previewBadge}</span>
-            <span>{t.membersBadge}</span>
-          </div>
-        </section>
-      ) : null}
-
-      {archiveLockedCount > 0 ? (
-        <p className={styles.archiveNotice}>
-          {t.archiveLockedPrefix}: {archiveLockedCount}
         </p>
       ) : null}
 
@@ -613,10 +581,6 @@ export default function EpisodesView({
 
                           {rows.length > 1 || stripLangSuffix(episode.title) !== group.topic ? (
                             <h3>{episode.title ?? t.untitled}</h3>
-                          ) : null}
-
-                          {episode.preview_text ? (
-                            <p className={styles.previewText}>{episode.preview_text}</p>
                           ) : null}
 
                           <div className={styles.episodeActions}>

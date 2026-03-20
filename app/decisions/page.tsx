@@ -3,7 +3,6 @@ import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import PostListenCTA from "@/app/components/PostListenCTA";
 import GenerateCardForm from "@/app/components/GenerateCardForm";
-import PremiumPreview from "@/app/components/PremiumPreview";
 import ShareButton from "@/app/components/ShareButton";
 import TrackedLink from "@/app/components/TrackedLink";
 import TutorialTrigger from "@/app/components/TutorialTrigger";
@@ -64,13 +63,6 @@ export default async function DecisionsPage({
 
         <div className={styles.playerHeroMeta}>
           <p className={styles.eyebrow}>今日のポッドキャスト</p>
-          {latestEpisode?.description ? (
-            <p className={styles.playerHeroLead}>{latestEpisode.description}</p>
-          ) : !latestEpisode ? (
-            <p className={styles.playerHeroLead}>
-              最新エピソードをまもなくお届けします。
-            </p>
-          ) : null}
         </div>
 
         <PostListenCTA
@@ -118,10 +110,7 @@ export default async function DecisionsPage({
       {judgmentCards.length > 0 ? (
         <section id="topic-cards" className={styles.recommendationSection}>
           <div className={styles.recommendationHeader}>
-            <div>
-              <p className={styles.sectionEyebrow}>トピックカード</p>
-              <h2>エピソードのポイント</h2>
-            </div>
+            <h2>トピックカード</h2>
             <div className={styles.countRow}>
               <span>{judgmentCards.length}件</span>
             </div>
@@ -129,7 +118,7 @@ export default async function DecisionsPage({
 
           <div className={styles.recommendationGrid}>
             {judgmentCards.map((card) => (
-              <article key={card.id} className={styles.recommendationCard}>
+              <article key={card.id} className={`${styles.recommendationCard} ${styles[`card_${card.judgment_type}`] ?? ""}`.trim()}>
                 <AnalyticsEventOnRender
                   eventName="judgment_card_impression"
                   properties={{
@@ -153,36 +142,11 @@ export default async function DecisionsPage({
                     judgment_type: card.judgment_type
                   }}
                 >
-                  <div className={styles.recommendationTopRow}>
-                    <span className={`${styles.badge} ${styles[`badge_${card.judgment_type}`] ?? ""}`.trim()}>
-                      {JUDGMENT_TYPE_LABELS[card.judgment_type]}
-                    </span>
-                    <span className={styles.genreTag}>{formatGenreLabel(card.genre ?? null)}</span>
-                  </div>
+                  <span className={`${styles.judgmentBadgeLarge} ${styles[`judgmentBadge_${card.judgment_type}`] ?? ""}`.trim()}>
+                    {JUDGMENT_TYPE_LABELS[card.judgment_type]}
+                  </span>
                   <h3>{formatTopicTitle(card.topic_title)}</h3>
-                  <p className={styles.summary}>{card.judgment_summary}</p>
-                  {isPaid ? (
-                    <>
-                      {card.action_text ? (
-                        <dl className={styles.metaList}>
-                          <div>
-                            <dt>次の行動</dt>
-                            <dd>{card.action_text}</dd>
-                          </div>
-                        </dl>
-                      ) : null}
-                    </>
-                  ) : (
-                    <PremiumPreview
-                      placeholders={[
-                        { label: "次の行動", value: "具体的な行動を提案します" }
-                      ]}
-                      message="有料版で行動提案を確認"
-                      page="/decisions"
-                      source="episode_card_preview"
-                    />
-                  )}
-                  <p className={styles.episodeLinkText}>詳細を見る</p>
+                  <span className={styles.genreTagInline}>{formatGenreLabel(card.genre ?? null)}</span>
                 </TrackedLink>
               </article>
             ))}
