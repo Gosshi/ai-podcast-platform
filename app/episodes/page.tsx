@@ -6,6 +6,7 @@ import {
   normalizeGenre,
   resolveAllowedGenres
 } from "@/src/lib/genre/allowedGenres";
+import { DEFAULT_SITE_URL, PRODUCT_NAME, SITE_NAME } from "@/src/lib/brand";
 import type { Metadata } from "next";
 import EpisodesView from "./EpisodesView";
 import type { ViewLang } from "./types";
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
   description:
     "テクノロジー・ゲーム・配信・アニメ・映画。ジャンル別にAI生成ポッドキャストを一覧で探せます。",
   openGraph: {
-    title: "エピソード一覧 | 判断のじかん",
+    title: `エピソード一覧 | ${SITE_NAME}`,
     description: "ジャンル別にAI生成ポッドキャストを一覧で探せます。"
   }
 };
@@ -62,12 +63,12 @@ export default async function EpisodesPage({
     isPaid: viewer?.isPaid ?? false
   });
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://handan-no-jikan.com";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL;
 
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "PodcastSeries",
-    name: "判断のじかん",
+    name: PRODUCT_NAME,
     description:
       "AIが毎朝ポッドキャストを自動生成。通勤中に聴くだけで、サブスク・買い物・エンタメの判断が整理される。",
     url: `${siteUrl}/episodes`,
@@ -76,7 +77,7 @@ export default async function EpisodesPage({
     webFeed: `${siteUrl}/episodes`,
     author: {
       "@type": "Organization",
-      name: "判断のじかん"
+      name: PRODUCT_NAME
     }
   };
 

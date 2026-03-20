@@ -3,6 +3,7 @@
 import type { JSX } from "react";
 import { usePathname } from "next/navigation";
 import TrackedLink from "@/app/components/TrackedLink";
+import { BRAND_NAME, PRODUCT_NAME } from "@/src/lib/brand";
 import styles from "./app-navigation.module.css";
 
 const NAV_ITEMS = [
@@ -72,7 +73,8 @@ export default function AppNavigation() {
             destination: "/"
           }}
         >
-          AI Podcast
+          <span className={styles.brandEyebrow}>{BRAND_NAME}</span>
+          <span className={styles.brandTitle}>{PRODUCT_NAME}</span>
         </TrackedLink>
 
         <nav className={styles.nav} aria-label="Primary">
