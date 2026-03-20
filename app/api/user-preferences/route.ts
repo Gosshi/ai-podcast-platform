@@ -5,6 +5,10 @@ import { getViewerFromCookies } from "@/app/lib/viewer";
 import { upsertUserPreferences } from "@/app/lib/userPreferences";
 import { recordAnalyticsEvent } from "@/src/lib/analytics";
 import {
+  describeUserPreferencesChanges,
+  notifyAccountChange
+} from "@/app/lib/accountSecurityNotifications";
+import {
   initializeUserPreferenceProfile,
   validateUserPreferencesInput
 } from "@/src/lib/userPreferences";
@@ -80,6 +84,25 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("user_preferences_analytics_error", { error, userId: viewer.userId });
+  }
+
+  if (!isFirstRun) {
+    const changes = describeUserPreferencesChanges(viewer.preferences, result.preferences);
+    if (changes.length > 0) {
+      void notifyAccountChange({
+        email: viewer.email,
+        request,
+        changeLabel: "ポッドキャストの好み設定",
+        changes
+      }).then((notification) => {
+        if (!notification.ok && notification.error) {
+          console.error("user_preferences_notification_error", {
+            error: notification.error,
+            userId: viewer.userId
+          });
+        }
+      });
+    }
   }
 
   return jsonResponse({
