@@ -49,6 +49,10 @@ type StripeWebhookDeps = {
   insertTip: (tip: InsertTipInput) => Promise<InsertTipResult>;
   upsertProfile: (profile: UpsertProfileInput) => Promise<void>;
   upsertSubscription: (subscription: UpsertSubscriptionInput) => Promise<void>;
+  updateSubscriptionByCheckoutSessionId: (
+    checkoutSessionId: string,
+    subscription: UpsertSubscriptionInput
+  ) => Promise<boolean>;
   findUserByStripeCustomerId: (stripeCustomerId: string) => Promise<UserLookup | null>;
   findSubscriptionByStripeSubscriptionId: (subscriptionId: string) => Promise<UserLookup | null>;
 };
@@ -135,6 +139,25 @@ const createRuntimeDeps = async (): Promise<StripeWebhookDeps> => {
       });
       if (error) throw error;
     },
+    updateSubscriptionByCheckoutSessionId: async (checkoutSessionId: string, subscription: UpsertSubscriptionInput) => {
+      const { data, error } = await supabase
+        .from("subscriptions")
+        .update({
+          user_id: subscription.user_id,
+          plan_type: subscription.plan_type,
+          status: subscription.status,
+          current_period_end: subscription.current_period_end,
+          stripe_customer_id: subscription.stripe_customer_id,
+          stripe_subscription_id: subscription.stripe_subscription_id,
+          cancel_at_period_end: subscription.cancel_at_period_end
+        })
+        .eq("checkout_session_id", checkoutSessionId)
+        .select("id")
+        .limit(1);
+
+      if (error) throw error;
+      return Array.isArray(data) && data.length > 0;
+    },
     findUserByStripeCustomerId: async (stripeCustomerId: string) => {
       const { data, error } = await supabase
         .from("profiles")
@@ -212,12 +235,7 @@ const handleCheckoutSessionCompleted = async (
     });
   }
 
-  await deps.upsertProfile({
-    user_id: userId,
-    stripe_customer_id: stripeCustomerId
-  });
-
-  await deps.upsertSubscription({
+  const subscriptionRecord: UpsertSubscriptionInput = {
     user_id: userId,
     plan_type: parsePlanType(session.metadata),
     status: "incomplete",
@@ -226,7 +244,32 @@ const handleCheckoutSessionCompleted = async (
     stripe_subscription_id: stripeSubscriptionId,
     checkout_session_id: session.id,
     cancel_at_period_end: false
+  };
+
+  await deps.upsertProfile({
+    user_id: userId,
+    stripe_customer_id: stripeCustomerId
   });
+
+  try {
+    await deps.upsertSubscription(subscriptionRecord);
+  } catch (error) {
+    const code =
+      typeof error === "object" && error && "code" in error ? String(error.code) : null;
+
+    if (code !== "23505") {
+      throw error;
+    }
+
+    const updatedExisting = await deps.updateSubscriptionByCheckoutSessionId(
+      session.id,
+      subscriptionRecord
+    );
+
+    if (!updatedExisting) {
+      throw error;
+    }
+  }
 
   await recordAnalyticsEvent({
     eventName: "checkout_completed",
