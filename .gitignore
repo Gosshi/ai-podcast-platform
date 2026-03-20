@@ -33,3 +33,14 @@ pnpm-debug.log*
 # local generated audio
 /public/audio/*
 !/public/audio/.gitkeep
+
+# test artifacts
+/playwright-report/
+/test-results/
+
+# tool logs
+.playwright-mcp/
+firebase-debug.log
+
+# claude code
+.claude/
