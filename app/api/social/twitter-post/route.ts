@@ -65,7 +65,7 @@ const buildEpisodeUrl = (episodeId: string): string => {
     utm_medium: "social",
     utm_campaign: "auto_post",
   });
-  return `${SITE_URL}/episodes/${episodeId}?${params.toString()}`;
+  return `${SITE_URL}/decisions/${episodeId}?${params.toString()}`;
 };
 
 const buildOgImageUrl = (episode: LatestEpisodeRow, cardCount: number): string => {

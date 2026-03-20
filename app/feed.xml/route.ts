@@ -11,7 +11,7 @@ const PODCAST_LANGUAGE = "ja";
 const PODCAST_AUTHOR = "判断のじかん";
 const PODCAST_EMAIL = "hello@handan-no-jikan.com";
 const PODCAST_CATEGORY = "Technology";
-const PODCAST_IMAGE = `${SITE_URL}/api/og`;
+const PODCAST_IMAGE = `${SITE_URL}/api/og/cover`;
 
 const escapeXml = (value: string): string => {
   return value
