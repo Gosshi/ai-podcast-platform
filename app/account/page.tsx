@@ -110,7 +110,13 @@ export default async function AccountPage({
           <div className={styles.heroCopy}>
             <p className={styles.eyebrow}>アカウント</p>
             <h1>プランと請求の管理</h1>
-            {subscription === "success" && viewer?.isPaid ? (
+            {subscription === "success" && viewer?.subscriptionStatus === "trialing" ? (
+              <p className={`${styles.statusMessage} ${styles.success}`}>
+                7日間の無料トライアルが開始されました。
+                {currentPeriodEnd !== "-" ? ` ${currentPeriodEnd} までは無料で利用でき、その後は月額プランに切り替わります。` : ""}
+              </p>
+            ) : null}
+            {subscription === "success" && viewer?.isPaid && viewer?.subscriptionStatus !== "trialing" ? (
               <p className={`${styles.statusMessage} ${styles.success}`}>
                 有料会員への切り替えが完了しました。フルスクリプト・行動提案・アーカイブ無制限が使えます。
               </p>

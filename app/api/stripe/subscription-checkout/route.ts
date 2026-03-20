@@ -1,6 +1,7 @@
 import { verifyCsrfOrigin } from "@/app/lib/csrf";
 import { jsonResponse, getRequiredEnv, checkRateLimit } from "@/app/lib/apiResponse";
 import { paymentLimiter, extractRateLimitKey } from "@/app/lib/rateLimit";
+import { getStripeTrialConsumedStatuses, resolveStripeTrialDays } from "@/app/lib/stripeTrial";
 import { getViewerFromCookies } from "../../../lib/viewer";
 import { createServiceRoleClient } from "../../../lib/supabaseClients";
 import { recordAnalyticsEvent } from "@/src/lib/analytics";
@@ -35,6 +36,21 @@ const getStripeCustomerId = async (userId: string): Promise<string | null> => {
   }
 
   return data?.stripe_customer_id ?? null;
+};
+
+const hasStartedPaidSubscriptionBefore = async (userId: string): Promise<boolean> => {
+  const supabase = createServiceRoleClient();
+  const { count, error } = await supabase
+    .from("subscriptions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .in("status", getStripeTrialConsumedStatuses());
+
+  if (error) {
+    throw error;
+  }
+
+  return (count ?? 0) > 0;
 };
 
 const updateProfileCustomerId = async (userId: string, stripeCustomerId: string): Promise<void> => {
@@ -110,6 +126,11 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const origin = getOrigin(request);
     let stripeCustomerId = await getStripeCustomerId(viewer.userId);
+    const configuredTrialDays = resolveStripeTrialDays();
+    const trialDays =
+      configuredTrialDays > 0 && !(await hasStartedPaidSubscriptionBefore(viewer.userId))
+        ? configuredTrialDays
+        : null;
 
     if (!stripeCustomerId) {
       const customer = await stripe.customers.create({
@@ -139,6 +160,7 @@ export async function POST(request: Request): Promise<Response> {
         plan_type: "pro_monthly"
       },
       subscription_data: {
+        ...(trialDays ? { trial_period_days: trialDays } : {}),
         metadata: {
           user_id: viewer.userId,
           plan_type: "pro_monthly"
@@ -164,7 +186,8 @@ export async function POST(request: Request): Promise<Response> {
         page: source,
         source: source ? `subscription_checkout:${source}` : "subscription_checkout",
         plan_type: "pro_monthly",
-        checkout_session_id: session.id
+        checkout_session_id: session.id,
+        trial_days: trialDays ?? 0
       }
     }).catch((error) => {
       console.error("checkout_started_analytics_error", { error, userId: viewer.userId });
