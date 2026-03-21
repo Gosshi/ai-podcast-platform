@@ -1,21 +1,26 @@
 # ai-podcast-platform
 
-今日見るもの、続けるもの、見送るものを決めるためのサービスです。
-エンタメ視聴とサブスクの迷いを、AIと履歴で整理します。
+`判断のじかん by SignalMove` のアプリケーションです。
+AIポッドキャスト、判断カード、履歴、振り返りで「今日どうするか」を決めやすくします。
 
 ## Product Concept
-- ブランド: `15分で、今日の“時間単価と支出効率”を決めるニュース`
+- ブランド: `判断のじかん by SignalMove`
 - 提供価値: 解説ではなく、個人が「今日どう行動するか」を決める判断支援
 - 対象: 忙しい社会人 / サブスク整理層 / エンタメに時間を使いすぎたくない人
 - 判断モデル: [Decision Framework Models](docs/decision-framework.md)
+
+## Current Product Status
+- 現在の主要 surface: `/`, `/guide`, `/account`, `/decisions`, `/episodes`, `/history`, `/history/replay/[id]`, `/alerts`
+- 課金差分の中心: フルスクリプト、行動提案、見直しタイミング、履歴の振り返り、alerts、過去アーカイブ、AI相談
+- `README` 内の `/decisions/library` `/watchlist` `/weekly-decisions` は roadmap / design memo を含みます。現時点の公開 route ではありません。
 
 ## First-Time UX
 - ランディングページの目的:
   `/` は初見ユーザー向けの入口です。「何のサービスか」「何ができるか」「何をすればいいか」を最短で伝えます。
 - サービス説明:
   AIが、あなたの好みや過去の判断をもとに、今日のおすすめ判断を提案します。迷った判断を保存し、結果を振り返り、次の判断をより良くできます。
-- ナビゲーション方針:
-  グローバルナビは `Home / Decisions / Library / History / Account` に絞り、初回利用で役割が分かる構成にします。
+- 主要導線:
+  初回利用では `Home / Decisions / Episodes / History / Alerts / Account` が役割の分かる入口です。
 - 初回導線:
   まず `/` で概要を見る
   好みを入れたい場合は `/onboarding` へ進む
@@ -93,7 +98,7 @@
 
 ### Demo Users
 - `demo-free@local.test`: free gating、preview、件数制限、archive lock の確認用
-- `demo-paid@local.test`: personal hint、full library、alerts、replay、profile、next best decision の確認用
+- `demo-paid@local.test`: personal hint、alerts、replay、profile、next best decision の確認用
 - seed 上の password は両方とも `local-demo-pass`
 - 開発中は `/dev/demo-login` が最短です。必要なら password grant や Magic Link でも入れます
 
@@ -104,26 +109,24 @@
    free / paid バッジ、プラン名、status、好み設定導線を確認
 3. `/decisions`
    今日のおすすめ、判断カード、好み設定プロンプト、free の locked panel、paid の personal hint を確認
-4. `/decisions/library`
-   genre / frame / urgency filter、free preview 制限、paid の全件アクセスを確認
+4. `/episodes`
+   最新エピソード、フルスクリプト、アーカイブ制限、判断カード preview を確認
 5. `/history`
    outcome 混在、replay 導線、paid の Personal Decision Profile を確認
 6. `/history/replay/<decision_id>`
    judgment / outcome / insight の読み返しを確認
-7. `/watchlist`
-   `saved / watching / archived` と episode / history / replay への戻り導線を確認
-8. `/alerts`
+7. `/alerts`
    `deadline_due_soon / outcome_reminder / weekly_digest_ready / watchlist_due_soon` を確認
 
 ### Free / Paid Quick Checks
 - free:
   `/decisions` と `/episodes` で locked panel が出る
 - free:
-  `/decisions/library` は recent preview まで、`/history` は10件上限表示、`/watchlist` は active 5件上限文言が出る
+  `/history` は10件上限表示、`/alerts` は preview 表示になる
 - free:
   8日以上前の episode は archive lock される
 - paid:
-  `/decisions` で personal hint、`/history` で full profile、`/alerts` で full inbox、`/watchlist` で urgency が見える
+  `/decisions` で personal hint、`/history` で full profile、`/alerts` で full inbox が見える
 - paid:
   older archive と replay insight まで確認できる
 
@@ -134,9 +137,7 @@
 - グローバルナビを押す: `nav_click`
 - `/decisions` を開く: `page_view`, `decisions_view`, `judgment_card_impression`
 - `/decisions` の冒頭説明表示: `decisions_intro_impression`
-- `/decisions/library` で search / filter / sort: `library_search`, `library_filter_change`, `library_sort_change`
 - `/history` から replay を開く: `decision_replay_from_history_click`, `decision_replay_view`
-- `/watchlist` の link を押す: `watchlist_card_click`
 - `/alerts` を開く: `alerts_view`, `alert_impression`
 
 ```sql
@@ -148,6 +149,8 @@ order by 2 desc, 1 asc;
 ```
 
 ## Paid Membership MVP
+- note:
+  `/decisions/library` `/watchlist` `/weekly-decisions` に関する記述は roadmap を含みます。現在の公開面は `Current Product Status` を参照してください。
 - 会員状態は `profiles` と `subscriptions` で管理します
 - `free` / `paid` 判定は `subscriptions.status` が `trialing | active | past_due` かどうかで決まります
 - `/account` ではプラン名、購読ステータス、次回更新日、支払い状態を見やすく表示します
