@@ -2,6 +2,11 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import {
+  buildAudioStorageObjectPath,
+  canUseSupabaseAudioStorage,
+  resolveAudioStorageBucket
+} from "@/src/lib/audioStorage";
+import {
   localTtsProvider,
   openAiTtsProvider,
   voicevoxTtsProvider,
@@ -252,6 +257,42 @@ const writeAudioFile = async (params: {
   bytes: Uint8Array;
   format: TtsAudioFormat;
 }): Promise<string> => {
+  if (canUseSupabaseAudioStorage()) {
+    try {
+      const supabase = createServiceRoleClient();
+      const bucket = resolveAudioStorageBucket();
+      const objectPath = buildAudioStorageObjectPath({
+        episodeId: params.episodeId,
+        lang: params.lang,
+        audioVersion: params.audioVersion,
+        format: params.format
+      });
+      const { error } = await supabase.storage.from(bucket).upload(objectPath, params.bytes, {
+        contentType: FORMAT_TO_CONTENT_TYPE[params.format],
+        cacheControl: "31536000",
+        upsert: true
+      });
+
+      if (error) {
+        throw new TtsApiError(500, "audio_upload_failed", error.message);
+      }
+
+      const { data } = supabase.storage.from(bucket).getPublicUrl(objectPath);
+      if (!data.publicUrl) {
+        throw new TtsApiError(500, "audio_public_url_failed", "Failed to resolve audio public URL");
+      }
+
+      return data.publicUrl;
+    } catch (error) {
+      if (error instanceof TtsApiError) {
+        throw error;
+      }
+
+      const message = error instanceof Error ? error.message : "audio_upload_failed";
+      throw new TtsApiError(500, "audio_upload_failed", message);
+    }
+  }
+
   const outputDir = path.join(process.cwd(), "public", "audio");
   await fs.mkdir(outputDir, { recursive: true });
 
