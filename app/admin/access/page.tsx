@@ -45,8 +45,8 @@ export default async function AdminAccessPage({
         <p className={styles.eyebrow}>Admin Access</p>
         <h1 className={styles.title}>管理者アクセスの追加確認</h1>
         <p className={styles.lead}>
-          管理画面には通常の会員ログインに加えて、管理者専用の追加パスコードが必要です。
-          誤入力が10回続くと一定時間ロックされます。
+          管理画面には通常の会員ログインに加えて、登録済み管理者メール宛てに送信される
+          ワンタイム確認コードが必要です。誤入力が10回続くと一定時間ロックされます。
         </p>
 
         <AdminAccessForm nextPath={nextPath} />

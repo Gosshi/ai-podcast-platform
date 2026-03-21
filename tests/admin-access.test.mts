@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 process.env.ADMIN_ACCESS_SECRET = "test-admin-secret";
-process.env.ADMIN_ACCESS_PASSCODE = "123456";
 
 const adminAccess = await import("../app/lib/adminAccessToken.ts");
 
@@ -57,10 +56,36 @@ test("admin access cookie rejects expired token", () => {
   assert.equal(ok, false);
 });
 
-test("admin passcode uses exact timing-safe comparison", () => {
-  assert.equal(adminAccess.isValidAdminPasscode("123456", process.env.ADMIN_ACCESS_PASSCODE!), true);
-  assert.equal(adminAccess.isValidAdminPasscode("1234567", process.env.ADMIN_ACCESS_PASSCODE!), false);
-  assert.equal(adminAccess.isValidAdminPasscode("654321", process.env.ADMIN_ACCESS_PASSCODE!), false);
+test("admin access code uses exact hash comparison", () => {
+  const hash = adminAccess.hashAdminAccessCode(
+    "11111111-1111-4111-8111-111111111111",
+    "123456",
+    process.env.ADMIN_ACCESS_SECRET!
+  );
+
+  assert.equal(
+    adminAccess.verifyAdminAccessCode(
+      "11111111-1111-4111-8111-111111111111",
+      "123456",
+      hash,
+      process.env.ADMIN_ACCESS_SECRET!
+    ),
+    true
+  );
+  assert.equal(
+    adminAccess.verifyAdminAccessCode(
+      "11111111-1111-4111-8111-111111111111",
+      "123450",
+      hash,
+      process.env.ADMIN_ACCESS_SECRET!
+    ),
+    false
+  );
+});
+
+test("generated admin code is always six digits", () => {
+  const code = adminAccess.generateAdminAccessCode();
+  assert.equal(/^\d{6}$/.test(code), true);
 });
 
 test("normalizeAdminNextPath only allows admin paths", () => {

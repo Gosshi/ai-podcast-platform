@@ -1,6 +1,7 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 
 export const ADMIN_ACCESS_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 12;
+export const ADMIN_ACCESS_OTP_TTL_MINUTES = 10;
 const DEFAULT_ADMIN_NEXT_PATH = "/admin/trends";
 
 type AdminAccessPayload = {
@@ -70,9 +71,30 @@ export const verifyAdminAccessCookieValue = (
   return timingSafeEqual(receivedBuffer, expectedBuffer);
 };
 
-export const isValidAdminPasscode = (input: string, expected: string): boolean => {
-  const inputBuffer = Buffer.from(input.trim());
-  const expectedBuffer = Buffer.from(expected);
+export const generateAdminAccessCode = (): string => {
+  return String(randomInt(0, 1_000_000)).padStart(6, "0");
+};
+
+export const isValidAdminAccessCodeFormat = (input: string): boolean => {
+  return /^\d{6}$/.test(input.trim());
+};
+
+export const hashAdminAccessCode = (userId: string, code: string, secret: string): string => {
+  return createHmac("sha256", secret).update(`${userId}.${code.trim()}`).digest("hex");
+};
+
+export const verifyAdminAccessCode = (
+  userId: string,
+  input: string,
+  expectedHash: string,
+  secret: string
+): boolean => {
+  if (!isValidAdminAccessCodeFormat(input)) {
+    return false;
+  }
+
+  const inputBuffer = Buffer.from(hashAdminAccessCode(userId, input, secret));
+  const expectedBuffer = Buffer.from(expectedHash);
   if (inputBuffer.length !== expectedBuffer.length) {
     return false;
   }
