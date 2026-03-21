@@ -43,7 +43,7 @@ const resolveOpenAiFormat = (): string => {
     return value;
   }
 
-  return "wav";
+  return "mp3";
 };
 
 const resolveOpenAiSpeed = (): number | null => {

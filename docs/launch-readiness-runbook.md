@@ -36,6 +36,7 @@
   - `itunes:type=episodic`
   - item ごとの `itunes:episodeType`
   - 音声 URL 拡張子に応じた `enclosure type`
+  - feed には `MP3/AAC/M4A` の公開音声だけを載せる
 - 本番確認結果:
   - `2026-03-21` 時点で `https://signal-move.com/feed.xml` は channel 自体は配信されているが、`<item>` が 0 件
 - 申請前の必須確認:
@@ -44,8 +45,9 @@
   - Apple Podcasts 提出用として、公開音声フォーマットが `MP3` または `AAC` であることを確認すること
 
 補足:
-- 現行パイプラインは `local/VOICEVOX` 系では `.wav` を生成する実装が残っている
-- feed 側の MIME 誤表示は修正したが、Apple 提出可否は実ファイル形式に依存する
+- OpenAI TTS の既定フォーマットは `mp3` に寄せた
+- `feed.xml` は `wav` を除外するため、`published` でも `audio_url` が `.wav` のままだと item に出ない
+- Apple 提出可否は feed XML ではなく実ファイル形式に依存する
 
 ### 3. アフィリエイト URL
 
@@ -91,6 +93,7 @@
 ## 申請前コマンド
 
 ```bash
+npm run podcast:check
 curl -fsSL https://signal-move.com/feed.xml | sed -n '1,220p'
 ```
 

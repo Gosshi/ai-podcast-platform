@@ -1,5 +1,5 @@
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
-import { buildPodcastFeedXml } from "@/src/lib/podcastFeed";
+import { buildPodcastFeedXml, isPodcastCompatibleAudioUrl } from "@/src/lib/podcastFeed";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600; // Cache for 1 hour
@@ -31,7 +31,9 @@ export async function GET(): Promise<Response> {
     return new Response("Internal Server Error", { status: 500 });
   }
 
-  const items = (episodes as EpisodeRow[] | null) ?? [];
+  const items = ((episodes as EpisodeRow[] | null) ?? []).filter((episode) =>
+    isPodcastCompatibleAudioUrl(episode.audio_url)
+  );
   const xml = buildPodcastFeedXml(
     items.map((ep) => ({
       id: ep.id,
