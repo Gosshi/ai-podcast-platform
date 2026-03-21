@@ -1,5 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import {
+  extractClientIp,
+  hasValidAdminBasicAuth,
+  isAdminPerimeterEnabled,
+  isAdminPerimeterTarget,
+  isIpAllowed,
+  parseAdminIpRules
+} from "@/app/lib/adminPerimeter";
 
 /**
  * Next.js Middleware — Centralized authentication gate.
@@ -51,6 +59,33 @@ const isProtectedPath = (pathname: string): boolean => {
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (isAdminPerimeterTarget(pathname) && isAdminPerimeterEnabled()) {
+    const ipRules = parseAdminIpRules(process.env.ADMIN_IP_ALLOWLIST ?? "");
+    const ipAllowed = ipRules.length > 0 && isIpAllowed(extractClientIp(request.headers), ipRules);
+    const basicAuthAllowed = hasValidAdminBasicAuth(
+      request.headers.get("authorization"),
+      process.env.ADMIN_BASIC_AUTH_USER,
+      process.env.ADMIN_BASIC_AUTH_PASSWORD
+    );
+
+    if (!ipAllowed && !basicAuthAllowed) {
+      const hasBasicAuthConfigured = Boolean(
+        process.env.ADMIN_BASIC_AUTH_USER?.trim() && process.env.ADMIN_BASIC_AUTH_PASSWORD?.trim()
+      );
+
+      if (hasBasicAuthConfigured) {
+        return new NextResponse("Authentication required", {
+          status: 401,
+          headers: {
+            "WWW-Authenticate": 'Basic realm="SignalMove Admin"'
+          }
+        });
+      }
+
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+  }
 
   // Skip API routes, static assets, and Next.js internals
   if (shouldSkip(pathname)) {

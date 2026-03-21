@@ -1,7 +1,7 @@
-import type { ViewerState } from "@/app/lib/viewer";
-import { createServiceRoleClient } from "@/app/lib/supabaseClients";
-import type { AnalyticsEventName } from "./events";
-import { sanitizeAnalyticsProperties, type AnalyticsProperties } from "./shared";
+import type { ViewerState } from "../../../app/lib/viewer.ts";
+import { createServiceRoleClient } from "../../../app/lib/supabaseClients.ts";
+import type { AnalyticsEventName } from "./events.ts";
+import { sanitizeAnalyticsProperties, type AnalyticsProperties } from "./shared.ts";
 
 type RecordAnalyticsEventInput = {
   eventName: AnalyticsEventName;
