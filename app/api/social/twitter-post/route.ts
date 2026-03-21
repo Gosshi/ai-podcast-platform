@@ -4,6 +4,10 @@ import { jsonResponse } from "@/app/lib/apiResponse";
 import { verifyCronSecret } from "@/app/lib/cronAuth";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import { DEFAULT_SITE_URL } from "@/src/lib/brand";
+import {
+  publishPostToX,
+  resolveXAutoPostStatus
+} from "@/src/lib/social/xPublisher";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL;
 
@@ -112,42 +116,117 @@ const buildTweetText = (
   return `${header}${descPart}${cardLine}${footer}`;
 };
 
-export async function GET(request: Request) {
+const buildTweetPayload = async (): Promise<{
+  tweet: string;
+  episodeId: string;
+  episodeTitle: string | null;
+  ogImageUrl: string;
+} | null> => {
+  const { episode, cardCount, error } = await fetchLatestJapaneseEpisode();
+  if (error) {
+    throw new Error(error);
+  }
+
+  if (!episode) {
+    return null;
+  }
+
+  const episodeUrl = buildEpisodeUrl(episode.id);
+  const ogImageUrl = buildOgImageUrl(episode, cardCount);
+
+  return {
+    tweet: buildTweetText(episode, cardCount, episodeUrl),
+    episodeId: episode.id,
+    episodeTitle: episode.title,
+    ogImageUrl
+  };
+};
+
+const verifyCronRequest = (request: Request): Response | null => {
   const cronAuth = verifyCronSecret(request);
   if (!cronAuth.ok) {
     return jsonResponse({ ok: false, error: cronAuth.error }, cronAuth.status);
   }
 
+  return null;
+};
+
+export async function GET(request: Request) {
+  const authError = verifyCronRequest(request);
+  if (authError) return authError;
+
   try {
-    const { episode, cardCount, error } = await fetchLatestJapaneseEpisode();
-
-    if (error) {
-      return jsonResponse({ ok: false, error }, 500);
+    const payload = await buildTweetPayload();
+    if (!payload) {
+      return jsonResponse({ ok: false, error: "no_published_episode_found" }, 404);
     }
 
-    if (!episode) {
-      return jsonResponse(
-        { ok: false, error: "no_published_episode_found" },
-        404
-      );
-    }
-
-    const episodeUrl = buildEpisodeUrl(episode.id);
-    const ogImageUrl = buildOgImageUrl(episode, cardCount);
-    const tweet = buildTweetText(episode, cardCount, episodeUrl);
+    const publishStatus = resolveXAutoPostStatus();
 
     return jsonResponse({
       ok: true,
-      tweet,
-      episodeId: episode.id,
-      episodeTitle: episode.title,
-      ogImageUrl,
+      ...payload,
+      publishEnabled: publishStatus.enabled,
+      publishConfigured: publishStatus.configured,
+      missingKeys: publishStatus.missingKeys
     });
   } catch (err) {
     return jsonResponse(
       {
         ok: false,
-        error: err instanceof Error ? err.message : "unexpected_error",
+        error: err instanceof Error ? err.message : "unexpected_error"
+      },
+      500
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  const authError = verifyCronRequest(request);
+  if (authError) return authError;
+
+  try {
+    const payload = await buildTweetPayload();
+    if (!payload) {
+      return jsonResponse({ ok: false, error: "no_published_episode_found" }, 404);
+    }
+
+    const publishStatus = resolveXAutoPostStatus();
+    if (!publishStatus.enabled) {
+      return jsonResponse(
+        {
+          ok: false,
+          error: "x_auto_post_disabled",
+          missingKeys: publishStatus.missingKeys
+        },
+        503
+      );
+    }
+
+    if (!publishStatus.configured) {
+      return jsonResponse(
+        {
+          ok: false,
+          error: "x_credentials_not_configured",
+          missingKeys: publishStatus.missingKeys
+        },
+        503
+      );
+    }
+
+    const published = await publishPostToX(payload.tweet);
+
+    return jsonResponse({
+      ok: true,
+      ...payload,
+      postId: published.id,
+      postUrl: `https://x.com/i/web/status/${published.id}`
+    });
+  } catch (err) {
+    return jsonResponse(
+      {
+        ok: false,
+        error: err instanceof Error ? err.message : "unexpected_error"
       },
       500
     );

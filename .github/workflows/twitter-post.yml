@@ -12,28 +12,40 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - name: Generate tweet content
-        id: generate
+      - name: Publish to Twitter/X
+        id: publish
         run: |
-          RESPONSE=$(curl -sf \
+          RESPONSE=$(curl -sS -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -w '\n%{http_code}' \
             "${{ secrets.APP_BASE_URL }}/api/social/twitter-post")
-          echo "tweet=$(echo "$RESPONSE" | jq -r '.tweet')" >> "$GITHUB_OUTPUT"
-          echo "episode_id=$(echo "$RESPONSE" | jq -r '.episodeId')" >> "$GITHUB_OUTPUT"
-          echo "og_image_url=$(echo "$RESPONSE" | jq -r '.ogImageUrl')" >> "$GITHUB_OUTPUT"
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          STATUS=$(echo "$RESPONSE" | tail -n1)
+          ERROR=$(echo "$BODY" | jq -r '.error // empty')
 
-      - name: Post to Twitter/X
-        if: steps.generate.outputs.tweet != ''
-        env:
-          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
-          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
-          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
-          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+          if [ "$STATUS" = "200" ]; then
+            echo "episode_id=$(echo "$BODY" | jq -r '.episodeId')" >> "$GITHUB_OUTPUT"
+            echo "post_id=$(echo "$BODY" | jq -r '.postId')" >> "$GITHUB_OUTPUT"
+            echo "post_url=$(echo "$BODY" | jq -r '.postUrl')" >> "$GITHUB_OUTPUT"
+            echo "tweet=$(echo "$BODY" | jq -r '.tweet')" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$STATUS" = "503" ] && { [ "$ERROR" = "x_auto_post_disabled" ] || [ "$ERROR" = "x_credentials_not_configured" ]; }; then
+            echo "Skipping X auto-post: $ERROR"
+            echo "$BODY"
+            exit 0
+          fi
+
+          echo "$BODY"
+          exit 1
+
+      - name: Report publish result
+        if: steps.publish.outputs.post_id != ''
         run: |
-          echo "Tweet content generated for episode: ${{ steps.generate.outputs.episode_id }}"
+          echo "Posted episode: ${{ steps.publish.outputs.episode_id }}"
           echo "---"
-          echo "${{ steps.generate.outputs.tweet }}"
+          echo "${{ steps.publish.outputs.tweet }}"
           echo "---"
-          echo "OG Image: ${{ steps.generate.outputs.og_image_url }}"
-          echo ""
-          echo "Configure Twitter API credentials in repository secrets to enable auto-posting."
+          echo "Post URL: ${{ steps.publish.outputs.post_url }}"

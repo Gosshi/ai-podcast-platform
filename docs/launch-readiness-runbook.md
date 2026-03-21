@@ -62,13 +62,15 @@
 ### 4. X 自動投稿
 
 - 現状の GitHub Actions workflow:
-  - `app/api/social/twitter-post` で投稿文と OG URL を生成
-  - `.github/workflows/twitter-post.yml` は現在まだ「生成内容を出力するだけ」で、X API への実投稿はしていない
+  - `app/api/social/twitter-post` の `GET` は投稿文 preview
+  - `app/api/social/twitter-post` の `POST` は `X_AUTO_POST_ENABLED=true` かつ X credentials 設定済みなら実投稿
+  - `.github/workflows/twitter-post.yml` は publish endpoint を叩き、未設定時は skip、設定済みなら実投稿する
 - launch 判定:
-  - 「自動投稿を必須にする」なら未完
-  - 「投稿文の自動生成まででよい」なら運用可
+  - `X_AUTO_POST_ENABLED=false` の間は dry-run 相当
+  - 実運用するなら env を有効化し、手動 dispatch で 1 回確認する
 
 本番確認項目:
+- `X_AUTO_POST_ENABLED`
 - `APP_BASE_URL`
 - `CRON_SECRET`
 - `TWITTER_API_KEY`
