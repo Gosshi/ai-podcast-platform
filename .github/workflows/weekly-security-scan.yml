@@ -63,6 +63,7 @@ jobs:
           mkdir -p reports
           set +e
           docker run --rm \
+            --user root \
             -v "$PWD/reports:/zap/wrk/:rw" \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
@@ -83,7 +84,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: zap-baseline-report
-          path: reports/zap-report.*
+          path: |
+            reports/zap-report.*
+            reports/zap.exitcode
 
       - name: Fail when ZAP baseline reports issues
         run: |
