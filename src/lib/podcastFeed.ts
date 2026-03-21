@@ -1,4 +1,5 @@
 import { DEFAULT_SITE_URL, PRODUCT_NAME, SITE_NAME } from "./brand.ts";
+import { buildPublicEpisodePath } from "./episodeLinks.ts";
 
 export const PODCAST_FEED_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL;
 export const PODCAST_FEED_TITLE = SITE_NAME;
@@ -58,7 +59,7 @@ export const resolveAudioContentType = (audioUrl: string): string => {
 };
 
 const resolveEpisodeUrl = (episodeId: string): string => {
-  return `${PODCAST_FEED_SITE_URL}/decisions/${episodeId}`;
+  return `${PODCAST_FEED_SITE_URL}${buildPublicEpisodePath(episodeId)}`;
 };
 
 const buildItemXml = (episode: PodcastFeedEpisode): string => {

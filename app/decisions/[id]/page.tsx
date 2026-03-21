@@ -22,6 +22,7 @@ import {
 } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
+import { buildPublicEpisodePath } from "@/src/lib/episodeLinks";
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
@@ -93,6 +94,7 @@ export default async function EpisodeDetailPage({
     isPaid: viewer.isPaid,
     userId: viewer.userId
   });
+  const publicEpisodePath = buildPublicEpisodePath(id);
 
   if (!episode && !error) {
     notFound();
@@ -134,7 +136,7 @@ export default async function EpisodeDetailPage({
                 <ShareButton
                   title={formatEpisodeTitle(episode.title)}
                   text={episode.description ?? undefined}
-                  url={`/decisions/${id}`}
+                  url={publicEpisodePath}
                   page={`/decisions/${id}`}
                   source="episode_detail"
                   episodeId={episode.id}

@@ -1,0 +1,300 @@
+.page {
+  width: min(1080px, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: 1.4rem 0 4rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.backRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+}
+
+.backRow a {
+  color: #475569;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.hero,
+.playerSection,
+.section,
+.upgradeCard,
+.errorText,
+.emptyState {
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.06);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.92fr);
+  gap: 1rem;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at top left, rgba(249, 115, 22, 0.14), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.1), transparent 34%),
+    rgba(255, 255, 255, 0.96);
+}
+
+.heroCopy {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #c2410c;
+}
+
+.heroCopy h1,
+.sectionHeader h2,
+.card h3,
+.upgradeCard h2 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.lead,
+.summaryText,
+.upgradeCard p,
+.list li,
+.metaList dd,
+.errorText,
+.emptyState {
+  color: #475569;
+  line-height: 1.7;
+}
+
+.lead,
+.summaryText,
+.upgradeCard p,
+.errorText,
+.emptyState {
+  margin: 0;
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.metaRow span,
+.summaryBadge,
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.metaRow span,
+.pill {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.summaryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.summaryBadge {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.playerSection,
+.section,
+.upgradeCard,
+.errorText,
+.emptyState {
+  padding: 1.25rem;
+}
+
+.playerActions,
+.ctaRow {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.primaryLink,
+.secondaryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 700;
+  padding: 0 1rem;
+}
+
+.primaryLink {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.secondaryLink {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.section {
+  display: grid;
+  gap: 1rem;
+}
+
+.sectionHeader {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.cardGrid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.card {
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: #f8fafc;
+  padding: 1rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.65rem;
+  align-items: flex-start;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.badge_use_now {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge_watch {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.badge_skip {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.metaList {
+  margin: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.metaList div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.metaList dt {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.metaList dd {
+  margin: 0;
+}
+
+.list {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.scriptBlock {
+  margin: 0;
+  border-radius: 18px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 1rem;
+  white-space: pre-wrap;
+  line-height: 1.75;
+  max-height: 34rem;
+  overflow: auto;
+}
+
+.upgradeCard {
+  background: linear-gradient(145deg, rgba(255, 247, 237, 0.98), rgba(255, 255, 255, 0.95));
+}
+
+.upgradeList {
+  margin: 0.3rem 0 0;
+  padding-left: 1.15rem;
+  display: grid;
+  gap: 0.45rem;
+  color: #334155;
+}
+
+@media (max-width: 940px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    width: min(100vw, calc(100vw - 1.25rem));
+    padding-top: 0.9rem;
+  }
+
+  .hero,
+  .playerSection,
+  .section,
+  .upgradeCard,
+  .errorText,
+  .emptyState {
+    border-radius: 20px;
+    padding: 1rem;
+  }
+
+  .card {
+    border-radius: 18px;
+    padding: 0.9rem;
+  }
+}

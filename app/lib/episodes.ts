@@ -134,10 +134,15 @@ const buildFreeJudgmentPreview = (cards: EpisodeJudgmentCardState[]): EpisodeJud
 const mapEpisodeRow = (
   episode: EpisodeQueryRow,
   judgmentCards: EpisodeJudgmentCardState[],
-  isPaid: boolean
+  isPaid: boolean,
+  options?: {
+    previewArchivedEpisodes?: boolean;
+  }
 ): PublishedEpisodeRow => {
+  const previewArchivedEpisodes = options?.previewArchivedEpisodes ?? false;
   const archiveLocked = !isPaid && !isWithinFreeAccessWindow(resolveFreeAccessKey(episode));
-  const visibleJudgmentCards = archiveLocked
+  const canShowPreview = !archiveLocked || previewArchivedEpisodes;
+  const visibleJudgmentCards = !canShowPreview
     ? []
     : isPaid
       ? judgmentCards
@@ -151,16 +156,26 @@ const mapEpisodeRow = (
     status: episode.status,
     title: episode.title,
     description: episode.description,
-    preview_text: archiveLocked ? null : buildPreviewText(episode),
+    preview_text: canShowPreview ? buildPreviewText(episode) : null,
     full_script: resolveFullScript(episode, isPaid, archiveLocked),
     judgment_cards: visibleJudgmentCards,
     judgment_card_count: judgmentCards.length,
-    judgment_cards_preview_limited: !isPaid && !archiveLocked && judgmentCards.length > 0,
+    judgment_cards_preview_limited: !isPaid && canShowPreview && judgmentCards.length > 0,
     archive_locked: archiveLocked,
     audio_url: episode.audio_url,
     published_at: episode.published_at,
     created_at: episode.created_at
   };
+};
+
+const mapPublicEpisodeRow = (
+  episode: EpisodeQueryRow,
+  judgmentCards: EpisodeJudgmentCardState[],
+  isPaid: boolean
+): PublishedEpisodeRow => {
+  return mapEpisodeRow(episode, judgmentCards, isPaid, {
+    previewArchivedEpisodes: true
+  });
 };
 
 const loadJudgmentCardsByEpisode = async (
@@ -284,6 +299,25 @@ export const loadPublishedEpisodeById = async (params: {
   isPaid: boolean;
   userId?: string | null;
 }): Promise<{ episode: PublishedEpisodeRow | null; error: string | null }> => {
+  return loadEpisodeById(params, false);
+};
+
+export const loadPublicEpisodeById = async (params: {
+  episodeId: string;
+  isPaid: boolean;
+  userId?: string | null;
+}): Promise<{ episode: PublishedEpisodeRow | null; error: string | null }> => {
+  return loadEpisodeById(params, true);
+};
+
+const loadEpisodeById = async (
+  params: {
+    episodeId: string;
+    isPaid: boolean;
+    userId?: string | null;
+  },
+  previewArchivedEpisodes: boolean
+): Promise<{ episode: PublishedEpisodeRow | null; error: string | null }> => {
   try {
     const supabase = createServiceRoleClient();
     const { data, error } = await supabase
@@ -330,7 +364,7 @@ export const loadPublishedEpisodeById = async (params: {
       : { watchlist: new Map(), error: null };
 
     return {
-      episode: mapEpisodeRow(
+      episode: (previewArchivedEpisodes ? mapPublicEpisodeRow : mapEpisodeRow)(
         episode,
         attachWatchlistState<SavedJudgmentCard>(
           attachSavedDecisionState(judgmentCards, savedDecisions),
