@@ -12,6 +12,9 @@ import OutcomeReminderSection from "@/app/components/OutcomeReminderSection";
 import RemoveDecisionButton from "@/app/components/RemoveDecisionButton";
 import TrackedLink from "@/app/components/TrackedLink";
 import {
+  buildDecisionReplayPath,
+} from "@/app/lib/decisionReplay";
+import {
   DECISION_TYPE_LABELS,
   formatDecisionOutcomeLabel,
   formatDecisionHistoryDate,
@@ -332,13 +335,14 @@ export default async function HistoryPage() {
                 {entry.source === "episode" ? (
                   <div className={styles.cardFooter}>
                     <TrackedLink
-                      href={`/decisions/${entry.episode_id}`}
+                      href={buildDecisionReplayPath(entry.id)}
                       className={styles.replayLink}
                       eventName="decision_replay_from_history_click"
                       eventProperties={{
                         page: "/history",
                         source: "history_list_card",
                         decision_id: entry.id,
+                        destination: buildDecisionReplayPath(entry.id),
                         episode_id: entry.episode_id,
                         judgment_card_id: entry.judgment_card_id,
                         genre: entry.genre ?? undefined,
