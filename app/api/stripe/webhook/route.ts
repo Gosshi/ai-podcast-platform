@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { recordAnalyticsEvent } from "@/src/lib/analytics";
+import { recordAnalyticsEvent } from "../../../../src/lib/analytics/server.ts";
 
 export const runtime = "nodejs";
 
@@ -57,7 +57,7 @@ type StripeWebhookDeps = {
   findSubscriptionByStripeSubscriptionId: (subscriptionId: string) => Promise<UserLookup | null>;
 };
 
-import { jsonResponse, getRequiredEnv } from "@/app/lib/apiResponse";
+import { jsonResponse, getRequiredEnv } from "../../../lib/apiResponse.ts";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -115,7 +115,7 @@ const readSubscriptionCurrentPeriodEnd = (subscription: Stripe.Subscription): st
 };
 
 const createRuntimeDeps = async (): Promise<StripeWebhookDeps> => {
-  const { createServiceRoleClient } = await import("../../../lib/supabaseClients");
+  const { createServiceRoleClient } = await import("../../../lib/supabaseClients.ts");
   const stripe = new Stripe(getRequiredEnv("STRIPE_SECRET_KEY"));
   const webhookSecret = getRequiredEnv("STRIPE_WEBHOOK_SECRET");
   const supabase = createServiceRoleClient();

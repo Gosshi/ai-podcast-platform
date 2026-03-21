@@ -303,6 +303,9 @@ CRON_SECRET=                              # Cron エンドポイント認証
 # Admin
 ADMIN_EMAILS=your-email@example.com
 ADMIN_ACCESS_SECRET=replace-with-long-random-secret
+ADMIN_IP_ALLOWLIST=
+ADMIN_BASIC_AUTH_USER=
+ADMIN_BASIC_AUTH_PASSWORD=
 RESEND_API_KEY=re_xxxx
 EMAIL_FROM=SignalMove <noreply@signal-move.com>
 
