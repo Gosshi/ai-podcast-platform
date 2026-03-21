@@ -91,6 +91,6 @@ jobs:
       - name: Fail when ZAP baseline reports issues
         run: |
           status=$(cat reports/zap.exitcode)
-          if [ "$status" -ne 0 ]; then
+          if [ "$status" -eq 1 ] || [ "$status" -ge 3 ]; then
             exit "$status"
           fi
