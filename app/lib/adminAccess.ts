@@ -1,27 +1,25 @@
 import { cookies } from "next/headers";
 import {
   ADMIN_ACCESS_COOKIE_MAX_AGE_SECONDS,
+  ADMIN_ACCESS_OTP_TTL_MINUTES,
   createAdminAccessCookieValue as createCookieValue,
-  isValidAdminPasscode as isValidPasscode,
+  generateAdminAccessCode as generateCode,
+  hashAdminAccessCode as hashCode,
   normalizeAdminNextPath,
+  verifyAdminAccessCode as verifyCode,
   verifyAdminAccessCookieValue as verifyCookieValue
 } from "./adminAccessToken";
 
 export const ADMIN_ACCESS_COOKIE = "app_admin_access";
-export { ADMIN_ACCESS_COOKIE_MAX_AGE_SECONDS, normalizeAdminNextPath };
+export { ADMIN_ACCESS_COOKIE_MAX_AGE_SECONDS, ADMIN_ACCESS_OTP_TTL_MINUTES, normalizeAdminNextPath };
 
 const getAdminAccessSecret = (): string | null => {
   const value = process.env.ADMIN_ACCESS_SECRET?.trim();
   return value ? value : null;
 };
 
-const getAdminAccessPasscode = (): string | null => {
-  const value = process.env.ADMIN_ACCESS_PASSCODE?.trim();
-  return value ? value : null;
-};
-
 export const isAdminAccessGateEnabled = (): boolean => {
-  return Boolean(getAdminAccessSecret() && getAdminAccessPasscode());
+  return Boolean(getAdminAccessSecret());
 };
 
 export const createAdminAccessCookieValue = (userId: string, now = Date.now()): string => {
@@ -60,11 +58,24 @@ export const hasValidAdminAccessCookie = async (expectedUserId: string): Promise
   return verifyAdminAccessCookieValue(value, expectedUserId);
 };
 
-export const isValidAdminPasscode = (input: string): boolean => {
-  const expected = getAdminAccessPasscode();
-  if (!expected) {
+export const generateAdminAccessCode = (): string => {
+  return generateCode();
+};
+
+export const hashAdminAccessCode = (userId: string, code: string): string => {
+  const secret = getAdminAccessSecret();
+  if (!secret) {
+    throw new Error("ADMIN_ACCESS_SECRET is required");
+  }
+
+  return hashCode(userId, code, secret);
+};
+
+export const verifyAdminAccessCode = (userId: string, input: string, expectedHash: string): boolean => {
+  const secret = getAdminAccessSecret();
+  if (!secret) {
     return false;
   }
 
-  return isValidPasscode(input, expected);
+  return verifyCode(userId, input, expectedHash, secret);
 };

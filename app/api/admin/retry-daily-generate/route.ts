@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/app/lib/adminGuard";
+import { verifyCsrfOrigin } from "@/app/lib/csrf";
+import { adminLimiter, extractRateLimitKey } from "@/app/lib/rateLimit";
+import { checkRateLimit } from "@/app/lib/apiResponse";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -59,6 +62,26 @@ const buildResponse = (value: RetryResponse, status?: number) => {
 };
 
 export async function POST(req: NextRequest) {
+  const rateLimitResponse = checkRateLimit(adminLimiter, extractRateLimitKey(req));
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
+  const csrf = verifyCsrfOrigin(req);
+  if (!csrf.ok) {
+    return buildResponse(
+      {
+        ok: false,
+        disabled: true,
+        episodeDate: resolveJstTodayDate(),
+        runId: null,
+        status: 403,
+        error: csrf.error
+      },
+      403
+    );
+  }
+
   const supabaseUrl = resolveSupabaseUrl();
   const functionsBaseUrl = resolveFunctionsBaseUrl(supabaseUrl);
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? null;

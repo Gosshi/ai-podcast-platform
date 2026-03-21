@@ -128,6 +128,12 @@ export const paymentLimiter = createRateLimiter("payment", {
   windowMs: 60_000
 });
 
+/** Admin authentication and control operations: 10 req / 10 min */
+export const adminLimiter = createRateLimiter("admin", {
+  maxRequests: 10,
+  windowMs: 10 * 60_000
+});
+
 /** Analytics tracking: 60 req/min (high volume, lightweight) */
 export const analyticsLimiter = createRateLimiter("analytics", {
   maxRequests: 60,

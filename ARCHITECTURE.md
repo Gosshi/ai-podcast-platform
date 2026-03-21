@@ -303,7 +303,8 @@ CRON_SECRET=                              # Cron エンドポイント認証
 # Admin
 ADMIN_EMAILS=your-email@example.com
 ADMIN_ACCESS_SECRET=replace-with-long-random-secret
-ADMIN_ACCESS_PASSCODE=replace-with-admin-passcode
+RESEND_API_KEY=re_xxxx
+EMAIL_FROM=SignalMove <noreply@signal-move.com>
 
 # エピソード生成
 GENERATE_INTERVAL_DAYS=2
