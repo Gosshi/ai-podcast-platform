@@ -235,7 +235,7 @@ const resolveOpenAiFormat = (format?: TtsAudioFormat): TtsAudioFormat => {
   if (configured && OPENAI_TTS_FORMATS.has(configured)) {
     return configured;
   }
-  return "wav";
+  return "mp3";
 };
 
 const resolveOpenAiSpeed = (speed?: number): number | undefined => {

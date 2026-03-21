@@ -15,6 +15,7 @@
     "test": "node --experimental-strip-types --experimental-specifier-resolution=node --test tests/**/*.test.mts",
     "test:e2e": "npx playwright test",
     "quality:check": "node --experimental-strip-types scripts/scriptQualityCheck.mts",
+    "podcast:check": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/check-podcast-readiness.mts",
     "test:stripe-fixtures": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/test-stripe-webhook-fixtures.mts"
   },
   "dependencies": {

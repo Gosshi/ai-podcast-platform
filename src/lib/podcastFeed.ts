@@ -24,6 +24,8 @@ export type PodcastFeedEpisode = {
   genre: string | null;
 };
 
+const PODCAST_COMPATIBLE_AUDIO_EXTENSIONS = new Set(["mp3", "aac", "m4a"]);
+
 export const escapeXml = (value: string): string => {
   return value
     .replace(/&/g, "&amp;")
@@ -56,6 +58,26 @@ export const resolveAudioContentType = (audioUrl: string): string => {
   if (normalized.endsWith(".wav")) return "audio/wav";
 
   return "audio/mpeg";
+};
+
+export const resolveAudioExtension = (audioUrl: string | null): string | null => {
+  const value = audioUrl?.trim();
+  if (!value) return null;
+
+  try {
+    const normalized = new URL(value, PODCAST_FEED_SITE_URL).pathname.toLowerCase();
+    const match = normalized.match(/\.([a-z0-9]+)$/);
+    return match?.[1] ?? null;
+  } catch {
+    const normalized = value.toLowerCase().split("?")[0]?.split("#")[0] ?? "";
+    const match = normalized.match(/\.([a-z0-9]+)$/);
+    return match?.[1] ?? null;
+  }
+};
+
+export const isPodcastCompatibleAudioUrl = (audioUrl: string | null): boolean => {
+  const extension = resolveAudioExtension(audioUrl);
+  return extension ? PODCAST_COMPATIBLE_AUDIO_EXTENSIONS.has(extension) : false;
 };
 
 const resolveEpisodeUrl = (episodeId: string): string => {
