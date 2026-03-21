@@ -20,6 +20,15 @@ export type AffiliateLink = {
   active: boolean;
 };
 
+const envAffiliateUrl = (name: string): string | null => {
+  const value = process.env[name]?.trim();
+  if (!value || value.includes("example.com")) {
+    return null;
+  }
+
+  return value;
+};
+
 /**
  * Registry of affiliate links.
  * In production, this could be loaded from a database or CMS.
@@ -29,42 +38,42 @@ export const AFFILIATE_LINKS: AffiliateLink[] = [
   {
     name: "U-NEXT",
     description: "31日間無料トライアル。映画・アニメ・ドラマが見放題",
-    url: "https://example.com/affiliate/unext", // Replace with actual affiliate URL
+    url: envAffiliateUrl("NEXT_PUBLIC_AFFILIATE_URL_UNEXT") ?? "",
     category: "streaming",
     keywords: ["netflix", "動画", "映画", "アニメ", "ドラマ", "配信", "VOD", "サブスク"],
-    active: true,
+    active: Boolean(envAffiliateUrl("NEXT_PUBLIC_AFFILIATE_URL_UNEXT"))
   },
   {
     name: "Amazon Audible",
     description: "30日間無料体験。ビジネス書・小説をながら聴き",
-    url: "https://example.com/affiliate/audible",
+    url: envAffiliateUrl("NEXT_PUBLIC_AFFILIATE_URL_AUDIBLE") ?? "",
     category: "saas",
     keywords: ["読書", "オーディオブック", "ながら聴き", "本", "ビジネス書"],
-    active: true,
+    active: Boolean(envAffiliateUrl("NEXT_PUBLIC_AFFILIATE_URL_AUDIBLE"))
   },
   {
     name: "1Password",
     description: "パスワード管理の定番。14日間無料",
-    url: "https://example.com/affiliate/1password",
+    url: envAffiliateUrl("NEXT_PUBLIC_AFFILIATE_URL_1PASSWORD") ?? "",
     category: "saas",
     keywords: ["パスワード", "セキュリティ", "管理ツール", "SaaS"],
-    active: true,
+    active: Boolean(envAffiliateUrl("NEXT_PUBLIC_AFFILIATE_URL_1PASSWORD"))
   },
   {
     name: "NordVPN",
     description: "オンラインプライバシーを守る。30日間返金保証",
-    url: "https://example.com/affiliate/nordvpn",
+    url: envAffiliateUrl("NEXT_PUBLIC_AFFILIATE_URL_NORDVPN") ?? "",
     category: "saas",
     keywords: ["VPN", "セキュリティ", "プライバシー", "ネット"],
-    active: true,
+    active: Boolean(envAffiliateUrl("NEXT_PUBLIC_AFFILIATE_URL_NORDVPN"))
   },
   {
     name: "Xbox Game Pass",
     description: "数百タイトルが定額で遊べる。初月100円",
-    url: "https://example.com/affiliate/gamepass",
+    url: envAffiliateUrl("NEXT_PUBLIC_AFFILIATE_URL_GAMEPASS") ?? "",
     category: "gaming",
     keywords: ["ゲーム", "Game Pass", "Xbox", "サブスク", "積みゲー"],
-    active: true,
+    active: Boolean(envAffiliateUrl("NEXT_PUBLIC_AFFILIATE_URL_GAMEPASS"))
   },
 ];
 

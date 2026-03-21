@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import AppNavigation from "@/app/components/AppNavigation";
+import SiteFooter from "@/app/components/SiteFooter";
 import { DEFAULT_SITE_URL, SITE_NAME } from "@/src/lib/brand";
 import "./globals.css";
 
@@ -57,6 +58,7 @@ export default function RootLayout({
         />
         <AppNavigation />
         {children}
+        <SiteFooter />
       </body>
     </html>
   );

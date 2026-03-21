@@ -4,6 +4,7 @@ import { paymentLimiter, extractRateLimitKey } from "@/app/lib/rateLimit";
 import { getViewerFromCookies } from "../../../lib/viewer";
 import { createServiceRoleClient } from "../../../lib/supabaseClients";
 import { recordAnalyticsEvent } from "@/src/lib/analytics";
+import { resolveSubscriptionTrialDays } from "@/src/lib/subscriptionPlan";
 import Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -109,6 +110,7 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     const origin = getOrigin(request);
+    const trialDays = resolveSubscriptionTrialDays();
     let stripeCustomerId = await getStripeCustomerId(viewer.userId);
 
     if (!stripeCustomerId) {
@@ -139,6 +141,7 @@ export async function POST(request: Request): Promise<Response> {
         plan_type: "pro_monthly"
       },
       subscription_data: {
+        ...(trialDays > 0 ? { trial_period_days: trialDays } : {}),
         metadata: {
           user_id: viewer.userId,
           plan_type: "pro_monthly"
@@ -164,7 +167,8 @@ export async function POST(request: Request): Promise<Response> {
         page: source,
         source: source ? `subscription_checkout:${source}` : "subscription_checkout",
         plan_type: "pro_monthly",
-        checkout_session_id: session.id
+        checkout_session_id: session.id,
+        trial_days: trialDays
       }
     }).catch((error) => {
       console.error("checkout_started_analytics_error", { error, userId: viewer.userId });

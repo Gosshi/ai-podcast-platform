@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import TrackedLink from "@/app/components/TrackedLink";
+import { MONTHLY_PRICE_YEN, resolveSubscriptionTrialLabel } from "@/src/lib/subscriptionPlan";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
@@ -10,6 +11,8 @@ export const metadata: Metadata = {
 };
 
 export default function GuidePage() {
+  const trialLabel = resolveSubscriptionTrialLabel();
+
   return (
     <main className={styles.page}>
       <Link href="/decisions" className={styles.backLink}>
@@ -123,7 +126,7 @@ export default function GuidePage() {
               <tr>
                 <th>機能</th>
                 <th>無料版</th>
-                <th>有料版（¥780/月）</th>
+                <th>有料版（¥{MONTHLY_PRICE_YEN}/月）</th>
               </tr>
             </thead>
             <tbody>
@@ -159,9 +162,7 @@ export default function GuidePage() {
               </tr>
             </tbody>
           </table>
-          <p style={{ marginTop: "0.75rem" }}>
-            7 日間の無料トライアルで、有料版のすべての機能を試せます。
-          </p>
+          {trialLabel ? <p style={{ marginTop: "0.75rem" }}>{trialLabel}。有料版のすべての機能を試せます。</p> : null}
         </div>
       </section>
 

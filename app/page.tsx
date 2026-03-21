@@ -3,12 +3,14 @@ import TrackedLink from "@/app/components/TrackedLink";
 import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import { BRAND_NAME, SITE_NAME } from "@/src/lib/brand";
+import { MONTHLY_PRICE_YEN, resolveSubscriptionTrialLabel } from "@/src/lib/subscriptionPlan";
 import styles from "./home.module.css";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
-  title: `通勤中に聴くだけで、今日の情報が整理される | ${SITE_NAME}`,
-  description: "最新トレンドからAIが毎日ポッドキャストを生成。聴くだけで情報が整理され、要点をカードで確認できる。"
+  title: `聴くだけで、今日やるか見送るかが決まる | ${SITE_NAME}`,
+  description:
+    "AIポッドキャストと判断カードで、サブスク・買い物・AIツールの迷いを毎朝整理。聴いたあとに次の行動まで決められる。"
 };
 
 const SAMPLE_EPISODES = [
@@ -37,6 +39,7 @@ const SAMPLE_EPISODES = [
 
 export default async function HomePage() {
   const viewer = await getViewerFromCookies();
+  const trialLabel = resolveSubscriptionTrialLabel();
 
   const onboardingHref = buildOnboardingPath("/decisions");
   const loginHref = buildLoginPath("/decisions");
@@ -54,10 +57,10 @@ export default async function HomePage() {
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <p className={styles.eyebrow}>{BRAND_NAME}</p>
-            <h1>通勤中に聴くだけで、今日の情報が整理される。</h1>
+            <h1>聴くだけで、今日やるか見送るかが決まる。</h1>
             <p className={styles.lead}>
-              最新トレンドからAIがエピソードを毎日生成。
-              イヤホンで聴くだけで、最新情報のキャッチアップが終わります。
+              AI が毎朝エピソードを生成し、サブスク・買い物・AIツールの迷いを整理。
+              聴いたあとに判断カードで、やる・様子見・見送りまでそのまま決められます。
             </p>
 
             <div className={styles.ctaRow}>
@@ -89,16 +92,16 @@ export default async function HomePage() {
 
             <div className={styles.stats}>
               <article className={styles.stat}>
-                <span>ながら聴き</span>
-                <strong>通勤・家事の合間に5〜10分</strong>
+                <span>判断支援</span>
+                <strong>迷いを「やる・様子見・見送り」に分ける</strong>
               </article>
               <article className={styles.stat}>
                 <span>毎日更新</span>
-                <strong>AIが毎朝エピソードを自動生成</strong>
+                <strong>毎朝のエピソードで意思決定を先回り</strong>
               </article>
               <article className={styles.stat}>
-                <span>トピックカード</span>
-                <strong>聴いた内容を行動に変える</strong>
+                <span>次の一手</span>
+                <strong>聴いた内容をそのまま行動に変える</strong>
               </article>
             </div>
           </div>
@@ -108,9 +111,9 @@ export default async function HomePage() {
               <span className={styles.sampleLabel}>Now Playing</span>
               <span className={styles.sampleBadge}>8分</span>
             </div>
-            <h2>今週チェックすべきAIツール3選</h2>
+            <h2>今月見直すべきサブスク3つ</h2>
             <p className={styles.sampleSummary}>
-              話題のAIツールを実用性の視点で比較し、今すぐ試すべきかお伝えします。
+              利用頻度、代替手段、来月の支出を見ながら、残す・止める・あとで見直すを整理します。
             </p>
             <div className={styles.sampleWave}>
               <div className={styles.waveBar} />
@@ -129,11 +132,11 @@ export default async function HomePage() {
             <dl className={styles.sampleMeta}>
               <div>
                 <dt>ジャンル</dt>
-                <dd>テクノロジー</dd>
+                <dd>マネー / サブスク</dd>
               </div>
               <div>
-                <dt>トピックカード</dt>
-                <dd>3件のポイント</dd>
+                <dt>判断カード</dt>
+                <dd>解約・継続・保留の3件</dd>
               </div>
             </dl>
           </aside>
@@ -148,15 +151,15 @@ export default async function HomePage() {
           <div className={styles.featureGrid}>
             <article className={styles.featureCard}>
               <h3>1. 好みを30秒で設定</h3>
-              <p>関心のあるジャンルを選ぶだけ。AIが最新トレンドからエピソードを毎朝つくります。</p>
+              <p>関心のあるテーマを選ぶだけ。毎朝のエピソードが、あなた向けの判断トピックに寄ります。</p>
             </article>
             <article className={styles.featureCard}>
               <h3>2. 通勤中にイヤホンで聴く</h3>
-              <p>5〜10分のエピソードだから、電車1駅分でインプット完了。ながら聴きに最適です。</p>
+              <p>5〜10分で背景と論点を把握。読む時間を使わず、判断に必要な材料だけ先に入ります。</p>
             </article>
             <article className={styles.featureCard}>
               <h3>3. カードでポイントを確認</h3>
-              <p>聴き終わったらトピックカードで要点をチェック。採用するか見送るかをワンタップで整理。</p>
+              <p>聴いたあとに判断カードを確認。やる・様子見・見送りと次の一手をその場で決められます。</p>
             </article>
           </div>
         </section>
@@ -199,7 +202,7 @@ export default async function HomePage() {
               <div className={styles.membershipPrice}>
                 <span>¥0</span>
               </div>
-              <h3>毎日聴いて情報をキャッチアップ</h3>
+              <h3>毎日聴いて、迷いを整理する</h3>
               <ul className={styles.membershipList}>
                 <li>毎日のエピソード再生</li>
                 <li>トピックカードのタイトルと概要</li>
@@ -212,12 +215,12 @@ export default async function HomePage() {
                 <span className={styles.membershipRecommendBadge}>おすすめ</span>
               </div>
               <div className={styles.membershipPrice}>
-                <span>月額 ¥780</span>
+                <span>月額 ¥{MONTHLY_PRICE_YEN}</span>
                 <span className={styles.membershipPriceSuffix}>/ 月</span>
               </div>
               <p className={styles.membershipPriceTax}>(税込)</p>
-              <span className={styles.membershipTrialBadge}>7日間無料で試す</span>
-              <h3>フルスクリプトと行動提案でもっと深く</h3>
+              {trialLabel ? <span className={styles.membershipTrialBadge}>{trialLabel}</span> : null}
+              <h3>行動提案と振り返りで、判断を積み上げる</h3>
               <ul className={styles.membershipList}>
                 <li>エピソードのフルスクリプト</li>
                 <li>トピックカードの行動提案とタイミング</li>
@@ -244,7 +247,7 @@ export default async function HomePage() {
         <section className={`${styles.section} ${styles.ctaSection}`.trim()}>
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>はじめよう</p>
-            <h2>明日の通勤から、聴くだけインプット。</h2>
+            <h2>明日の通勤から、判断の先送りを減らす。</h2>
           </div>
           <div className={styles.ctaRow}>
             <TrackedLink
