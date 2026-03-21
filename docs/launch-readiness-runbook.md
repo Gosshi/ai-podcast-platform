@@ -37,6 +37,7 @@
   - item ごとの `itunes:episodeType`
   - 音声 URL 拡張子に応じた `enclosure type`
   - feed には `MP3/AAC/M4A` の公開音声だけを載せる
+  - `/api/tts` は本番では `Supabase Storage` の `audio` bucket に保存する
 - 本番確認結果:
   - `2026-03-21` 時点で `https://signal-move.com/feed.xml` は channel 自体は配信されているが、`<item>` が 0 件
 - 申請前の必須確認:
@@ -48,6 +49,7 @@
 - OpenAI TTS の既定フォーマットは `mp3` に寄せた
 - `feed.xml` は `wav` を除外するため、`published` でも `audio_url` が `.wav` のままだと item に出ない
 - Apple 提出可否は feed XML ではなく実ファイル形式に依存する
+- `audio` bucket migration を本番へ反映していないと、TTS 保存で失敗する
 
 ### 3. アフィリエイト URL
 
