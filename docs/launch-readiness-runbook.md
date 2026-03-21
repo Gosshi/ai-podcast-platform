@@ -20,10 +20,12 @@
 - 本番前に env 設定が必要:
   - `LEGAL_REPRESENTATIVE_NAME`
   - `LEGAL_ADDRESS`
-  - `LEGAL_PHONE_NUMBER`
+  - `LEGAL_PHONE_NUMBER` または `LEGAL_PHONE_DISCLOSURE_MODE=request`
 
 補足:
-- `特定商取引法に基づく表記` は事業者固有情報をまだコードからは推定できないため、上記 3 項目は必ず本番 env で埋める
+- `特定商取引法に基づく表記` は個人開発向けに `LEGAL_PHONE_DISCLOSURE_MODE=request` を選べる
+- この場合、ページ上には「請求があれば遅滞なく開示」と表示し、実際にメールで遅滞なく返せる運用が必要
+- `所在地` はメールアドレスではなく住所。自宅公開を避ける場合はバーチャルオフィス利用を前提にする
 - 利用規約・プライバシーポリシーは現行機能（Supabase / Stripe / Resend / OpenAI / analytics / admin OTP）に合わせて反映済み
 
 ### 2. Podcast RSS

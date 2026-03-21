@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import styles from "@/app/legal/legal-page.module.css";
-import { getMissingCommercialDisclosureFields, LEGAL_INFO } from "@/src/lib/legal";
+import {
+  getCommercialDisclosurePhoneText,
+  getMissingCommercialDisclosureFields,
+  LEGAL_INFO,
+  shouldDisclosePhoneOnRequest
+} from "@/src/lib/legal";
 
 export const metadata: Metadata = {
   title: "特定商取引法に基づく表記",
@@ -22,7 +27,7 @@ const disclosureRows = [
   },
   {
     term: "電話番号",
-    description: LEGAL_INFO.phoneNumber ?? "環境変数 `LEGAL_PHONE_NUMBER` の設定が必要です。"
+    description: getCommercialDisclosurePhoneText()
   },
   {
     term: "お問い合わせ先",
@@ -68,6 +73,7 @@ const disclosureRows = [
 
 export default function CommercialDisclosurePage() {
   const missingFields = getMissingCommercialDisclosureFields();
+  const phoneOnRequest = shouldDisclosePhoneOnRequest();
 
   return (
     <main className={styles.page}>
@@ -78,6 +84,11 @@ export default function CommercialDisclosurePage() {
           <p className={styles.lead}>
             「判断のじかん by SignalMove」の有料サービス提供にあたり、特定商取引法に基づく表示事項を掲載します。
           </p>
+          {phoneOnRequest ? (
+            <p className={styles.note}>
+              個人開発の運用に合わせ、電話番号は請求時開示モードにしています。公開前に請求受付フローと返信体制を確認してください。
+            </p>
+          ) : null}
           {missingFields.length > 0 ? (
             <div className={styles.warning}>
               公開前に {missingFields.join(" / ")} を本番環境変数へ設定してください。
