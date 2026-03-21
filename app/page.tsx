@@ -10,30 +10,30 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: `聴くだけで、今日やるか見送るかが決まる | ${SITE_NAME}`,
   description:
-    "AIポッドキャストと判断カードで、サブスク・買い物・AIツールの迷いを毎朝整理。聴いたあとに次の行動まで決められる。"
+    "毎朝のAIエピソードと判断カードで、サブスク・買い物・AIツールの迷いを整理。聴いたあとに、やる・様子見・見送りと次の一手まで決められる。"
 };
 
 const SAMPLE_EPISODES = [
   {
-    title: "今週チェックすべきAIツール3選",
-    genre: "テクノロジー",
-    duration: "8分",
+    title: "動画サブスク、今月1つ止めるならどれ？",
+    genre: "固定費",
+    duration: "7分",
     cards: 3,
-    summary: "話題のAIツールを実用性の視点で比較し、今すぐ試すべきかお伝えします。"
+    summary: "利用頻度と代替手段を比べて、残す・解約する・保留を切り分けます。"
   },
   {
-    title: "サブスク見直し — 今月解約してもいいもの",
-    genre: "マネー",
+    title: "新しいAIツール、今週試す価値ある？",
+    genre: "AIツール",
     duration: "6分",
     cards: 2,
-    summary: "利用頻度が落ちているサブスクを棚卸しして、解約タイミングを整理します。"
+    summary: "料金、時短効果、乗り換えコストから、今試すか見送るかを整理します。"
   },
   {
-    title: "週末に読むべき記事ダイジェスト",
-    genre: "ニュース",
-    duration: "10分",
-    cards: 4,
-    summary: "今週の注目記事をピックアップし、読むべき優先度とともにお届けします。"
+    title: "話題の記事、読む時間を使うべき？",
+    genre: "情報収集",
+    duration: "5分",
+    cards: 3,
+    summary: "今読む理由、後回しでいい理由、スルーでいい理由を分けて確認します。"
   }
 ] as const;
 
@@ -59,8 +59,9 @@ export default async function HomePage() {
             <p className={styles.eyebrow}>{BRAND_NAME}</p>
             <h1>聴くだけで、今日やるか見送るかが決まる。</h1>
             <p className={styles.lead}>
-              AI が毎朝エピソードを生成し、サブスク・買い物・AIツールの迷いを整理。
-              聴いたあとに判断カードで、やる・様子見・見送りまでそのまま決められます。
+              毎朝の AI エピソードが、サブスク・買い物・AIツールの迷いを先に整理します。
+              聴いた直後に判断カードと次の一手が返るので、
+              やる・様子見・見送りまでその場で決められます。
             </p>
 
             <div className={styles.ctaRow}>
@@ -92,16 +93,16 @@ export default async function HomePage() {
 
             <div className={styles.stats}>
               <article className={styles.stat}>
-                <span>判断支援</span>
-                <strong>迷いを「やる・様子見・見送り」に分ける</strong>
+                <span>5〜10分</span>
+                <strong>通勤中に、迷いの論点だけ先に拾える</strong>
               </article>
               <article className={styles.stat}>
-                <span>毎日更新</span>
-                <strong>毎朝のエピソードで意思決定を先回り</strong>
+                <span>判断カード</span>
+                <strong>やる・様子見・見送りをその場で決める</strong>
               </article>
               <article className={styles.stat}>
-                <span>次の一手</span>
-                <strong>聴いた内容をそのまま行動に変える</strong>
+                <span>積み上げ</span>
+                <strong>履歴と振り返りで、同じ迷いを減らしていく</strong>
               </article>
             </div>
           </div>
@@ -146,20 +147,20 @@ export default async function HomePage() {
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>仕組み</p>
-            <h2>聴くだけで情報が整理される、3ステップ</h2>
+            <h2>迷いを判断に変える、3ステップ</h2>
           </div>
           <div className={styles.featureGrid}>
             <article className={styles.featureCard}>
               <h3>1. 好みを30秒で設定</h3>
-              <p>関心のあるテーマを選ぶだけ。毎朝のエピソードが、あなた向けの判断トピックに寄ります。</p>
+              <p>関心のあるテーマを選ぶだけ。毎朝のエピソードが、あなた向けの判断トピックに寄っていきます。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>2. 通勤中にイヤホンで聴く</h3>
-              <p>5〜10分で背景と論点を把握。読む時間を使わず、判断に必要な材料だけ先に入ります。</p>
+              <h3>2. 通勤中に論点だけ聴く</h3>
+              <p>5〜10分で背景と比較軸を把握。読む時間を使わず、判断に必要な材料だけ先に入ります。</p>
             </article>
             <article className={styles.featureCard}>
-              <h3>3. カードでポイントを確認</h3>
-              <p>聴いたあとに判断カードを確認。やる・様子見・見送りと次の一手をその場で決められます。</p>
+              <h3>3. カードと履歴で決める</h3>
+              <p>聴いたあとに判断カードを確認。やる・様子見・見送りと次の一手を決め、あとで振り返れます。</p>
             </article>
           </div>
         </section>
@@ -167,8 +168,8 @@ export default async function HomePage() {
         {/* --- Sample Episodes --- */}
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
-            <p className={styles.eyebrow}>エピソード例</p>
-            <h2>こんなエピソードが毎朝届きます</h2>
+            <p className={styles.eyebrow}>向いている迷い</p>
+            <h2>こんなテーマを、毎朝の判断材料に変えます</h2>
           </div>
           <div className={styles.sampleGrid}>
             {SAMPLE_EPISODES.map((episode) => (
@@ -181,8 +182,8 @@ export default async function HomePage() {
                 <p>{episode.summary}</p>
                 <dl className={styles.samplePanelMeta}>
                   <div>
-                    <dt>トピックカード</dt>
-                    <dd>{episode.cards}件のポイント</dd>
+                    <dt>判断カード</dt>
+                    <dd>{episode.cards}件の判断ポイント</dd>
                   </div>
                 </dl>
               </article>
@@ -190,11 +191,32 @@ export default async function HomePage() {
           </div>
         </section>
 
+        <section className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <p className={styles.eyebrow}>有料版</p>
+            <h2>有料版で増えるのは、情報量より判断の深さです</h2>
+          </div>
+          <div className={styles.featureGrid}>
+            <article className={styles.featureCard}>
+              <h3>行動提案まで見える</h3>
+              <p>判断カードの全文、次の一手、見直しタイミングまで確認できます。</p>
+            </article>
+            <article className={styles.featureCard}>
+              <h3>履歴から学べる</h3>
+              <p>保存した判断と結果を振り返り、どの判断パターンが合っていたかを見直せます。</p>
+            </article>
+            <article className={styles.featureCard}>
+              <h3>見直し漏れを防げる</h3>
+              <p>期限が近い判断や週次まとめを inbox で受け取り、迷いを放置しにくくします。</p>
+            </article>
+          </div>
+        </section>
+
         {/* --- Membership --- */}
         <section className={`${styles.section} ${styles.membershipSection}`.trim()}>
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>プラン</p>
-            <h2>無料で聴ける。有料でもっと深く。</h2>
+            <h2>無料で試せる。有料で判断を積み上げる。</h2>
           </div>
           <div className={styles.membershipGrid}>
             <article className={styles.membershipCard}>
@@ -202,11 +224,11 @@ export default async function HomePage() {
               <div className={styles.membershipPrice}>
                 <span>¥0</span>
               </div>
-              <h3>毎日聴いて、迷いを整理する</h3>
+              <h3>毎日聴いて、迷いを軽くする</h3>
               <ul className={styles.membershipList}>
                 <li>毎日のエピソード再生</li>
-                <li>トピックカードのタイトルと概要</li>
-                <li>好みの設定とおすすめの最適化</li>
+                <li>最新プレビューと判断カード概要</li>
+                <li>好み設定とおすすめの調整</li>
               </ul>
             </article>
             <article className={`${styles.membershipCard} ${styles.membershipCardHighlighted}`}>
@@ -222,10 +244,10 @@ export default async function HomePage() {
               {trialLabel ? <span className={styles.membershipTrialBadge}>{trialLabel}</span> : null}
               <h3>行動提案と振り返りで、判断を積み上げる</h3>
               <ul className={styles.membershipList}>
-                <li>エピソードのフルスクリプト</li>
-                <li>トピックカードの行動提案とタイミング</li>
-                <li>過去エピソードのアーカイブ</li>
-                <li>傾向分析とAI相談</li>
+                <li>フルスクリプトと過去エピソードのアーカイブ</li>
+                <li>判断カードの行動提案と見直しタイミング</li>
+                <li>履歴の振り返りとインサイト</li>
+                <li>お知らせ inbox と AI 相談</li>
               </ul>
               <TrackedLink
                 href="/login?next=/account"
@@ -247,7 +269,7 @@ export default async function HomePage() {
         <section className={`${styles.section} ${styles.ctaSection}`.trim()}>
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>はじめよう</p>
-            <h2>明日の通勤から、判断の先送りを減らす。</h2>
+            <h2>明日の通勤から、判断の後回しを減らす。</h2>
           </div>
           <div className={styles.ctaRow}>
             <TrackedLink

@@ -7,7 +7,7 @@ import styles from "./page.module.css";
 export const metadata: Metadata = {
   title: "使い方ガイド",
   description:
-    "判断のじかんの使い方を3分で理解。AIポッドキャストを聴いて、トピックカードで判断を整理する流れを解説します。"
+    "判断のじかんの使い方を3分で理解。AIポッドキャストを聴き、判断カードと振り返りで次の一手を決める流れを解説します。"
 };
 
 export default function GuidePage() {
@@ -21,8 +21,8 @@ export default function GuidePage() {
 
       <h1 className={styles.pageTitle}>判断のじかんの使い方</h1>
       <p className={styles.pageLead}>
-        毎日 AI がニュースからポッドキャストを作り、
-        あなたの「やる・様子見・見送り」の判断をサポートします。
+        毎日 AI がエピソードを作り、
+        あなたの「やる・様子見・見送り」を判断しやすくします。
       </p>
 
       {/* --- Step 1: Listen --- */}
@@ -33,14 +33,13 @@ export default function GuidePage() {
         </h2>
         <div className={styles.sectionBody}>
           <p>
-            テック・エンタメ・サブスクなど、毎日のトレンドニュースを AI
-            が自動でポッドキャスト化。通勤中やスキマ時間にイヤホンで
-            聴くだけで、今日知っておくべきトピックがわかります。
+            テック・サブスク・買い物・情報収集など、日々迷いやすいテーマを
+            AI がエピソード化。通勤中やスキマ時間に聴くだけで、
+            今日考えるべき論点がわかります。
           </p>
           <p>
-            エピソードは日本語と英語の 2 言語。
-            約 15〜20 分で、Deep Dive 3 本 + Quick News 6
-            本をカバーします。
+            エピソードは短時間で聴き切れる長さを基本に、
+            読む前に「何をやるか」「何を見送るか」を決めやすくする構成です。
           </p>
         </div>
       </section>
@@ -54,7 +53,7 @@ export default function GuidePage() {
         <div className={styles.sectionBody}>
           <p>
             各トピックには AI が「おすすめの判断」をつけています。
-            カードの色で直感的にわかります。
+            迷いをそのまま残さず、カードで結論を見やすく整理します。
           </p>
 
           <div className={styles.judgmentGrid}>
@@ -73,7 +72,7 @@ export default function GuidePage() {
           </div>
 
           <p style={{ marginTop: "0.75rem" }}>
-            カードをタップすると詳細ページで、判断の根拠や具体的な行動提案を確認できます。
+            カードを開くと、判断の根拠や具体的な行動提案を確認できます。
           </p>
         </div>
       </section>
@@ -156,6 +155,11 @@ export default function GuidePage() {
                 <td>無制限</td>
               </tr>
               <tr>
+                <td>振り返りとお知らせ</td>
+                <td>一部のみ</td>
+                <td className={styles.checkMark}>&#10003;</td>
+              </tr>
+              <tr>
                 <td>AI 相談</td>
                 <td>3 回/日</td>
                 <td>20 回/日</td>
@@ -179,8 +183,8 @@ export default function GuidePage() {
           <div className={styles.faqItem}>
             <dt>どんなジャンルが対象ですか？</dt>
             <dd>
-              テクノロジー・ゲーム・配信サービス・アニメ・映画など、
-              エンタメとテックを中心にカバーしています。
+              テクノロジー・サブスク・日々の買い物や情報収集など、
+              時間と支出の判断に関わるテーマを中心に扱います。
             </dd>
           </div>
           <div className={styles.faqItem}>
