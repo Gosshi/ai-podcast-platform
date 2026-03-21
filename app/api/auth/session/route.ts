@@ -54,7 +54,13 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error("login_notification_unexpected_error", {
-      error: error instanceof Error ? error.message : "unknown_error"
+      error:
+        error instanceof Error
+          ? error.message
+          : typeof error === "string"
+            ? error
+            : JSON.stringify(error),
+      raw: error
     });
   }
 
