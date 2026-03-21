@@ -43,6 +43,35 @@ type NotificationResult = {
   error?: string;
 };
 
+const formatUnknownError = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error && typeof error === "object") {
+    const message = Reflect.get(error, "message");
+    const code = Reflect.get(error, "code");
+    if (typeof message === "string" && typeof code === "string") {
+      return `${code}: ${message}`;
+    }
+    if (typeof message === "string") {
+      return message;
+    }
+
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return "unknown_error";
+    }
+  }
+
+  return "unknown_error";
+};
+
 const escapeHtml = (value: string): string =>
   value
     .replace(/&/g, "&amp;")
@@ -350,7 +379,16 @@ export const notifyLoginIfNeeded = async (params: LoginNotificationParams): Prom
     return { ok: true, sent: false, reason: "missing_email_or_last_sign_in_at" };
   }
 
-  const state = await loadNotificationState(params.user.id);
+  let state: SecurityNotificationStateRow | null = null;
+  try {
+    state = await loadNotificationState(params.user.id);
+  } catch (error) {
+    console.error("login_notification_state_load_error", {
+      error: formatUnknownError(error),
+      userId: params.user.id
+    });
+  }
+
   if (!shouldSendLoginNotification(state?.last_login_notified_at ?? null, lastSignInAt)) {
     return { ok: true, sent: false, reason: "already_notified" };
   }
@@ -366,7 +404,16 @@ export const notifyLoginIfNeeded = async (params: LoginNotificationParams): Prom
     return { ok: false, sent: false, error: result.error };
   }
 
-  await saveLoginNotificationState(params.user.id, lastSignInAt);
+  try {
+    await saveLoginNotificationState(params.user.id, lastSignInAt);
+  } catch (error) {
+    console.error("login_notification_state_save_error", {
+      error: formatUnknownError(error),
+      userId: params.user.id
+    });
+    return { ok: true, sent: true, reason: "state_persist_failed" };
+  }
+
   return { ok: true, sent: true };
 };
 
