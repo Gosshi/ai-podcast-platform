@@ -73,6 +73,10 @@
   margin: 0;
 }
 
+.paywallBanner h2 {
+  font-size: 1rem;
+}
+
 .paywallStats {
   display: flex;
   gap: 0.5rem;
@@ -288,6 +292,35 @@
 .detailBody {
   display: grid;
   gap: 0.8rem;
+}
+
+.detailLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.detailLink,
+.detailLinkPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.detailLink {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.detailLinkPrimary {
+  background: #0f172a;
+  color: #ffffff;
 }
 
 .detailBody p {

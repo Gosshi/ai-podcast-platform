@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AnalyticsEventOnRender from "@/app/components/AnalyticsEventOnRender";
@@ -10,6 +11,7 @@ import { isWithinFreeAccessWindow } from "@/app/lib/contentAccess";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { formatFrameTypeLabel } from "@/app/lib/uiText";
 import { PRODUCT_NAME } from "@/src/lib/brand";
+import { buildPublicEpisodePath } from "@/src/lib/episodeLinks";
 import { getMessages } from "@/src/lib/i18n/messages";
 import type { Locale } from "@/src/lib/i18n/locale";
 import { useLocale } from "@/src/lib/i18n/useLocale";
@@ -530,6 +532,20 @@ export default function EpisodesView({
         </div>
       </header>
 
+      <section className={styles.paywallBanner}>
+        <div>
+          <h2>{t.paywallTitle}</h2>
+          <p>{t.paywallCopy}</p>
+        </div>
+        <div className={styles.paywallStats}>
+          <span>{t.previewBadge}</span>
+          <span>{t.membersBadge}</span>
+          {!isPaid && archiveLockedCount > 0 ? (
+            <span>{t.archiveLockedPrefix}: {archiveLockedCount}</span>
+          ) : null}
+        </div>
+      </section>
+
       {loadError ? (
         <p className={styles.errorText}>
           {t.errorPrefix}: {loadError}
@@ -606,7 +622,7 @@ export default function EpisodesView({
                             <ShareButton
                               title={episode.title ?? PRODUCT_NAME}
                               text={episode.preview_text ?? undefined}
-                              url={`/decisions/${episode.id}`}
+                              url={buildPublicEpisodePath(episode.id)}
                               page="/episodes"
                               source="episodes_card"
                               episodeId={episode.id}
@@ -633,6 +649,17 @@ export default function EpisodesView({
                 <p>
                   {t.status}: {resolveEpisodeStatusLabel(selectedEpisode.status, t)}
                 </p>
+
+                <div className={styles.detailLinks}>
+                  <Link href={buildPublicEpisodePath(selectedEpisode.id)} className={styles.detailLink}>
+                    {t.publicLinkLabel}
+                  </Link>
+                  {!isPaid ? (
+                    <Link href="/login?next=/account" className={styles.detailLinkPrimary}>
+                      {t.upgradeLinkLabel}
+                    </Link>
+                  ) : null}
+                </div>
 
                 <section className={styles.judgmentSection}>
                   <div className={styles.sectionHeaderRow}>

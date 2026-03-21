@@ -12,6 +12,7 @@ import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
 import { formatGenreLabel, formatTopicTitle, JUDGMENT_TYPE_LABELS } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import { PRODUCT_NAME } from "@/src/lib/brand";
+import { buildPublicEpisodePath } from "@/src/lib/episodeLinks";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
@@ -44,6 +45,7 @@ export default async function DecisionsPage({
 
   const latestEpisode = episodes.length > 0 ? episodes[0] : null;
   const judgmentCards = latestEpisode?.judgment_cards ?? [];
+  const latestEpisodePublicPath = latestEpisode ? buildPublicEpisodePath(latestEpisode.id) : null;
 
   return (
     <main className={styles.page}>
@@ -80,7 +82,7 @@ export default async function DecisionsPage({
             <ShareButton
               title={latestEpisode.title ?? PRODUCT_NAME}
               text={latestEpisode.description ?? undefined}
-              url={`/decisions/${latestEpisode.id}`}
+              url={latestEpisodePublicPath ?? `/episodes/${latestEpisode.id}`}
               page="/decisions"
               source="podcast_hero"
               episodeId={latestEpisode.id}

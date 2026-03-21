@@ -34,4 +34,5 @@ test("buildPodcastFeedXml includes channel metadata and enclosure type", () => {
   assert.match(xml, /<itunes:subtitle>.*<\/itunes:subtitle>/);
   assert.match(xml, /type="audio\/mpeg"/);
   assert.match(xml, /<itunes:episodeType>full<\/itunes:episodeType>/);
+  assert.match(xml, /<link>https:\/\/signal-move\.com\/episodes\/episode-1<\/link>/);
 });

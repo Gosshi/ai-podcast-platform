@@ -17,7 +17,11 @@ export default function ShareButton({ title, text, url, page, source, episodeId 
   const [copied, setCopied] = useState(false);
 
   const handleShare = useCallback(async () => {
-    const shareData = { title, text: text ?? title, url };
+    const resolvedUrl =
+      typeof window !== "undefined"
+        ? new URL(url, window.location.origin).toString()
+        : url;
+    const shareData = { title, text: text ?? title, url: resolvedUrl };
 
     track("share_click", {
       page,
@@ -37,7 +41,7 @@ export default function ShareButton({ title, text, url, page, source, episodeId 
     }
 
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(resolvedUrl);
       setCopied(true);
       track("share_complete", { page, source, episode_id: episodeId, method: "clipboard" });
       setTimeout(() => setCopied(false), 2000);

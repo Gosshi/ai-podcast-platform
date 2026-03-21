@@ -4,6 +4,7 @@ import { jsonResponse } from "@/app/lib/apiResponse";
 import { verifyCronSecret } from "@/app/lib/cronAuth";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import { DEFAULT_SITE_URL } from "@/src/lib/brand";
+import { buildPublicEpisodePath } from "@/src/lib/episodeLinks";
 import {
   publishPostToX,
   resolveXAutoPostStatus
@@ -70,7 +71,7 @@ const buildEpisodeUrl = (episodeId: string): string => {
     utm_medium: "social",
     utm_campaign: "auto_post",
   });
-  return `${SITE_URL}/decisions/${episodeId}?${params.toString()}`;
+  return `${SITE_URL}${buildPublicEpisodePath(episodeId)}?${params.toString()}`;
 };
 
 const buildOgImageUrl = (episode: LatestEpisodeRow, cardCount: number): string => {
