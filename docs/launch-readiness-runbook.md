@@ -12,13 +12,17 @@
 
 ### 今週やること
 
-- [ ] Apple Podcasts 申請を出す
-- [ ] Spotify 申請を出す
+- [x] Apple Podcasts 申請を出す
+- [x] Spotify 申請を出す
 - [ ] X アカウントを作る
 - [ ] X のプロフィール、固定ポスト、リンク先を整える
 - [ ] `LEGAL_REPRESENTATIVE_NAME` を本番値で確定する
 - [ ] `LEGAL_ADDRESS` を本番値で確定する
 - [ ] GMO を使うなら契約する
+
+補足:
+- Apple Podcasts は公開操作実施済み。listing の最終反映確認は別途行う
+- Spotify は公開済み: `https://open.spotify.com/show/6nswsdY9ScaOvaLBkeKsFH`
 
 ### 今はやらないこと
 
@@ -64,6 +68,9 @@
   - `2026-03-22` 時点で `https://signal-move.com/feed.xml` は `<item>` が 1 件以上ある
   - `enclosure type="audio/mpeg"` の公開 `mp3` が配信されている
   - 公開音声 URL は `Supabase Storage` の public URL で 200 を返す
+  - show cover は `https://signal-move.com/podcast-cover.png` で配信し、`3000x3000` の PNG を返す
+  - 公開 permalink は `https://signal-move.com/episodes/<id>` で 200 を返す
+  - 公開済み Spotify listing: `https://open.spotify.com/show/6nswsdY9ScaOvaLBkeKsFH`
 - 申請前の必須確認:
   - 日本語の `published` エピソードが最低 1 件以上あること
   - そのエピソードに `audio_url` が入っていること
@@ -116,7 +123,8 @@
 - 別途手動で完了確認すべき項目:
   - 管理者 OTP メールの送達確認
   - 運用端末の OS 更新 / 標準マルウェア保護
-  - Apple Podcasts / Spotify 申請実行
+  - Apple Podcasts listing の最終反映確認
+  - Spotify listing の説明・カテゴリ・見え方の最終確認
 
 ## 中期改善メモ
 
@@ -179,12 +187,20 @@ curl -fsSL https://signal-move.com/feed.xml | sed -n '1,220p'
 3. validation 結果で metadata / artwork / audio のエラーがないことを確認する
 4. 問題なければ review に送る
 
+状態メモ:
+- `2026-03-22` 時点で公開操作は実施済み
+- listing URL / 審査反映の最終確認は別途行う
+
 ## Spotify 提出手順
 
 1. Spotify for Creators にサインインする
 2. RSS feed URL `https://signal-move.com/feed.xml` を追加する
 3. show 情報、カテゴリ、表示内容を確認する
 4. 問題なければ submit する
+
+状態メモ:
+- `2026-03-22` 時点で公開済み
+- 公開 URL: `https://open.spotify.com/show/6nswsdY9ScaOvaLBkeKsFH`
 
 ## 公式要件
 
