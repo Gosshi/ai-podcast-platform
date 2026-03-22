@@ -118,6 +118,30 @@
   - 運用端末の OS 更新 / 標準マルウェア保護
   - Apple Podcasts / Spotify 申請実行
 
+## 中期改善メモ
+
+### Public Podcast と Member Episode の分離
+
+- 背景:
+  - Apple / Spotify 向けの公開回は `新規獲得導線`
+  - 会員向けの深い回は `継続課金の本体`
+  - 1 本で両方を満たそうとすると、公開回は長くなりやすく、会員回は浅くなりやすい
+- 将来案:
+  - `public_podcast`
+    - Apple / Spotify / RSS に配信する短めの公開回
+    - 1テーマに絞り、タイトルは悩み名・判断名ベースにする
+    - 公開 permalink に着地させ、無料登録と有料開始の入口に使う
+  - `member_only`
+    - 会員向けの詳細回
+    - 行動提案、見直しタイミング、比較軸、Replay / Alerts 連携を含める
+- 実装イメージ:
+  - `episodes` に `visibility` または `distribution_channel` を追加する
+  - `feed.xml` は `public_podcast` だけ載せる
+  - 会員画面では `public_podcast` と `member_only` の両方を扱えるようにする
+- 優先度:
+  - soft launch の初期数値確認後に検討する
+  - リリース直前の blocker ではない
+
 ## 申請前コマンド
 
 ```bash
