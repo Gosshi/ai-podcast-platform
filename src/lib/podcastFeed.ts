@@ -12,7 +12,7 @@ export const PODCAST_FEED_CATEGORY =
   process.env.PODCAST_FEED_CATEGORY?.trim() || "Technology";
 export const PODCAST_FEED_SUBTITLE =
   process.env.PODCAST_FEED_SUBTITLE?.trim() || "聴くだけで、判断が整理される。";
-export const PODCAST_FEED_IMAGE = `${PODCAST_FEED_SITE_URL}/api/og/cover`;
+export const PODCAST_FEED_IMAGE = `${PODCAST_FEED_SITE_URL}/podcast-cover.png`;
 
 export type PodcastFeedEpisode = {
   id: string;
