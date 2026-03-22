@@ -5,6 +5,7 @@ import {
   formatEpisodeTitle,
   formatTopicTitle,
   isGenericEpisodeTitle,
+  resolveDisplayEpisodeTitle,
   resolveJapaneseEpisodeTitle
 } from "../src/lib/episodeTitles.ts";
 
@@ -68,6 +69,19 @@ test("resolveJapaneseEpisodeTitle falls back to first judgment card title when t
       topicTitle: "デイリートピック 2026-03-22",
       judgmentCards: cards,
       episodeDate: "2026-03-22"
+    }),
+    "使い方の見直し"
+  );
+});
+
+test("resolveDisplayEpisodeTitle uses first judgment card title for generic placeholders", () => {
+  assert.equal(
+    resolveDisplayEpisodeTitle({
+      title: "Daily Topic 2026-03-22 (JA)",
+      judgmentCards: [
+        { topic_order: 2, topic_title: "AI最新動向" },
+        { topic_order: 1, topic_title: "使い方の見直し" }
+      ]
     }),
     "使い方の見直し"
   );

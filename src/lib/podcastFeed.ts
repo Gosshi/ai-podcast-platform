@@ -1,6 +1,6 @@
 import { DEFAULT_SITE_URL, PRODUCT_NAME, SITE_NAME } from "./brand.ts";
 import { buildPublicEpisodePath } from "./episodeLinks.ts";
-import { formatEpisodeTitle } from "./episodeTitles.ts";
+import { resolveDisplayEpisodeTitle } from "./episodeTitles.ts";
 
 export const PODCAST_FEED_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL;
 export const PODCAST_FEED_TITLE = SITE_NAME;
@@ -24,6 +24,10 @@ export type PodcastFeedEpisode = {
   durationSec: number | null;
   publishedAt: string | null;
   genre: string | null;
+  judgmentCards?: Array<{
+    topic_order: number;
+    topic_title: string;
+  }>;
 };
 
 const PODCAST_COMPATIBLE_AUDIO_EXTENSIONS = new Set(["mp3", "aac", "m4a"]);
@@ -98,10 +102,15 @@ const buildItemXml = (episode: PodcastFeedEpisode): string => {
     typeof episode.audioLengthBytes === "number" && Number.isFinite(episode.audioLengthBytes)
       ? Math.max(0, Math.round(episode.audioLengthBytes))
       : 0;
+  const displayTitle = resolveDisplayEpisodeTitle({
+    title: episode.title,
+    judgmentCards: episode.judgmentCards,
+    fallback: ""
+  });
 
   return `
     <item>
-      <title>${escapeXml(formatEpisodeTitle(episode.title, ""))}</title>
+      <title>${escapeXml(displayTitle)}</title>
       <description><![CDATA[${episode.description ?? ""}]]></description>
       <itunes:summary><![CDATA[${episode.description ?? ""}]]></itunes:summary>
       <link>${resolveEpisodeUrl(episode.id)}</link>

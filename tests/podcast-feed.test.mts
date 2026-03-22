@@ -62,3 +62,21 @@ test("buildPodcastFeedXml includes channel metadata and enclosure type", () => {
   assert.match(xml, /<itunes:episodeType>full<\/itunes:episodeType>/);
   assert.match(xml, /<link>https:\/\/signal-move\.com\/episodes\/episode-1<\/link>/);
 });
+
+test("buildPodcastFeedXml prefers judgment card titles over generic placeholders", () => {
+  const xml = buildPodcastFeedXml([
+    {
+      id: "episode-1",
+      title: "Daily Topic 2026-03-22 (JA)",
+      description: "通勤中にチェックしたい要点を整理します。",
+      audioUrl: "/audio/episode-1.ja.feed.mp3",
+      audioLengthBytes: 123456,
+      durationSec: 540,
+      publishedAt: "2026-03-21T00:00:00.000Z",
+      genre: "tech",
+      judgmentCards: [{ topic_order: 1, topic_title: "使い方の見直し" }]
+    }
+  ]);
+
+  assert.match(xml, /<title>使い方の見直し<\/title>/);
+});

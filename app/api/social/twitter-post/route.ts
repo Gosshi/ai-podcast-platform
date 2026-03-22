@@ -5,7 +5,7 @@ import { verifyCronSecret } from "@/app/lib/cronAuth";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import { DEFAULT_SITE_URL } from "@/src/lib/brand";
 import { buildPublicEpisodePath } from "@/src/lib/episodeLinks";
-import { formatEpisodeTitle } from "@/src/lib/episodeTitles";
+import { resolveDisplayEpisodeTitle } from "@/src/lib/episodeTitles";
 import {
   publishPostToX,
   resolveXAutoPostStatus
@@ -27,9 +27,15 @@ type LatestEpisodeRow = {
   created_at: string;
 };
 
+type JudgmentCardTitleRow = {
+  topic_order: number;
+  topic_title: string;
+};
+
 const fetchLatestJapaneseEpisode = async (): Promise<{
   episode: LatestEpisodeRow | null;
   cardCount: number;
+  judgmentCards: JudgmentCardTitleRow[];
   error: string | null;
 }> => {
   const supabase = createServiceRoleClient();
@@ -45,25 +51,29 @@ const fetchLatestJapaneseEpisode = async (): Promise<{
     .maybeSingle();
 
   if (error) {
-    return { episode: null, cardCount: 0, error: error.message };
+    return { episode: null, cardCount: 0, judgmentCards: [], error: error.message };
   }
 
   const episode = data as LatestEpisodeRow | null;
   if (!episode) {
-    return { episode: null, cardCount: 0, error: null };
+    return { episode: null, cardCount: 0, judgmentCards: [], error: null };
   }
 
-  // Count judgment cards for this episode
-  const { count, error: countError } = await supabase
+  const { data: judgmentCards, count, error: countError } = await supabase
     .from("episode_judgment_cards")
-    .select("id", { count: "exact", head: true })
+    .select("topic_order, topic_title", { count: "exact" })
     .eq("episode_id", episode.id);
 
   if (countError) {
-    return { episode, cardCount: 0, error: countError.message };
+    return { episode, cardCount: 0, judgmentCards: [], error: countError.message };
   }
 
-  return { episode, cardCount: count ?? 0, error: null };
+  return {
+    episode,
+    cardCount: count ?? 0,
+    judgmentCards: (judgmentCards as JudgmentCardTitleRow[] | null) ?? [],
+    error: null
+  };
 };
 
 const buildEpisodeUrl = (episodeId: string): string => {
@@ -75,9 +85,17 @@ const buildEpisodeUrl = (episodeId: string): string => {
   return `${SITE_URL}${buildPublicEpisodePath(episodeId)}?${params.toString()}`;
 };
 
-const buildOgImageUrl = (episode: LatestEpisodeRow, cardCount: number): string => {
+const buildOgImageUrl = (
+  episode: LatestEpisodeRow,
+  judgmentCards: JudgmentCardTitleRow[],
+  cardCount: number
+): string => {
   const params = new URLSearchParams();
-  const title = formatEpisodeTitle(episode.title, "");
+  const title = resolveDisplayEpisodeTitle({
+    title: episode.title,
+    judgmentCards,
+    fallback: ""
+  });
   if (title) params.set("title", title);
   if (episode.genre) params.set("genre", episode.genre);
   if (cardCount > 0) params.set("cards", String(cardCount));
@@ -90,10 +108,15 @@ const buildOgImageUrl = (episode: LatestEpisodeRow, cardCount: number): string =
 
 const buildTweetText = (
   episode: LatestEpisodeRow,
+  judgmentCards: JudgmentCardTitleRow[],
   cardCount: number,
   episodeUrl: string
 ): string => {
-  const title = formatEpisodeTitle(episode.title, "新しいエピソード");
+  const title = resolveDisplayEpisodeTitle({
+    title: episode.title,
+    judgmentCards,
+    fallback: "新しいエピソード"
+  });
   const description = episode.description ?? "";
 
   // Build the fixed parts first so we know how much room is left for the description
@@ -125,7 +148,7 @@ const buildTweetPayload = async (): Promise<{
   episodeTitle: string | null;
   ogImageUrl: string;
 } | null> => {
-  const { episode, cardCount, error } = await fetchLatestJapaneseEpisode();
+  const { episode, cardCount, judgmentCards, error } = await fetchLatestJapaneseEpisode();
   if (error) {
     throw new Error(error);
   }
@@ -135,12 +158,16 @@ const buildTweetPayload = async (): Promise<{
   }
 
   const episodeUrl = buildEpisodeUrl(episode.id);
-  const ogImageUrl = buildOgImageUrl(episode, cardCount);
+  const ogImageUrl = buildOgImageUrl(episode, judgmentCards, cardCount);
 
   return {
-    tweet: buildTweetText(episode, cardCount, episodeUrl),
+    tweet: buildTweetText(episode, judgmentCards, cardCount, episodeUrl),
     episodeId: episode.id,
-    episodeTitle: formatEpisodeTitle(episode.title, "新しいエピソード"),
+    episodeTitle: resolveDisplayEpisodeTitle({
+      title: episode.title,
+      judgmentCards,
+      fallback: "新しいエピソード"
+    }),
     ogImageUrl
   };
 };
