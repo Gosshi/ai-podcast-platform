@@ -5,6 +5,7 @@ import { verifyCronSecret } from "@/app/lib/cronAuth";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import { DEFAULT_SITE_URL } from "@/src/lib/brand";
 import { buildPublicEpisodePath } from "@/src/lib/episodeLinks";
+import { formatEpisodeTitle } from "@/src/lib/episodeTitles";
 import {
   publishPostToX,
   resolveXAutoPostStatus
@@ -76,7 +77,8 @@ const buildEpisodeUrl = (episodeId: string): string => {
 
 const buildOgImageUrl = (episode: LatestEpisodeRow, cardCount: number): string => {
   const params = new URLSearchParams();
-  if (episode.title) params.set("title", episode.title);
+  const title = formatEpisodeTitle(episode.title, "");
+  if (title) params.set("title", title);
   if (episode.genre) params.set("genre", episode.genre);
   if (cardCount > 0) params.set("cards", String(cardCount));
   if (episode.published_at) {
@@ -91,7 +93,7 @@ const buildTweetText = (
   cardCount: number,
   episodeUrl: string
 ): string => {
-  const title = episode.title ?? "新しいエピソード";
+  const title = formatEpisodeTitle(episode.title, "新しいエピソード");
   const description = episode.description ?? "";
 
   // Build the fixed parts first so we know how much room is left for the description
@@ -138,7 +140,7 @@ const buildTweetPayload = async (): Promise<{
   return {
     tweet: buildTweetText(episode, cardCount, episodeUrl),
     episodeId: episode.id,
-    episodeTitle: episode.title,
+    episodeTitle: formatEpisodeTitle(episode.title, "新しいエピソード"),
     ogImageUrl
   };
 };

@@ -1,6 +1,7 @@
 import { failRun, finishRun, startRun } from "../_shared/jobRuns.ts";
 import { jsonResponse } from "../_shared/http.ts";
 import {
+  findJapaneseEpisodeByEpisodeDate,
   findJapaneseEpisodeByTitle,
   insertJapaneseEpisode,
   updateEpisode
@@ -44,6 +45,7 @@ import {
   summarizeForSpeech
 } from "../_shared/speechText.ts";
 import { normalizeGenre } from "../../../src/lib/genre/allowedGenres.ts";
+import { resolveJapaneseEpisodeTitle } from "../../../src/lib/episodeTitles.ts";
 import {
   syncEpisodeJudgmentCardsForScript,
   type JudgmentCardSyncResult
@@ -1233,7 +1235,10 @@ Deno.serve(async (req) => {
   const programPlan = ensureProgramPlan(body.programPlan, topicTitle);
   const scriptGate = resolveScriptGateConfig();
   const episodeStructure = resolveEpisodeStructureConfig();
-  const title = `Daily Topic ${episodeDate} (JA)`;
+  const provisionalTitle = resolveJapaneseEpisodeTitle({
+    topicTitle,
+    episodeDate
+  });
   const description = `Japanese episode for ${episodeDate}`;
   const drafted = buildJapaneseScript({
     topicTitle,
@@ -1285,7 +1290,7 @@ Deno.serve(async (req) => {
     episodeDate,
     genre,
     idempotencyKey,
-    title,
+    title: provisionalTitle,
     trendItemsCount: trendItems.length,
     lettersCount: letters.length,
     scriptChars: finalScriptChars,
@@ -1324,7 +1329,9 @@ Deno.serve(async (req) => {
       throw new Error(`script_quality_gate_failed:${scriptQualityGate.violations.join(",")}`);
     }
 
-    let episode = await findJapaneseEpisodeByTitle(title);
+    let episode =
+      (await findJapaneseEpisodeByEpisodeDate(episodeDate)) ??
+      (await findJapaneseEpisodeByTitle(provisionalTitle));
     let noOp = false;
     let judgmentCardSync: JudgmentCardSyncResult = {
       cards: [],
@@ -1335,7 +1342,7 @@ Deno.serve(async (req) => {
 
     if (!episode) {
       episode = await insertJapaneseEpisode({
-        title,
+        title: provisionalTitle,
         description,
         script: finalScript,
         episodeDate,
@@ -1365,9 +1372,22 @@ Deno.serve(async (req) => {
       script: finalScript
     });
 
+    const resolvedTitle = resolveJapaneseEpisodeTitle({
+      topicTitle,
+      judgmentCards: judgmentCardSync.cards,
+      episodeDate
+    });
+
+    if (resolvedTitle !== episode.title) {
+      episode = await updateEpisode(episode.id, {
+        title: resolvedTitle
+      });
+    }
+
     await finishRun(runId, {
       ...runPayloadBase,
       episodeId: episode.id,
+      title: episode.title,
       status: episode.status,
       noOp,
       judgment_card_extraction: {
