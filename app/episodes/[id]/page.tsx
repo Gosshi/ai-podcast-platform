@@ -60,19 +60,20 @@ export async function generateMetadata({
     return { title: "公開エピソード" };
   }
 
-  const ogImageUrl = `/api/og?title=${encodeURIComponent(data.title)}${data.genre ? `&genre=${encodeURIComponent(data.genre)}` : ""}`;
+  const formattedTitle = formatEpisodeTitle(data.title);
+  const ogImageUrl = `/api/og?title=${encodeURIComponent(formattedTitle)}${data.genre ? `&genre=${encodeURIComponent(data.genre)}` : ""}`;
 
   return {
-    title: `${data.title} | 公開エピソード`,
+    title: `${formattedTitle} | 公開エピソード`,
     description: data.description ?? "判断のじかんの公開エピソードです。",
     alternates: {
       canonical: buildPublicEpisodePath(id)
     },
     openGraph: {
-      title: data.title,
+      title: formattedTitle,
       description: data.description ?? undefined,
       url: buildPublicEpisodePath(id),
-      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: data.title }]
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: formattedTitle }]
     }
   };
 }

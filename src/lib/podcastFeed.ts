@@ -1,5 +1,6 @@
 import { DEFAULT_SITE_URL, PRODUCT_NAME, SITE_NAME } from "./brand.ts";
 import { buildPublicEpisodePath } from "./episodeLinks.ts";
+import { formatEpisodeTitle } from "./episodeTitles.ts";
 
 export const PODCAST_FEED_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL;
 export const PODCAST_FEED_TITLE = SITE_NAME;
@@ -100,7 +101,7 @@ const buildItemXml = (episode: PodcastFeedEpisode): string => {
 
   return `
     <item>
-      <title>${escapeXml(episode.title ?? "")}</title>
+      <title>${escapeXml(formatEpisodeTitle(episode.title, ""))}</title>
       <description><![CDATA[${episode.description ?? ""}]]></description>
       <itunes:summary><![CDATA[${episode.description ?? ""}]]></itunes:summary>
       <link>${resolveEpisodeUrl(episode.id)}</link>

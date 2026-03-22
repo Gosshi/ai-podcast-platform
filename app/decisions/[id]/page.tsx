@@ -45,15 +45,16 @@ export async function generateMetadata({
     return { title: "エピソード" };
   }
 
-  const ogImageUrl = `/api/og?title=${encodeURIComponent(data.title)}${data.genre ? `&genre=${encodeURIComponent(data.genre)}` : ""}`;
+  const formattedTitle = formatEpisodeTitle(data.title);
+  const ogImageUrl = `/api/og?title=${encodeURIComponent(formattedTitle)}${data.genre ? `&genre=${encodeURIComponent(data.genre)}` : ""}`;
 
   return {
-    title: data.title,
+    title: formattedTitle,
     description: data.description ?? undefined,
     openGraph: {
-      title: data.title,
+      title: formattedTitle,
       description: data.description ?? undefined,
-      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: data.title }]
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: formattedTitle }]
     }
   };
 }

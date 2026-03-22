@@ -99,6 +99,25 @@ export const findJapaneseEpisodeByTitle = async (title: string): Promise<Episode
   return (data as Episode | null) ?? null;
 };
 
+export const findJapaneseEpisodeByEpisodeDate = async (
+  episodeDate: string
+): Promise<Episode | null> => {
+  const { data, error } = await supabaseAdmin
+    .from("episodes")
+    .select(EPISODE_SELECT_COLUMNS)
+    .eq("lang", "ja")
+    .eq("episode_date", episodeDate)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as Episode | null) ?? null;
+};
+
 export const findEnglishEpisodeByMasterId = async (
   masterId: string
 ): Promise<Episode | null> => {
