@@ -19,6 +19,7 @@ export type PodcastFeedEpisode = {
   title: string | null;
   description: string | null;
   audioUrl: string | null;
+  audioLengthBytes?: number | null;
   durationSec: number | null;
   publishedAt: string | null;
   genre: string | null;
@@ -80,15 +81,22 @@ export const isPodcastCompatibleAudioUrl = (audioUrl: string | null): boolean =>
   return extension ? PODCAST_COMPATIBLE_AUDIO_EXTENSIONS.has(extension) : false;
 };
 
+export const resolveAbsoluteAudioUrl = (audioUrl: string | null): string | null => {
+  const value = audioUrl?.trim();
+  if (!value) return null;
+  return value.startsWith("http") ? value : `${PODCAST_FEED_SITE_URL}${value}`;
+};
+
 const resolveEpisodeUrl = (episodeId: string): string => {
   return `${PODCAST_FEED_SITE_URL}${buildPublicEpisodePath(episodeId)}`;
 };
 
 const buildItemXml = (episode: PodcastFeedEpisode): string => {
-  const audioUrl = episode.audioUrl ?? "";
-  const fullAudioUrl = audioUrl.startsWith("http")
-    ? audioUrl
-    : `${PODCAST_FEED_SITE_URL}${audioUrl}`;
+  const fullAudioUrl = resolveAbsoluteAudioUrl(episode.audioUrl) ?? "";
+  const audioLengthBytes =
+    typeof episode.audioLengthBytes === "number" && Number.isFinite(episode.audioLengthBytes)
+      ? Math.max(0, Math.round(episode.audioLengthBytes))
+      : 0;
 
   return `
     <item>
@@ -98,7 +106,7 @@ const buildItemXml = (episode: PodcastFeedEpisode): string => {
       <link>${resolveEpisodeUrl(episode.id)}</link>
       <guid isPermaLink="false">${episode.id}</guid>
       <pubDate>${episode.publishedAt ? formatRfc822(episode.publishedAt) : ""}</pubDate>
-      <enclosure url="${escapeXml(fullAudioUrl)}" length="0" type="${resolveAudioContentType(fullAudioUrl)}" />
+      <enclosure url="${escapeXml(fullAudioUrl)}" length="${audioLengthBytes}" type="${resolveAudioContentType(fullAudioUrl)}" />
       <itunes:duration>${formatDuration(episode.durationSec)}</itunes:duration>
       <itunes:explicit>false</itunes:explicit>
       <itunes:episodeType>full</itunes:episodeType>

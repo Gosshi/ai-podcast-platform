@@ -1,12 +1,34 @@
 # Launch Readiness Runbook
 
-更新日: 2026-03-21  
+更新日: 2026-03-22  
 対象サービス: `判断のじかん by SignalMove`
 
 ## 目的
 
 ローンチ前に残っている公開面・申請面・外部連携面の確認事項を、  
 「コードで対応済み」「本番設定待ち」「手動確認が必要」に分けて整理する。
+
+## Phase 1 Checklist
+
+### 今週やること
+
+- [ ] Apple Podcasts 申請を出す
+- [ ] Spotify 申請を出す
+- [ ] X アカウントを作る
+- [ ] X のプロフィール、固定ポスト、リンク先を整える
+- [ ] `LEGAL_REPRESENTATIVE_NAME` を本番値で確定する
+- [ ] `LEGAL_ADDRESS` を本番値で確定する
+- [ ] GMO を使うなら契約する
+
+### 今はやらないこと
+
+- [ ] `daily-generate` の本番自動運用
+- [ ] OpenAI を使う日次自動生成の常時実行
+- [ ] 広告費を使った拡大
+
+補足:
+- リリースまでは OpenAI コスト抑制のため、公開エピソードは手動作成・手動公開を前提にする
+- 日次自動生成の配線は残してあるが、現時点では本番安定運用の前提に置かない
 
 ## 現在の整理
 
@@ -39,17 +61,21 @@
   - feed には `MP3/AAC/M4A` の公開音声だけを載せる
   - `/api/tts` は本番では `Supabase Storage` の `audio` bucket に保存する
 - 本番確認結果:
-  - `2026-03-21` 時点で `https://signal-move.com/feed.xml` は channel 自体は配信されているが、`<item>` が 0 件
+  - `2026-03-22` 時点で `https://signal-move.com/feed.xml` は `<item>` が 1 件以上ある
+  - `enclosure type="audio/mpeg"` の公開 `mp3` が配信されている
+  - 公開音声 URL は `Supabase Storage` の public URL で 200 を返す
 - 申請前の必須確認:
   - 日本語の `published` エピソードが最低 1 件以上あること
   - そのエピソードに `audio_url` が入っていること
   - Apple Podcasts 提出用として、公開音声フォーマットが `MP3` または `AAC` であることを確認すること
+  - `PODCAST_FEED_OWNER_EMAIL` を本番値で設定すること
 
 補足:
 - OpenAI TTS の既定フォーマットは `mp3` に寄せた
 - `feed.xml` は `wav` を除外するため、`published` でも `audio_url` が `.wav` のままだと item に出ない
 - Apple 提出可否は feed XML ではなく実ファイル形式に依存する
 - `audio` bucket migration を本番へ反映していないと、TTS 保存で失敗する
+- `daily-generate` は `WORKER_LIMIT` に当たりやすいため、現時点では feed 更新の運用前提にしない
 
 ### 3. アフィリエイト URL
 
@@ -71,7 +97,7 @@
   - `.github/workflows/twitter-post.yml` は publish endpoint を叩き、未設定時は skip、設定済みなら実投稿する
 - launch 判定:
   - `X_AUTO_POST_ENABLED=false` の間は dry-run 相当
-  - 実運用するなら env を有効化し、手動 dispatch で 1 回確認する
+  - 実運用するなら先に X アカウントを作成し、プロフィールと固定ポストを整えたうえで env を有効化し、手動 dispatch で 1 回確認する
 
 本番確認項目:
 - `X_AUTO_POST_ENABLED`
@@ -104,6 +130,45 @@ curl -fsSL https://signal-move.com/feed.xml | sed -n '1,220p'
 - `item` が 1 件以上ある
 - `enclosure` の URL が 200 を返す
 - `enclosure type` が実ファイル形式と一致する
+- `https://signal-move.com/episodes/<id>` が login に飛ばず公開で開く
+
+## Apple / Spotify 提出前チェック
+
+- `PODCAST_FEED_OWNER_EMAIL` が運用メールアドレスになっている
+- feed の `<itunes:owner>` に name と email が出ている
+- show cover が 1400px 以上の正方形画像として取得できる
+- `enclosure` に `url`, `length`, `type` が入っている
+- `enclosure type` が `audio/mpeg` または `audio/aac` になっている
+- 音声 URL が 200 を返し、実際に再生できる
+- 公開 episode permalink が 200 を返す
+- 最低 1 本の日本語 `published` episode がある
+
+補足:
+- Apple は RSS feed の技術検証を行い、必須タグ・メディアファイル・show cover を確認する
+- Apple の音声要件は `MP3` を受け付ける
+- Spotify も RSS の必須要素とメディアの取得性を前提にする
+
+## Apple 提出手順
+
+1. Apple Podcasts Connect にサインインする
+2. RSS feed URL `https://signal-move.com/feed.xml` を指定して show を追加する
+3. validation 結果で metadata / artwork / audio のエラーがないことを確認する
+4. 問題なければ review に送る
+
+## Spotify 提出手順
+
+1. Spotify for Creators にサインインする
+2. RSS feed URL `https://signal-move.com/feed.xml` を追加する
+3. show 情報、カテゴリ、表示内容を確認する
+4. 問題なければ submit する
+
+## 公式要件
+
+- Apple Podcasts: [Podcast RSS feed validation](https://podcasters.apple.com/es-es/support/829-validate-your-podcast)
+- Apple Podcasts: [Audio requirements](https://podcasters.apple.com/de-de/support/893-audio-requirements)
+- Apple Podcasts: [Show cover](https://podcasters.apple.com/support/5514-show-cover-template)
+- Spotify for Creators: [Podcast specification doc](https://support.spotify.com/ci-en/creators/article/podcast-specification-doc/)
+- Spotify for Creators: [Missing elements in RSS feed](https://support.spotify.com/bf-en/creators/article/missing-elements-in-rss-feed-link/)
 
 ## 関連ファイル
 

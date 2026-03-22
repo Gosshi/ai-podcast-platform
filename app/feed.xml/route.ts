@@ -1,5 +1,9 @@
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
-import { buildPodcastFeedXml, isPodcastCompatibleAudioUrl } from "@/src/lib/podcastFeed";
+import {
+  buildPodcastFeedXml,
+  isPodcastCompatibleAudioUrl,
+  resolveAbsoluteAudioUrl
+} from "@/src/lib/podcastFeed";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600; // Cache for 1 hour
@@ -13,6 +17,64 @@ type EpisodeRow = {
   published_at: string | null;
   genre: string | null;
   lang: "ja" | "en";
+};
+
+const AUDIO_HEAD_TIMEOUT_MS = 5_000;
+
+const parseContentLength = (value: string | null): number | null => {
+  if (!value) return null;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return parsed;
+};
+
+const parseContentRangeTotal = (value: string | null): number | null => {
+  if (!value) return null;
+  const match = value.match(/\/(\d+)$/);
+  if (!match) return null;
+  const parsed = Number.parseInt(match[1], 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return parsed;
+};
+
+const resolveAudioLengthBytes = async (audioUrl: string | null): Promise<number | null> => {
+  const absoluteAudioUrl = resolveAbsoluteAudioUrl(audioUrl);
+  if (!absoluteAudioUrl) return null;
+
+  try {
+    const headResponse = await fetch(absoluteAudioUrl, {
+      method: "HEAD",
+      cache: "no-store",
+      signal: AbortSignal.timeout(AUDIO_HEAD_TIMEOUT_MS)
+    });
+    const headLength = parseContentLength(headResponse.headers.get("content-length"));
+    if (headLength) {
+      return headLength;
+    }
+  } catch {
+    // Fall through to the range request below.
+  }
+
+  try {
+    const rangeResponse = await fetch(absoluteAudioUrl, {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        Range: "bytes=0-0"
+      },
+      signal: AbortSignal.timeout(AUDIO_HEAD_TIMEOUT_MS)
+    });
+    return (
+      parseContentRangeTotal(rangeResponse.headers.get("content-range")) ??
+      parseContentLength(rangeResponse.headers.get("content-length"))
+    );
+  } catch {
+    return null;
+  }
 };
 
 export async function GET(): Promise<Response> {
@@ -34,17 +96,19 @@ export async function GET(): Promise<Response> {
   const items = ((episodes as EpisodeRow[] | null) ?? []).filter((episode) =>
     isPodcastCompatibleAudioUrl(episode.audio_url)
   );
-  const xml = buildPodcastFeedXml(
-    items.map((ep) => ({
+  const feedEpisodes = await Promise.all(
+    items.map(async (ep) => ({
       id: ep.id,
       title: ep.title,
       description: ep.description,
       audioUrl: ep.audio_url,
+      audioLengthBytes: await resolveAudioLengthBytes(ep.audio_url),
       durationSec: ep.duration_sec,
       publishedAt: ep.published_at,
       genre: ep.genre
     }))
   );
+  const xml = buildPodcastFeedXml(feedEpisodes);
 
   return new Response(xml, {
     headers: {
