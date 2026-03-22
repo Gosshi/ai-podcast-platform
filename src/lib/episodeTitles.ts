@@ -115,3 +115,24 @@ export const resolveJapaneseEpisodeTitle = (params: {
 
   return `${params.episodeDate}の判断ポイント`;
 };
+
+export const resolveDisplayEpisodeTitle = (params: {
+  title: string | null;
+  judgmentCards?: Pick<JudgmentCard, "topic_order" | "topic_title">[];
+  fallback?: string;
+}): string => {
+  if (!isGenericEpisodeTitle(params.title)) {
+    return formatEpisodeTitle(params.title, params.fallback ?? "詳細未設定");
+  }
+
+  const firstJudgmentCardTitle = (params.judgmentCards ?? [])
+    .toSorted((left, right) => left.topic_order - right.topic_order)
+    .map((card) => formatTopicTitle(card.topic_title, ""))
+    .find((title) => title.length > 0);
+
+  if (firstJudgmentCardTitle) {
+    return firstJudgmentCardTitle;
+  }
+
+  return formatEpisodeTitle(params.title, params.fallback ?? "詳細未設定");
+};

@@ -19,6 +19,12 @@ type EpisodeRow = {
   lang: "ja" | "en";
 };
 
+type JudgmentCardRow = {
+  episode_id: string;
+  topic_order: number;
+  topic_title: string;
+};
+
 const AUDIO_HEAD_TIMEOUT_MS = 5_000;
 
 const parseContentLength = (value: string | null): number | null => {
@@ -96,6 +102,24 @@ export async function GET(): Promise<Response> {
   const items = ((episodes as EpisodeRow[] | null) ?? []).filter((episode) =>
     isPodcastCompatibleAudioUrl(episode.audio_url)
   );
+  const episodeIds = items.map((episode) => episode.id);
+  const { data: judgmentCards } =
+    episodeIds.length === 0
+      ? { data: [] as JudgmentCardRow[] }
+      : await supabase
+          .from("episode_judgment_cards")
+          .select("episode_id, topic_order, topic_title")
+          .in("episode_id", episodeIds)
+          .order("topic_order", { ascending: true });
+  const judgmentCardsByEpisode = ((judgmentCards as JudgmentCardRow[] | null) ?? []).reduce(
+    (map, card) => {
+      const cards = map.get(card.episode_id) ?? [];
+      cards.push(card);
+      map.set(card.episode_id, cards);
+      return map;
+    },
+    new Map<string, JudgmentCardRow[]>()
+  );
   const feedEpisodes = await Promise.all(
     items.map(async (ep) => ({
       id: ep.id,
@@ -105,7 +129,8 @@ export async function GET(): Promise<Response> {
       audioLengthBytes: await resolveAudioLengthBytes(ep.audio_url),
       durationSec: ep.duration_sec,
       publishedAt: ep.published_at,
-      genre: ep.genre
+      genre: ep.genre,
+      judgmentCards: judgmentCardsByEpisode.get(ep.id) ?? []
     }))
   );
   const xml = buildPodcastFeedXml(feedEpisodes);

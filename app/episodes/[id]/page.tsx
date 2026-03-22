@@ -8,15 +8,14 @@ import TrackedLink from "@/app/components/TrackedLink";
 import { loadPublicEpisodeById } from "@/app/lib/episodes";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { buildLoginPath } from "@/app/lib/onboarding";
+import { resolveDisplayEpisodeTitle } from "@/src/lib/episodeTitles";
 import {
-  formatEpisodeTitle,
   formatFrameTypeLabel,
   formatGenreLabel,
   formatTopicTitle,
   JUDGMENT_TYPE_LABELS
 } from "@/app/lib/uiText";
 import { getViewerFromCookies } from "@/app/lib/viewer";
-import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import { buildPublicEpisodePath, buildPublicEpisodeUrl } from "@/src/lib/episodeLinks";
 import styles from "./page.module.css";
 
@@ -48,30 +47,31 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const supabase = createServiceRoleClient();
-  const { data } = await supabase
-    .from("episodes")
-    .select("title, description, genre")
-    .eq("id", id)
-    .eq("status", "published")
-    .maybeSingle();
+  const { episode } = await loadPublicEpisodeById({
+    episodeId: id,
+    isPaid: false
+  });
 
-  if (!data) {
+  if (!episode) {
     return { title: "公開エピソード" };
   }
 
-  const formattedTitle = formatEpisodeTitle(data.title);
-  const ogImageUrl = `/api/og?title=${encodeURIComponent(formattedTitle)}${data.genre ? `&genre=${encodeURIComponent(data.genre)}` : ""}`;
+  const formattedTitle = resolveDisplayEpisodeTitle({
+    title: episode.title,
+    judgmentCards: episode.judgment_cards,
+    fallback: "公開エピソード"
+  });
+  const ogImageUrl = `/api/og?title=${encodeURIComponent(formattedTitle)}${episode.genre ? `&genre=${encodeURIComponent(episode.genre)}` : ""}`;
 
   return {
     title: `${formattedTitle} | 公開エピソード`,
-    description: data.description ?? "判断のじかんの公開エピソードです。",
+    description: episode.description ?? "判断のじかんの公開エピソードです。",
     alternates: {
       canonical: buildPublicEpisodePath(id)
     },
     openGraph: {
       title: formattedTitle,
-      description: data.description ?? undefined,
+      description: episode.description ?? undefined,
       url: buildPublicEpisodePath(id),
       images: [{ url: ogImageUrl, width: 1200, height: 630, alt: formattedTitle }]
     }
@@ -95,6 +95,12 @@ export default async function PublicEpisodePage({
     isPaid,
     userId: viewer?.userId
   });
+  const displayTitle = episode
+    ? resolveDisplayEpisodeTitle({
+        title: episode.title,
+        judgmentCards: episode.judgment_cards
+      })
+    : "公開エピソード";
 
   if (!episode && !error) {
     notFound();
@@ -114,7 +120,7 @@ export default async function PublicEpisodePage({
           <section className={styles.hero}>
             <div className={styles.heroCopy}>
               <p className={styles.eyebrow}>Public Episode</p>
-              <h1>{formatEpisodeTitle(episode.title)}</h1>
+              <h1>{displayTitle}</h1>
               <p className={styles.lead}>
                 {episode.description ?? "この回の要点を無料で確認できます。気になったら、そのまま有料版で詳細まで続けられます。"}
               </p>
@@ -145,7 +151,7 @@ export default async function PublicEpisodePage({
           <section className={styles.playerSection}>
             <PostListenCTA
               src={episode.audio_url ?? null}
-              title={formatEpisodeTitle(episode.title)}
+              title={displayTitle}
               description={episode.description}
               hasCards={episode.judgment_cards.length > 0}
               page={publicPath}
@@ -153,7 +159,7 @@ export default async function PublicEpisodePage({
             />
             <div className={styles.playerActions}>
               <ShareButton
-                title={formatEpisodeTitle(episode.title)}
+                title={displayTitle}
                 text={episode.description ?? undefined}
                 url={publicUrl}
                 page={publicPath}
