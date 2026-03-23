@@ -57,7 +57,7 @@
 - この場合、ページ上には「請求があれば遅滞なく開示」と表示し、実際にメールで遅滞なく返せる運用が必要
 - `所在地` はメールアドレスではなく住所。自宅公開を避ける場合はバーチャルオフィス利用を前提にする
 - 利用規約・プライバシーポリシーは現行機能（Supabase / Stripe / Resend / OpenAI / analytics / admin OTP）に合わせて反映済み
-- `contact@signal-move.com` の受信確認が取れるまでは、問い合わせ窓口にも実受信できるアドレスを使う
+- `contact@signal-move.com` の受信確認は完了済み。問い合わせ窓口は同アドレスで運用する
 
 ### 2. Podcast RSS
 
@@ -88,8 +88,8 @@
 - Apple 提出可否は feed XML ではなく実ファイル形式に依存する
 - `audio` bucket migration を本番へ反映していないと、TTS 保存で失敗する
 - `daily-generate` は `WORKER_LIMIT` に当たりやすいため、現時点では feed 更新の運用前提にしない
-- `2026-03-23` 時点の feed owner email は `gosshi.dev@gmail.com`
-- `contact@signal-move.com` を Cloudflare Email Routing で使う場合は、受信確認が取れるまで `PODCAST_FEED_OWNER_EMAIL` を切り替えない
+- `2026-03-23` 時点で `contact@signal-move.com` の受信確認は完了済み
+- feed owner email は `contact@signal-move.com` に切り替えて運用してよい
 
 ### 3. アフィリエイト URL
 
