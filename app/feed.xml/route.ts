@@ -12,6 +12,7 @@ type EpisodeRow = {
   id: string;
   title: string | null;
   description: string | null;
+  script_polished_preview: string | null;
   audio_url: string | null;
   duration_sec: number | null;
   published_at: string | null;
@@ -23,6 +24,7 @@ type JudgmentCardRow = {
   episode_id: string;
   topic_order: number;
   topic_title: string;
+  judgment_summary: string | null;
 };
 
 const AUDIO_HEAD_TIMEOUT_MS = 5_000;
@@ -87,7 +89,7 @@ export async function GET(): Promise<Response> {
   const supabase = createServiceRoleClient();
   const { data: episodes, error } = await supabase
     .from("episodes")
-    .select("id, title, description, audio_url, duration_sec, published_at, genre, lang")
+    .select("id, title, description, script_polished_preview, audio_url, duration_sec, published_at, genre, lang")
     .eq("status", "published")
     .eq("lang", "ja")
     .not("audio_url", "is", null)
@@ -108,7 +110,7 @@ export async function GET(): Promise<Response> {
       ? { data: [] as JudgmentCardRow[] }
       : await supabase
           .from("episode_judgment_cards")
-          .select("episode_id, topic_order, topic_title")
+          .select("episode_id, topic_order, topic_title, judgment_summary")
           .in("episode_id", episodeIds)
           .order("topic_order", { ascending: true });
   const judgmentCardsByEpisode = ((judgmentCards as JudgmentCardRow[] | null) ?? []).reduce(
@@ -125,6 +127,7 @@ export async function GET(): Promise<Response> {
       id: ep.id,
       title: ep.title,
       description: ep.description,
+      previewText: ep.script_polished_preview,
       audioUrl: ep.audio_url,
       audioLengthBytes: await resolveAudioLengthBytes(ep.audio_url),
       durationSec: ep.duration_sec,
