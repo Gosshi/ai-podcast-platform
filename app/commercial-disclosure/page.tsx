@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import styles from "@/app/legal/legal-page.module.css";
 import {
   getCommercialDisclosurePhoneText,
+  getPublicContactEmailText,
   getMissingCommercialDisclosureFields,
   LEGAL_INFO,
   shouldDisclosePhoneOnRequest
@@ -31,7 +32,7 @@ const disclosureRows = [
   },
   {
     term: "お問い合わせ先",
-    description: LEGAL_INFO.contactEmail
+    description: getPublicContactEmailText()
   },
   {
     term: "受付時間",
