@@ -1,6 +1,6 @@
 # Launch Readiness Runbook
 
-更新日: 2026-03-23  
+更新日: 2026-03-23
 対象サービス: `判断のじかん by SignalMove`
 
 ## 目的
@@ -21,7 +21,7 @@
 - [x] GMO を契約し、住所を本番反映する
 
 補足:
-- Apple Podcasts は公開済み
+- Apple Podcasts は公開済み: `https://podcasts.apple.com/jp/podcast/%E5%88%A4%E6%96%AD%E3%81%AE%E3%81%98%E3%81%8B%E3%82%93-by-signalmove/id1887020163`
 - Spotify は公開済み: `https://open.spotify.com/show/6nswsdY9ScaOvaLBkeKsFH`
 - X アカウントは `@signalmove_jp` で手動運用を開始できる状態
 
@@ -35,6 +35,7 @@
 - リリースまでは OpenAI コスト抑制のため、公開エピソードは手動作成・手動公開を前提にする
 - 日次自動生成の配線は残してあるが、現時点では本番安定運用の前提に置かない
 - `Scheduled Daily Publish` と X 自動投稿 workflow は、明示的に有効化するまでは manual-only で扱う
+- GitHub Actions の自動実行は repo variables `ENABLE_SCHEDULED_DAILY_PUBLISH=true` と `ENABLE_X_AUTO_POST_WORKFLOW=true` を入れたときだけ動く
 
 ## 現在の整理
 
@@ -105,8 +106,9 @@
   - `app/api/social/twitter-post` の `POST` は `X_AUTO_POST_ENABLED=true` かつ X credentials 設定済みなら実投稿
   - `.github/workflows/twitter-post.yml` は publish endpoint を叩き、未設定時は skip、設定済みなら実投稿する
 - launch 判定:
-  - `X_AUTO_POST_ENABLED=false` の間は dry-run 相当
-  - 実運用するなら先に X アカウントを作成し、プロフィールと固定ポストを整えたうえで env を有効化し、手動 dispatch で 1 回確認する
+- `X_AUTO_POST_ENABLED=false` の間は dry-run 相当
+- 実運用するなら先に X アカウントを作成し、プロフィールと固定ポストを整えたうえで env を有効化し、手動 dispatch で 1 回確認する
+- workflow 自体の自動実行も repo variable `ENABLE_X_AUTO_POST_WORKFLOW=true` が必要
 
 本番確認項目:
 - `X_AUTO_POST_ENABLED`
@@ -136,6 +138,11 @@
   - `robots.txt` と `sitemap.xml` を公開する
   - manual-only 運用を docs に明記する
   - 毎週見る数字を固定する
+- 対応状況:
+  - `description` と `preview` の generic fallback はコードで改善済み
+  - footer 直リンクは追加済み
+  - `robots.txt` と `sitemap.xml` は実装済み
+  - GitHub Actions は repo variable で明示的に有効化するまで manual-only に固定
 - 6週間の運用指標:
   - 公開回 → 無料登録率
   - trial 開始率

@@ -7,6 +7,7 @@ on:
 
 jobs:
   scheduled-daily-publish:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.ENABLE_SCHEDULED_DAILY_PUBLISH == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 

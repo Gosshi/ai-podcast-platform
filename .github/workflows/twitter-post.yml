@@ -10,7 +10,7 @@ on:
 jobs:
   post-tweet:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && vars.ENABLE_X_AUTO_POST_WORKFLOW == 'true') }}
     steps:
       - name: Publish to Twitter/X
         id: publish
