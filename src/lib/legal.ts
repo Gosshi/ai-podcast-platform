@@ -66,6 +66,10 @@ export const shouldDisclosePhoneOnRequest = (): boolean => {
   return LEGAL_PHONE_DISCLOSURE_MODE === "request";
 };
 
+export const getPublicContactEmailText = (): string => {
+  return LEGAL_INFO.contactEmail.replaceAll("@", " at ");
+};
+
 export const getCommercialDisclosurePhoneText = (): string => {
   if (!shouldDisclosePhoneOnRequest()) {
     return LEGAL_INFO.phoneNumber ?? "環境変数 `LEGAL_PHONE_NUMBER` の設定が必要です。";
@@ -73,6 +77,6 @@ export const getCommercialDisclosurePhoneText = (): string => {
 
   return [
     "電話番号はご請求をいただければ、遅滞なく電子メールにて開示します。",
-    `開示請求先: ${LEGAL_INFO.contactEmail}`
+    `開示請求先: ${getPublicContactEmailText()}`
   ].join(" ");
 };

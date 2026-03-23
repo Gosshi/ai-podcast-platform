@@ -148,6 +148,8 @@
   - trial 開始率
   - trial → paid
   - 4週継続率
+- 公開回の文言運用:
+  - title / description の手動運用は [docs/public-episode-copy-template.md](/Users/gota/Documents/src/ai-podcast-platform/docs/public-episode-copy-template.md) を基準にする
 
 ## 中期改善メモ
 

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import styles from "@/app/legal/legal-page.module.css";
-import { LEGAL_INFO } from "@/src/lib/legal";
+import { getPublicContactEmailText, LEGAL_INFO } from "@/src/lib/legal";
 
 export const metadata: Metadata = {
   title: "プライバシーポリシー",
@@ -8,6 +8,8 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
+  const publicContactEmail = getPublicContactEmailText();
+
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
@@ -81,11 +83,11 @@ export default function PrivacyPage() {
             </div>
             <div className={styles.definitionRow}>
               <dt>開示等の請求窓口</dt>
-              <dd>{LEGAL_INFO.contactEmail}</dd>
+              <dd>{publicContactEmail}</dd>
             </div>
             <div className={styles.definitionRow}>
               <dt>苦情・相談窓口</dt>
-              <dd>{LEGAL_INFO.contactEmail}</dd>
+              <dd>{publicContactEmail}</dd>
             </div>
             <div className={styles.definitionRow}>
               <dt>安全管理措置の概要</dt>
@@ -101,7 +103,7 @@ export default function PrivacyPage() {
           <h2>6. 開示・訂正・削除等</h2>
           <p>
             利用者は、法令に基づき、当社に対して保有個人データの開示、訂正、追加、削除、
-            利用停止等を求めることができます。ご希望の際は {LEGAL_INFO.contactEmail} までご連絡ください。
+            利用停止等を求めることができます。ご希望の際は {publicContactEmail} までご連絡ください。
           </p>
         </section>
 
