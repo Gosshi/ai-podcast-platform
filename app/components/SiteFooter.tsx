@@ -3,23 +3,29 @@
 import { usePathname } from "next/navigation";
 import TrackedLink from "@/app/components/TrackedLink";
 import { SITE_NAME } from "@/src/lib/brand";
+import {
+  APPLE_PODCASTS_SHOW_URL,
+  PUBLIC_EPISODES_URL,
+  SPOTIFY_SHOW_URL,
+  X_PROFILE_URL
+} from "@/src/lib/publicLinks";
 import styles from "./site-footer.module.css";
 
 const FOOTER_LINKS = [
   {
-    href: "https://podcasts.apple.com/jp/podcast/%E5%88%A4%E6%96%AD%E3%81%AE%E3%81%98%E3%81%8B%E3%82%93-by-signalmove/id1887020163",
+    href: APPLE_PODCASTS_SHOW_URL,
     label: "Apple Podcasts"
   },
   {
-    href: "https://open.spotify.com/show/6nswsdY9ScaOvaLBkeKsFH",
+    href: SPOTIFY_SHOW_URL,
     label: "Spotify"
   },
   {
-    href: "https://x.com/signalmove_jp",
+    href: X_PROFILE_URL,
     label: "X"
   },
   {
-    href: "/episodes",
+    href: PUBLIC_EPISODES_URL,
     label: "公開エピソード"
   },
   {

@@ -1,8 +1,16 @@
 import AnalyticsPageView from "@/app/components/AnalyticsPageView";
 import TrackedLink from "@/app/components/TrackedLink";
+import { loadPublishedEpisodes } from "@/app/lib/episodes";
 import { buildLoginPath, buildOnboardingPath } from "@/app/lib/onboarding";
 import { getViewerFromCookies } from "@/app/lib/viewer";
 import { BRAND_NAME, SITE_NAME } from "@/src/lib/brand";
+import { buildPublicEpisodePath } from "@/src/lib/episodeLinks";
+import {
+  APPLE_PODCASTS_SHOW_URL,
+  PUBLIC_EPISODES_URL,
+  SPOTIFY_SHOW_URL,
+  X_PROFILE_URL
+} from "@/src/lib/publicLinks";
 import { MONTHLY_PRICE_YEN, resolveSubscriptionTrialLabel } from "@/src/lib/subscriptionPlan";
 import styles from "./home.module.css";
 
@@ -40,13 +48,27 @@ const SAMPLE_EPISODES = [
 export default async function HomePage() {
   const viewer = await getViewerFromCookies();
   const trialLabel = resolveSubscriptionTrialLabel();
+  const { episodes } = await loadPublishedEpisodes({
+    genreFilter: null,
+    isPaid: viewer?.isPaid ?? false,
+    userId: viewer?.userId ?? null
+  });
+  const featuredEpisode =
+    episodes.find((episode) => episode.lang === "ja") ?? episodes[0] ?? null;
+  const featuredEpisodeHref = featuredEpisode
+    ? buildPublicEpisodePath(featuredEpisode.id)
+    : "/episodes";
+  const featuredEpisodeSummary =
+    featuredEpisode?.description?.trim() ||
+    featuredEpisode?.preview_text?.trim() ||
+    "公開エピソードから、その日の判断ポイントをすぐに確認できます。";
 
   const onboardingHref = buildOnboardingPath("/decisions");
   const loginHref = buildLoginPath("/decisions");
   const startHref = viewer ? "/decisions" : loginHref;
   const startLabel = viewer ? "今日のエピソードを聴く" : "無料ではじめる";
-  const secondaryHref = viewer ? onboardingHref : loginHref;
-  const secondaryLabel = viewer ? "好みを設定する" : "ログイン";
+  const secondaryHref = viewer ? onboardingHref : featuredEpisodeHref;
+  const secondaryLabel = viewer ? "好みを設定する" : "公開回を聴く";
 
   return (
     <main className={styles.page}>
@@ -88,6 +110,85 @@ export default async function HomePage() {
                 }}
               >
                 {secondaryLabel}
+              </TrackedLink>
+            </div>
+
+            {!viewer ? (
+              <div className={styles.microActions}>
+                <TrackedLink
+                  href={loginHref}
+                  className={styles.inlineLink}
+                  eventName="landing_cta_click"
+                  eventProperties={{
+                    page: "/",
+                    source: "landing_login_link",
+                    destination: loginHref
+                  }}
+                >
+                  すでにアカウントがある方はこちら
+                </TrackedLink>
+              </div>
+            ) : null}
+
+            <div className={styles.listenRow}>
+              <span className={styles.listenLabel}>今すぐ聴く</span>
+              <TrackedLink
+                href={APPLE_PODCASTS_SHOW_URL}
+                className={styles.listenChip}
+                eventName="landing_cta_click"
+                eventProperties={{
+                  page: "/",
+                  source: "landing_listen_row",
+                  destination: APPLE_PODCASTS_SHOW_URL,
+                  channel: "apple_podcasts"
+                }}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Apple Podcasts
+              </TrackedLink>
+              <TrackedLink
+                href={SPOTIFY_SHOW_URL}
+                className={styles.listenChip}
+                eventName="landing_cta_click"
+                eventProperties={{
+                  page: "/",
+                  source: "landing_listen_row",
+                  destination: SPOTIFY_SHOW_URL,
+                  channel: "spotify"
+                }}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Spotify
+              </TrackedLink>
+              <TrackedLink
+                href={PUBLIC_EPISODES_URL}
+                className={styles.listenChip}
+                eventName="landing_cta_click"
+                eventProperties={{
+                  page: "/",
+                  source: "landing_listen_row",
+                  destination: PUBLIC_EPISODES_URL,
+                  channel: "web"
+                }}
+              >
+                Webで聴く
+              </TrackedLink>
+              <TrackedLink
+                href={X_PROFILE_URL}
+                className={styles.listenChip}
+                eventName="landing_cta_click"
+                eventProperties={{
+                  page: "/",
+                  source: "landing_listen_row",
+                  destination: X_PROFILE_URL,
+                  channel: "x"
+                }}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Xで更新を見る
               </TrackedLink>
             </div>
 
@@ -188,6 +289,55 @@ export default async function HomePage() {
                 </dl>
               </article>
             ))}
+          </div>
+        </section>
+
+        <section className={`${styles.section} ${styles.discoverySection}`.trim()}>
+          <div className={styles.sectionHeader}>
+            <p className={styles.eyebrow}>公開中</p>
+            <h2>まずは公開回を1本聴いて、合うかどうかを確かめる</h2>
+          </div>
+          <div className={styles.discoveryGrid}>
+            <article className={styles.discoveryCard}>
+              <span className={styles.discoveryLabel}>最新の公開回</span>
+              <h3>{featuredEpisode?.title ?? "公開エピソード一覧"}</h3>
+              <p>{featuredEpisodeSummary}</p>
+              <div className={styles.discoveryActions}>
+                <TrackedLink
+                  href={featuredEpisodeHref}
+                  className={styles.primaryLink}
+                  eventName="landing_cta_click"
+                  eventProperties={{
+                    page: "/",
+                    source: "landing_featured_episode",
+                    destination: featuredEpisodeHref
+                  }}
+                >
+                  公開回を聴く
+                </TrackedLink>
+                <TrackedLink
+                  href="/episodes"
+                  className={styles.secondaryLink}
+                  eventName="landing_cta_click"
+                  eventProperties={{
+                    page: "/",
+                    source: "landing_episode_index",
+                    destination: "/episodes"
+                  }}
+                >
+                  すべての公開回を見る
+                </TrackedLink>
+              </div>
+            </article>
+            <article className={styles.discoveryCardMuted}>
+              <span className={styles.discoveryLabel}>入口</span>
+              <h3>アプリ内でも、外部配信でも、同じ公開回に入れる</h3>
+              <ul className={styles.discoveryList}>
+                <li>Apple Podcasts と Spotify でそのまま再生できる</li>
+                <li>Web では公開回から無料登録と有料開始までつながる</li>
+                <li>X では新着公開回と更新情報を追える</li>
+              </ul>
+            </article>
           </div>
         </section>
 
