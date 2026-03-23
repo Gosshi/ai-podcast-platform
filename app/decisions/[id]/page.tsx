@@ -13,6 +13,7 @@ import TrackedLink from "@/app/components/TrackedLink";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { buildLoginPath } from "@/app/lib/onboarding";
 import { loadPublishedEpisodeById } from "@/app/lib/episodes";
+import { resolveEpisodeDescription } from "@/src/lib/episodeDescriptions";
 import {
   formatFrameTypeLabel,
   formatGenreLabel,
@@ -46,14 +47,20 @@ export async function generateMetadata({
     judgmentCards: episode.judgment_cards,
     fallback: "エピソード"
   });
+  const formattedDescription = resolveEpisodeDescription({
+    description: episode.description,
+    previewText: episode.preview_text,
+    judgmentCards: episode.judgment_cards,
+    fallback: "判断のじかんのエピソードです。"
+  });
   const ogImageUrl = `/api/og?title=${encodeURIComponent(formattedTitle)}${episode.genre ? `&genre=${encodeURIComponent(episode.genre)}` : ""}`;
 
   return {
     title: formattedTitle,
-    description: episode.description ?? undefined,
+    description: formattedDescription,
     openGraph: {
       title: formattedTitle,
-      description: episode.description ?? undefined,
+      description: formattedDescription,
       images: [{ url: ogImageUrl, width: 1200, height: 630, alt: formattedTitle }]
     }
   };
@@ -102,6 +109,14 @@ export default async function EpisodeDetailPage({
         judgmentCards: episode.judgment_cards
       })
     : "エピソード";
+  const displayDescription = episode
+    ? resolveEpisodeDescription({
+        description: episode.description,
+        previewText: episode.preview_text,
+        judgmentCards: episode.judgment_cards,
+        fallback: "判断のじかんのエピソードです。"
+      })
+    : "判断のじかんのエピソードです。";
 
   if (!episode && !error) {
     notFound();
@@ -134,7 +149,7 @@ export default async function EpisodeDetailPage({
               <PostListenCTA
                 src={episode.audio_url ?? null}
                 title={displayTitle}
-                description={episode.description}
+                description={displayDescription}
                 hasCards={episode.judgment_cards.length > 0}
                 page={`/decisions/${id}`}
                 episodeId={episode.id}
@@ -142,7 +157,7 @@ export default async function EpisodeDetailPage({
               <div className={styles.shareRow}>
                 <ShareButton
                   title={displayTitle}
-                  text={episode.description ?? undefined}
+                  text={displayDescription}
                   url={publicEpisodePath}
                   page={`/decisions/${id}`}
                   source="episode_detail"

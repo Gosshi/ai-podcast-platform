@@ -1,6 +1,6 @@
 # Launch Readiness Runbook
 
-更新日: 2026-03-22  
+更新日: 2026-03-23  
 対象サービス: `判断のじかん by SignalMove`
 
 ## 目的
@@ -14,15 +14,16 @@
 
 - [x] Apple Podcasts 申請を出す
 - [x] Spotify 申請を出す
-- [ ] X アカウントを作る
-- [ ] X のプロフィール、固定ポスト、リンク先を整える
-- [ ] `LEGAL_REPRESENTATIVE_NAME` を本番値で確定する
-- [ ] `LEGAL_ADDRESS` を本番値で確定する
-- [ ] GMO を使うなら契約する
+- [x] X アカウントを作る
+- [x] X のプロフィール、固定ポスト、リンク先を整える
+- [x] `LEGAL_REPRESENTATIVE_NAME` を本番値で確定する
+- [x] `LEGAL_ADDRESS` を本番値で確定する
+- [x] GMO を契約し、住所を本番反映する
 
 補足:
-- Apple Podcasts は公開操作実施済み。listing の最終反映確認は別途行う
+- Apple Podcasts は公開済み
 - Spotify は公開済み: `https://open.spotify.com/show/6nswsdY9ScaOvaLBkeKsFH`
+- X アカウントは `@signalmove_jp` で手動運用を開始できる状態
 
 ### 今はやらないこと
 
@@ -33,6 +34,7 @@
 補足:
 - リリースまでは OpenAI コスト抑制のため、公開エピソードは手動作成・手動公開を前提にする
 - 日次自動生成の配線は残してあるが、現時点では本番安定運用の前提に置かない
+- `Scheduled Daily Publish` と X 自動投稿 workflow は、明示的に有効化するまでは manual-only で扱う
 
 ## 現在の整理
 
@@ -123,8 +125,22 @@
 - 別途手動で完了確認すべき項目:
   - 管理者 OTP メールの送達確認
   - 運用端末の OS 更新 / 標準マルウェア保護
-  - Apple Podcasts listing の最終反映確認
-  - Spotify listing の説明・カテゴリ・見え方の最終確認
+  - Apple Podcasts / Spotify / X の導線計測
+  - 公開回ごとの trial 開始率 / paid 転換率 / 継続率の記録
+
+## Soft Launch 運用メモ
+
+- 今週やること:
+  - 公開回の `description` と `preview` を人向けに整える
+  - footer から `Apple Podcasts` `Spotify` `X` `公開エピソード` へ直リンクする
+  - `robots.txt` と `sitemap.xml` を公開する
+  - manual-only 運用を docs に明記する
+  - 毎週見る数字を固定する
+- 6週間の運用指標:
+  - 公開回 → 無料登録率
+  - trial 開始率
+  - trial → paid
+  - 4週継続率
 
 ## 中期改善メモ
 

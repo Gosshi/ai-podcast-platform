@@ -1219,6 +1219,25 @@ const mergeNormalizationMetrics = (
   };
 };
 
+const buildJapaneseEpisodeDescription = (params: {
+  title: string;
+  cards: JudgmentCardSyncResult["cards"];
+  episodeDate: string;
+}): string => {
+  const lead = params.cards
+    .toSorted((left, right) => left.topic_order - right.topic_order)
+    .slice(0, 2)
+    .map((card) => card.judgment_summary?.trim() || `${card.topic_title}の判断ポイントを整理します。`)
+    .filter((value) => value.length > 0)
+    .join(" ");
+
+  if (lead) {
+    return lead;
+  }
+
+  return `${params.title}をテーマに、今日の判断ポイントをコンパクトに整理する回です。`;
+};
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
@@ -1377,10 +1396,16 @@ Deno.serve(async (req) => {
       judgmentCards: judgmentCardSync.cards,
       episodeDate
     });
+    const resolvedDescription = buildJapaneseEpisodeDescription({
+      title: resolvedTitle,
+      cards: judgmentCardSync.cards,
+      episodeDate
+    });
 
-    if (resolvedTitle !== episode.title) {
+    if (resolvedTitle !== episode.title || resolvedDescription !== episode.description) {
       episode = await updateEpisode(episode.id, {
-        title: resolvedTitle
+        title: resolvedTitle,
+        description: resolvedDescription
       });
     }
 

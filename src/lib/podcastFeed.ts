@@ -1,4 +1,5 @@
 import { DEFAULT_SITE_URL, PRODUCT_NAME, SITE_NAME } from "./brand.ts";
+import { resolveEpisodeDescription } from "./episodeDescriptions.ts";
 import { buildPublicEpisodePath } from "./episodeLinks.ts";
 import { resolveDisplayEpisodeTitle } from "./episodeTitles.ts";
 
@@ -19,6 +20,7 @@ export type PodcastFeedEpisode = {
   id: string;
   title: string | null;
   description: string | null;
+  previewText?: string | null;
   audioUrl: string | null;
   audioLengthBytes?: number | null;
   durationSec: number | null;
@@ -27,6 +29,7 @@ export type PodcastFeedEpisode = {
   judgmentCards?: Array<{
     topic_order: number;
     topic_title: string;
+    judgment_summary?: string | null;
   }>;
 };
 
@@ -107,12 +110,17 @@ const buildItemXml = (episode: PodcastFeedEpisode): string => {
     judgmentCards: episode.judgmentCards,
     fallback: ""
   });
+  const displayDescription = resolveEpisodeDescription({
+    description: episode.description,
+    previewText: episode.previewText,
+    judgmentCards: episode.judgmentCards
+  });
 
   return `
     <item>
       <title>${escapeXml(displayTitle)}</title>
-      <description><![CDATA[${episode.description ?? ""}]]></description>
-      <itunes:summary><![CDATA[${episode.description ?? ""}]]></itunes:summary>
+      <description><![CDATA[${displayDescription}]]></description>
+      <itunes:summary><![CDATA[${displayDescription}]]></itunes:summary>
       <link>${resolveEpisodeUrl(episode.id)}</link>
       <guid isPermaLink="false">${episode.id}</guid>
       <pubDate>${episode.publishedAt ? formatRfc822(episode.publishedAt) : ""}</pubDate>

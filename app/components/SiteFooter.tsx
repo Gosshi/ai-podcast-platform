@@ -7,6 +7,22 @@ import styles from "./site-footer.module.css";
 
 const FOOTER_LINKS = [
   {
+    href: "https://podcasts.apple.com/jp/podcast/%E5%88%A4%E6%96%AD%E3%81%AE%E3%81%98%E3%81%8B%E3%82%93-by-signalmove/id1887020163",
+    label: "Apple Podcasts"
+  },
+  {
+    href: "https://open.spotify.com/show/6nswsdY9ScaOvaLBkeKsFH",
+    label: "Spotify"
+  },
+  {
+    href: "https://x.com/signalmove_jp",
+    label: "X"
+  },
+  {
+    href: "/episodes",
+    label: "公開エピソード"
+  },
+  {
     href: "/commercial-disclosure",
     label: "特商法に基づく表記"
   },
@@ -51,6 +67,8 @@ export default function SiteFooter() {
                 destination: item.href,
                 label: item.label
               }}
+              target={item.href.startsWith("http") ? "_blank" : undefined}
+              rel={item.href.startsWith("http") ? "noreferrer" : undefined}
             >
               {item.label}
             </TrackedLink>

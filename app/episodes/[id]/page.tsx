@@ -5,6 +5,7 @@ import MemberControls from "@/app/components/MemberControls";
 import PostListenCTA from "@/app/components/PostListenCTA";
 import ShareButton from "@/app/components/ShareButton";
 import TrackedLink from "@/app/components/TrackedLink";
+import { resolveEpisodeDescription } from "@/src/lib/episodeDescriptions";
 import { loadPublicEpisodeById } from "@/app/lib/episodes";
 import { formatThresholdHighlights } from "@/app/lib/judgmentAccess";
 import { buildLoginPath } from "@/app/lib/onboarding";
@@ -61,17 +62,23 @@ export async function generateMetadata({
     judgmentCards: episode.judgment_cards,
     fallback: "公開エピソード"
   });
+  const formattedDescription = resolveEpisodeDescription({
+    description: episode.description,
+    previewText: episode.preview_text,
+    judgmentCards: episode.judgment_cards,
+    fallback: "判断のじかんの公開エピソードです。"
+  });
   const ogImageUrl = `/api/og?title=${encodeURIComponent(formattedTitle)}${episode.genre ? `&genre=${encodeURIComponent(episode.genre)}` : ""}`;
 
   return {
     title: `${formattedTitle} | 公開エピソード`,
-    description: episode.description ?? "判断のじかんの公開エピソードです。",
+    description: formattedDescription,
     alternates: {
       canonical: buildPublicEpisodePath(id)
     },
     openGraph: {
       title: formattedTitle,
-      description: episode.description ?? undefined,
+      description: formattedDescription,
       url: buildPublicEpisodePath(id),
       images: [{ url: ogImageUrl, width: 1200, height: 630, alt: formattedTitle }]
     }
@@ -101,6 +108,14 @@ export default async function PublicEpisodePage({
         judgmentCards: episode.judgment_cards
       })
     : "公開エピソード";
+  const displayDescription = episode
+    ? resolveEpisodeDescription({
+        description: episode.description,
+        previewText: episode.preview_text,
+        judgmentCards: episode.judgment_cards,
+        fallback: "この回の要点を無料で確認できます。気になったら、そのまま有料版で詳細まで続けられます。"
+      })
+    : "この回の要点を無料で確認できます。";
 
   if (!episode && !error) {
     notFound();
@@ -121,9 +136,7 @@ export default async function PublicEpisodePage({
             <div className={styles.heroCopy}>
               <p className={styles.eyebrow}>Public Episode</p>
               <h1>{displayTitle}</h1>
-              <p className={styles.lead}>
-                {episode.description ?? "この回の要点を無料で確認できます。気になったら、そのまま有料版で詳細まで続けられます。"}
-              </p>
+              <p className={styles.lead}>{displayDescription}</p>
               <div className={styles.metaRow}>
                 <span>{formatLanguageLabel(episode.lang)}</span>
                 <span>{formatGenreLabel(episode.genre)}</span>
@@ -152,7 +165,7 @@ export default async function PublicEpisodePage({
             <PostListenCTA
               src={episode.audio_url ?? null}
               title={displayTitle}
-              description={episode.description}
+              description={displayDescription}
               hasCards={episode.judgment_cards.length > 0}
               page={publicPath}
               episodeId={episode.id}
@@ -160,7 +173,7 @@ export default async function PublicEpisodePage({
             <div className={styles.playerActions}>
               <ShareButton
                 title={displayTitle}
-                text={episode.description ?? undefined}
+                text={displayDescription}
                 url={publicUrl}
                 page={publicPath}
                 source="public_episode"
