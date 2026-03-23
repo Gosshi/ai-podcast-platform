@@ -150,6 +150,8 @@
   - 4週継続率
 - 公開回の文言運用:
   - title / description の手動運用は [docs/public-episode-copy-template.md](/Users/gota/Documents/src/ai-podcast-platform/docs/public-episode-copy-template.md) を基準にする
+- 週次運用と改善ループ:
+  - 6週間のカレンダー、週次レビューシート、KPI ダッシュボードは [docs/soft-launch-ops.md](/Users/gota/Documents/src/ai-podcast-platform/docs/soft-launch-ops.md) を使う
 
 ## 中期改善メモ
 
