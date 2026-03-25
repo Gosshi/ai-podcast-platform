@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { getMessages } from "@/src/lib/i18n/messages";
 import type { Locale } from "@/src/lib/i18n/locale";
-import styles from "./job-runs.module.css";
+import s from "../admin.module.css";
 
 type RetryResponse = {
   ok: boolean;
@@ -80,27 +80,29 @@ export default function RetryDailyGeneratePanel({
   };
 
   return (
-    <section className={styles.card}>
-      <h2>{t.retryTitle}</h2>
-      <p className={styles.caption}>{t.retryCaption}</p>
+    <section className={s.card}>
+      <h2 className={s.cardHeader}>{t.retryTitle}</h2>
+      <p className={s.pageCaption}>{t.retryCaption}</p>
 
-      <div className={styles.retryControls}>
-        <label className={styles.retryLabel} htmlFor="episode-date-input">
+      <div className={s.inlineControls}>
+        <label className={s.inlineLabel} htmlFor="episode-date-input">
           {t.episodeDate}
         </label>
         <input
           id="episode-date-input"
           type="date"
+          className={s.fieldInput}
+          style={{ width: "auto" }}
           value={episodeDate}
           onChange={(event) => setEpisodeDate(event.target.value)}
         />
-        <button type="button" onClick={onRetry} disabled={loading || !episodeDate}>
+        <button type="button" className={s.btnPrimary} onClick={onRetry} disabled={loading || !episodeDate}>
           {loading ? t.retrying : t.retryButton}
         </button>
       </div>
 
       {result ? (
-        <p className={result.ok ? styles.retrySuccess : styles.retryError}>
+        <p className={result.ok ? s.successInline : s.errorInline} style={{ marginTop: "0.75rem" }}>
           {result.ok
             ? `${t.successPrefix}: ${t.invokedLabel} (run_id=${result.runId ?? "-"}, status=${result.status})`
             : result.disabled

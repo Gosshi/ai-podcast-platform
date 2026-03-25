@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { requireAdmin } from "@/app/lib/adminGuard";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
-import styles from "./trends.module.css";
+import s from "../admin.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -86,27 +85,23 @@ export default async function AdminTrendsPage() {
   const { rows, error } = await loadTrends();
 
   return (
-    <main className={styles.page}>
-      <h1>Trend Score Board</h1>
-      <p className={styles.caption}>
-        freshness/source/bonus/penalty の内訳と、entertainment加点を含むスコアを確認します。
-      </p>
+    <main className={s.container}>
+      <div className={s.pageHeader}>
+        <h1 className={s.pageTitle}>Trends</h1>
+        <p className={s.pageCaption}>
+          freshness/source/bonus/penalty の内訳と、entertainment加点を含むスコアを確認します。
+        </p>
+      </div>
 
-      <p className={styles.navRow}>
-        <Link href="/admin/job-runs">/admin/job-runs</Link>
-        <Link href="/admin/manual-publish">/admin/manual-publish</Link>
-        <Link href="/admin/analytics">/admin/analytics</Link>
-      </p>
+      {error ? <p className={s.errorText}>load error: {error}</p> : null}
 
-      {error ? <p className={styles.errorText}>load error: {error}</p> : null}
-
-      <section className={styles.card}>
-        <h2>Recent Trend Items</h2>
+      <section className={s.card}>
+        <h2 className={s.cardHeader}>Recent Trend Items</h2>
         {rows.length === 0 ? (
-          <p>trend data is empty</p>
+          <p className={s.emptyText}>trend data is empty</p>
         ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
+          <div className={s.tableWrap}>
+            <table className={s.table}>
               <thead>
                 <tr>
                   <th>published</th>
@@ -124,9 +119,9 @@ export default async function AdminTrendsPage() {
                       <td>{formatDateTime(row.published_at ?? row.created_at)}</td>
                       <td>
                         <div>{source.name}</div>
-                        <div>{source.category}</div>
+                        <div style={{ fontSize: "0.78rem", color: "#94a3b8" }}>{source.category}</div>
                       </td>
-                      <td className={styles.titleCell}>
+                      <td className={s.titleCell}>
                         {row.url ? (
                           <a href={row.url} target="_blank" rel="noreferrer noopener">
                             {row.title ?? "(no title)"}
@@ -135,22 +130,14 @@ export default async function AdminTrendsPage() {
                           row.title ?? "(no title)"
                         )}
                       </td>
-                      <td className={styles.score}>
-                        <strong>{formatScore(row.score)}</strong>
+                      <td className={s.scoreCell}>
+                        {formatScore(row.score)}
                       </td>
-                      <td className={styles.breakdown}>
-                        <div>
-                          freshness: <strong>{formatScore(row.score_freshness)}</strong>
-                        </div>
-                        <div>
-                          source: <strong>{formatScore(row.score_source)}</strong>
-                        </div>
-                        <div>
-                          bonus: <strong>{formatScore(row.score_bonus)}</strong>
-                        </div>
-                        <div>
-                          penalty: <strong>{formatScore(row.score_penalty)}</strong>
-                        </div>
+                      <td className={s.breakdownCell}>
+                        <div>freshness: <strong>{formatScore(row.score_freshness)}</strong></div>
+                        <div>source: <strong>{formatScore(row.score_source)}</strong></div>
+                        <div>bonus: <strong>{formatScore(row.score_bonus)}</strong></div>
+                        <div>penalty: <strong>{formatScore(row.score_penalty)}</strong></div>
                       </td>
                     </tr>
                   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import styles from "./page.module.css";
+import s from "../admin.module.css";
 
 type ManualPublishResult = {
   ok: boolean;
@@ -109,40 +109,42 @@ export default function ManualPublishJaPanel({
   };
 
   return (
-    <section className={styles.panel}>
-      <h2>Publish Form</h2>
-      <div className={styles.formGrid}>
-        <label className={styles.field}>
-          <span>Title</span>
-          <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="そのAIツール、今月も課金する？" />
+    <section className={s.card}>
+      <h2 className={s.cardHeader}>Publish Form</h2>
+      <div className={s.formGrid}>
+        <label className={s.field}>
+          <span className={s.fieldLabel}>Title</span>
+          <input className={s.fieldInput} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="そのAIツール、今月も課金する？" />
         </label>
 
-        <label className={styles.field}>
-          <span>Episode Date</span>
-          <input type="date" value={episodeDate} onChange={(event) => setEpisodeDate(event.target.value)} />
+        <label className={s.field}>
+          <span className={s.fieldLabel}>Episode Date</span>
+          <input className={s.fieldInput} type="date" value={episodeDate} onChange={(event) => setEpisodeDate(event.target.value)} />
         </label>
 
-        <label className={styles.field}>
-          <span>Genre</span>
-          <select value={genre} onChange={(event) => setGenre(event.target.value)}>
+        <label className={s.field}>
+          <span className={s.fieldLabel}>Genre</span>
+          <select className={s.fieldInput} value={genre} onChange={(event) => setGenre(event.target.value)}>
             <option value="tech">tech</option>
             <option value="general">general</option>
             <option value="entertainment">entertainment</option>
           </select>
         </label>
 
-        <label className={styles.field}>
-          <span>Existing Episode ID</span>
+        <label className={s.field}>
+          <span className={s.fieldLabel}>Existing Episode ID</span>
           <input
+            className={s.fieldInput}
             value={existingEpisodeId}
             onChange={(event) => setExistingEpisodeId(event.target.value)}
             placeholder="optional"
           />
         </label>
 
-        <label className={`${styles.field} ${styles.fieldFull}`}>
-          <span>Description</span>
+        <label className={`${s.field} ${s.fieldFull}`}>
+          <span className={s.fieldLabel}>Description</span>
           <textarea
+            className={s.fieldInput}
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             rows={4}
@@ -150,9 +152,10 @@ export default function ManualPublishJaPanel({
           />
         </label>
 
-        <label className={`${styles.field} ${styles.fieldFull}`}>
-          <span>Preview Text</span>
+        <label className={`${s.field} ${s.fieldFull}`}>
+          <span className={s.fieldLabel}>Preview Text</span>
           <textarea
+            className={s.fieldInput}
             value={previewText}
             onChange={(event) => setPreviewText(event.target.value)}
             rows={3}
@@ -160,9 +163,10 @@ export default function ManualPublishJaPanel({
           />
         </label>
 
-        <label className={`${styles.field} ${styles.fieldFull}`}>
-          <span>Script</span>
+        <label className={`${s.field} ${s.fieldFull}`}>
+          <span className={s.fieldLabel}>Script</span>
           <textarea
+            className={s.fieldInput}
             value={script}
             onChange={(event) => setScript(event.target.value)}
             rows={20}
@@ -171,14 +175,15 @@ export default function ManualPublishJaPanel({
         </label>
       </div>
 
-      <label className={styles.checkboxRow}>
+      <label className={s.checkboxRow} style={{ marginTop: "1rem" }}>
         <input type="checkbox" checked={publish} onChange={(event) => setPublish(event.target.checked)} />
         <span>publish まで進める</span>
       </label>
 
-      <div className={styles.actions}>
+      <div style={{ marginTop: "1rem" }}>
         <button
           type="button"
+          className={s.btnPrimary}
           onClick={onSubmit}
           disabled={loading || !title.trim() || !description.trim() || !script.trim() || !episodeDate}
         >
@@ -187,9 +192,9 @@ export default function ManualPublishJaPanel({
       </div>
 
       {result ? (
-        <div className={result.ok ? styles.resultSuccess : styles.resultError}>
+        <div className={result.ok ? s.resultSuccess : s.resultError} style={{ marginTop: "1rem" }}>
           <p>{result.ok ? "manual publish completed" : `manual publish failed: ${result.error ?? "unknown_error"}`}</p>
-          <dl className={styles.resultGrid}>
+          <dl className={s.resultGrid}>
             <div>
               <dt>episodeId</dt>
               <dd>{result.episodeId ?? "-"}</dd>

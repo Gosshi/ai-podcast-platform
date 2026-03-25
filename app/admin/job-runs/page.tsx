@@ -4,7 +4,7 @@ import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import { resolveLocale } from "@/src/lib/i18n/locale";
 import { getMessages } from "@/src/lib/i18n/messages";
 import RetryDailyGeneratePanel from "./RetryDailyGeneratePanel";
-import styles from "./job-runs.module.css";
+import s from "../admin.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -430,6 +430,13 @@ const loadAuditData = async (): Promise<{
   }
 };
 
+const BADGE_CLASS: Record<JobStatus, string> = {
+  success: "badgeSuccess",
+  running: "badgeRunning",
+  failed: "badgeFailed",
+  skipped: "badgeSkipped"
+};
+
 export default async function JobRunsPage({
   searchParams
 }: {
@@ -479,36 +486,34 @@ export default async function JobRunsPage({
   };
 
   return (
-    <main className={styles.page}>
-      {/* TODO: add auth guard before enabling outside local-only operation. */}
-      <h1>{t.pageTitle}</h1>
-      <p className={styles.caption}>{t.caption}</p>
-      <p className={styles.filter}>
-        <Link href="/admin/trends">/admin/trends</Link>
-        {" · "}
-        <Link href="/admin/manual-publish">/admin/manual-publish</Link>
-        {" · "}
-        <Link href="/admin/analytics">/admin/analytics</Link>
-      </p>
+    <main className={s.container}>
+      <div className={s.pageHeader}>
+        <h1 className={s.pageTitle}>{t.pageTitle}</h1>
+        <p className={s.pageCaption}>{t.caption}</p>
+      </div>
 
-      <p className={styles.filter}>
-        {t.filterPrefix}: {failedOnly ? t.filterFailedOnly : t.filterAll} [
-        {" "}
-        {failedOnly ? <Link href={buildHref(null)}>{t.showAll}</Link> : <Link href={buildHref("failed")}>{t.showFailedOnly}</Link>}
-        ]
-      </p>
+      <div className={s.filterRow}>
+        <span>{t.filterPrefix}:</span>
+        <strong>{failedOnly ? t.filterFailedOnly : t.filterAll}</strong>
+        <span>/</span>
+        {failedOnly ? (
+          <Link href={buildHref(null)}>{t.showAll}</Link>
+        ) : (
+          <Link href={buildHref("failed")}>{t.showFailedOnly}</Link>
+        )}
+      </div>
 
       <RetryDailyGeneratePanel defaultEpisodeDate={defaultEpisodeDate} locale={locale} />
 
-      {error ? <p className={styles.errorText}>{t.loadErrorPrefix}: {error}</p> : null}
+      {error ? <p className={s.errorText}>{t.loadErrorPrefix}: {error}</p> : null}
 
-      <section className={styles.card}>
-        <h2>{t.recentEpisodes}</h2>
+      <section className={s.card}>
+        <h2 className={s.cardHeader}>{t.recentEpisodes}</h2>
         {episodes.length === 0 ? (
-          <p>{t.noEpisodes}</p>
+          <p className={s.emptyText}>{t.noEpisodes}</p>
         ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
+          <div className={s.tableWrap}>
+            <table className={s.table}>
               <thead>
                 <tr>
                   <th>{t.created}</th>
@@ -537,41 +542,42 @@ export default async function JobRunsPage({
       </section>
 
       {groupedRuns.length === 0 ? (
-        <p>{t.noGroupedRuns}</p>
+        <p className={s.emptyText}>{t.noGroupedRuns}</p>
       ) : (
-        <div className={styles.groupList}>
+        <div className={s.groupList}>
           {groupedRuns.map((group) => (
             <section
               key={group.key}
-              className={`${styles.runCard} ${group.status === "failed" ? styles.runCardFailed : ""}`.trim()}
+              className={`${s.runCard} ${group.status === "failed" ? s.runCardFailed : ""}`.trim()}
             >
-              <header className={styles.runHeader}>
+              <div className={s.runMeta}>
                 <div>
-                  <h2>
-                    {t.run} {group.rootRunId ? <code>{group.rootRunId}</code> : <span>{t.orphanGroup}</span>}
-                  </h2>
-                  <p>
-                    {t.runStatus}=<strong>{group.status}</strong> / {t.started}={formatDateTime(group.startedAt, locale)} / {t.elapsed}=
-                    {group.elapsedLabel}
-                  </p>
-                  <p>
-                    {t.idempotencyKey}={group.idempotencyKey ?? "-"} / {t.episodeDate}={group.episodeDate ?? "-"}
-                  </p>
-                  <p>decision={group.decision ?? "-"} / requestEcho={formatRequestEcho(group.requestEcho)}</p>
+                  <strong>{t.run}</strong>{" "}
+                  {group.rootRunId ? <code>{group.rootRunId}</code> : <span>{t.orphanGroup}</span>}
                 </div>
-              </header>
+                <div>
+                  {t.runStatus}={" "}
+                  <span className={`${s.badge} ${s[BADGE_CLASS[group.status]]}`}>{group.status}</span>
+                  {" / "}{t.started}={formatDateTime(group.startedAt, locale)}
+                  {" / "}{t.elapsed}={group.elapsedLabel}
+                </div>
+                <div>
+                  {t.idempotencyKey}={group.idempotencyKey ?? "-"} / {t.episodeDate}={group.episodeDate ?? "-"}
+                </div>
+                <div>decision={group.decision ?? "-"} / requestEcho={formatRequestEcho(group.requestEcho)}</div>
+              </div>
 
               {group.relatedEpisodes.length > 0 ? (
-                <p className={styles.relatedEpisodes}>
-                  {t.relatedEpisodes}: {" "}
+                <p className={s.relatedTag}>
+                  {t.relatedEpisodes}:{" "}
                   {group.relatedEpisodes
                     .map((episode) => `${episode.lang.toUpperCase()}:${episode.title ?? episode.id}`)
                     .join(" | ")}
                 </p>
               ) : null}
 
-              <div className={styles.tableWrap}>
-                <table className={styles.table}>
+              <div className={s.tableWrap}>
+                <table className={s.table}>
                   <thead>
                     <tr>
                       <th>{t.step}</th>
@@ -587,27 +593,17 @@ export default async function JobRunsPage({
                       <tr key={step.id}>
                         <td>{step.job_type}</td>
                         <td>
-                          <span
-                            className={`${styles.statusBadge} ${
-                              step.status === "failed"
-                                ? styles.statusFailed
-                                : step.status === "running"
-                                  ? styles.statusRunning
-                                  : step.status === "skipped"
-                                    ? styles.statusSkipped
-                                  : styles.statusSuccess
-                            }`.trim()}
-                          >
+                          <span className={`${s.badge} ${s[BADGE_CLASS[step.status]]}`}>
                             {step.status}
                           </span>
                         </td>
                         <td>{formatDateTime(step.started_at, locale)}</td>
                         <td>{formatElapsed(step.started_at, step.status === "running" ? null : step.ended_at)}</td>
-                        <td className={styles.errorCell}>{step.error ?? "-"}</td>
+                        <td className={s.errorCell}>{step.error ?? "-"}</td>
                         <td>
                           <details>
                             <summary>{t.payload}</summary>
-                            <pre className={styles.payloadPre}>{formatPayload(step.payload)}</pre>
+                            <pre className={s.payloadPre}>{formatPayload(step.payload)}</pre>
                           </details>
                         </td>
                       </tr>
