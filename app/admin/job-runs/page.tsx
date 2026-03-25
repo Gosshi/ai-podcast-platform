@@ -383,6 +383,23 @@ const buildRunGroups = (rows: JobRunRow[]): RunGroupView[] => {
     .sort((a, b) => toMillis(b.startedAt) - toMillis(a.startedAt));
 };
 
+const STALE_RUNNING_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+const timeoutStaleRuns = async (
+  supabase: ReturnType<typeof createServiceRoleClient>
+): Promise<void> => {
+  const cutoff = new Date(Date.now() - STALE_RUNNING_TIMEOUT_MS).toISOString();
+  await supabase
+    .from("job_runs")
+    .update({
+      status: "failed",
+      error: "timeout: step exceeded 30-minute limit",
+      ended_at: new Date().toISOString()
+    })
+    .eq("status", "running")
+    .lt("started_at", cutoff);
+};
+
 const loadAuditData = async (): Promise<{
   jobRuns: JobRunRow[];
   episodes: EpisodeRow[];
@@ -390,6 +407,8 @@ const loadAuditData = async (): Promise<{
 }> => {
   try {
     const supabase = createServiceRoleClient();
+
+    await timeoutStaleRuns(supabase);
 
     const { data: runRows, error: runError } = await supabase
       .from("job_runs")
