@@ -242,26 +242,33 @@ soft launch の 6 週間で、
 - 勝ち筋が出るまでは価格をいじらない
 - 広告や自動化は、trial 開始率の傾向が見えるまで入れない
 
-## 手動公開コマンド
+## 手動公開ツール
 
-公開回を手動で登録する時は、config JSON を 1 つ作り、次の 1 コマンドで回す。
+本番の公開回は、ローカル端末から production Supabase に直接書き込まず、admin 画面から実行する。
 
-```bash
-npm run episode:register:ja -- docs/manual-episode-config-2026-03-23-ai-tools.json
-```
+- 本番公開導線: `/admin/manual-publish`
+- 実行内容:
+  - `episodes` に JA episode を作成または更新する
+  - script から `episode_judgment_cards` を同期する
+  - `/api/tts` で `mp3` 音声を作る
+  - `audio_url` と `duration_sec` を反映し、`published` まで上げる
 
-このコマンドでやること:
+入力項目:
 
-- `episodes` に JA episode を作成または更新する
-- script から `episode_judgment_cards` を同期する
-- `/api/tts` で `mp3` 音声を作る
-- `audio_url` と `duration_sec` を反映し、`published` まで上げる
+- `title`
+- `description`
+- `previewText`
+- `script`
+- `episodeDate`
+- `genre`
+- `existingEpisodeId` を使う時だけ既存 row を上書きする
 
 補足:
 
-- dry run は `npm run episode:register:ja -- docs/manual-episode-config-2026-03-23-ai-tools.json --dry-run`
+- local CLI `npm run episode:register:ja -- <config.json>` は local/dev 検証用として残す
+- production 反映は `https://signal-move.com/admin/manual-publish` を優先する
+- 例の script は [docs/public-episode-script-draft-2026-03-23-ai-tools.txt](/Users/gota/Documents/src/ai-podcast-platform/docs/public-episode-script-draft-2026-03-23-ai-tools.txt)
 - 例の config は [docs/manual-episode-config-2026-03-23-ai-tools.json](/Users/gota/Documents/src/ai-podcast-platform/docs/manual-episode-config-2026-03-23-ai-tools.json)
-- script は [docs/public-episode-script-draft-2026-03-23-ai-tools.txt](/Users/gota/Documents/src/ai-podcast-platform/docs/public-episode-script-draft-2026-03-23-ai-tools.txt)
 
 ## 続行判断
 

@@ -94,6 +94,8 @@ export default async function AdminTrendsPage() {
 
       <p className={styles.navRow}>
         <Link href="/admin/job-runs">/admin/job-runs</Link>
+        <Link href="/admin/manual-publish">/admin/manual-publish</Link>
+        <Link href="/admin/analytics">/admin/analytics</Link>
       </p>
 
       {error ? <p className={styles.errorText}>load error: {error}</p> : null}
