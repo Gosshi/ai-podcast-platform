@@ -15,20 +15,20 @@
   min-height: 2.75rem;
   padding: 0 1rem;
   border-radius: 999px;
-  background: #0f172a;
-  color: #f8fafc;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-page);
   font-weight: 800;
   text-decoration: none;
 }
 
 .statusLinkRecorded {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .metaText {
   margin: 0;
-  color: #475569;
+  color: var(--color-text-secondary);
   font-size: 0.88rem;
   line-height: 1.5;
 }

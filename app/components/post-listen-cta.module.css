@@ -31,13 +31,13 @@
   margin: 0;
   font-size: 0.92rem;
   font-weight: 700;
-  color: #9a3412;
+  color: var(--color-warning-text);
 }
 
 .bannerText {
   margin: 0.2rem 0 0;
   font-size: 0.82rem;
-  color: #c2410c;
+  color: var(--color-brand-dark);
 }
 
 .bannerButton {
@@ -45,7 +45,7 @@
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 999px;
-  background: #ea580c;
+  background: var(--color-brand-hover);
   color: #fff;
   font-size: 0.85rem;
   font-weight: 700;
@@ -55,7 +55,7 @@
 }
 
 .bannerButton:hover {
-  background: #c2410c;
+  background: var(--color-brand-dark);
   transform: translateY(-1px);
 }
 

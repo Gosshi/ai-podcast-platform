@@ -10,7 +10,7 @@
 .label {
   font-size: 0.72rem;
   font-weight: 700;
-  color: #c2410c;
+  color: var(--color-brand-dark);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -39,12 +39,12 @@
 .arrow {
   align-self: center;
   font-size: 1.1rem;
-  color: #f97316;
+  color: var(--color-brand);
   font-weight: 700;
 }
 
 .link:hover .name {
-  color: #c2410c;
+  color: var(--color-brand-dark);
 }
 
 .link:hover .arrow {

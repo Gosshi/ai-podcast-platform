@@ -5,8 +5,8 @@
   padding: 0.5rem 1rem;
   border: 1px solid rgba(148, 163, 184, 0.25);
   border-radius: 999px;
-  background: #ffffff;
-  color: #475569;
+  background: var(--color-bg-card);
+  color: var(--color-text-secondary);
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
@@ -17,13 +17,13 @@
 }
 
 .button:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-primary);
   border-color: rgba(148, 163, 184, 0.4);
 }
 
 .button:active {
-  background: #e2e8f0;
+  background: var(--color-bg-muted);
 }
 
 .icon {

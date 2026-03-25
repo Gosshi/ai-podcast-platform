@@ -35,25 +35,25 @@
 
 .eyebrow,
 .actionLabel {
-  color: #c2410c;
+  color: var(--color-brand-dark);
 }
 
 .cardEyebrow,
 .metaGrid dt {
-  color: #64748b;
+  color: var(--color-text-tertiary);
 }
 
 .header h2,
 .card h3 {
   margin: 0;
-  color: #0f172a;
+  color: var(--color-text-primary);
 }
 
 .lead,
 .actionCopy,
 .footnote p {
   margin: 0.5rem 0 0;
-  color: #475569;
+  color: var(--color-text-secondary);
   line-height: 1.65;
 }
 
@@ -69,8 +69,8 @@
 .countBadge {
   min-height: 2rem;
   padding: 0 0.85rem;
-  background: #0f172a;
-  color: #f8fafc;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-page);
 }
 
 .list {
@@ -96,18 +96,18 @@
 }
 
 .badge_use_now {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .badge_watch {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .badge_skip {
-  background: #e2e8f0;
-  color: #475569;
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
 }
 
 .metaGrid {
@@ -124,7 +124,7 @@
 
 .metaGrid dd {
   margin: 0;
-  color: #0f172a;
+  color: var(--color-text-primary);
   font-weight: 700;
 }
 
@@ -158,13 +158,13 @@
 }
 
 .primaryLink {
-  background: #0f172a;
-  color: #f8fafc;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-page);
 }
 
 .secondaryLink {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .footnote {
@@ -179,8 +179,8 @@
 
 .upgradeLink {
   white-space: nowrap;
-  background: #fff7ed;
-  color: #c2410c;
+  background: var(--color-warning-bg);
+  color: var(--color-brand-dark);
 }
 
 @media (max-width: 860px) {
