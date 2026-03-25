@@ -56,16 +56,16 @@ export default async function AdminAnalyticsPage() {
           <strong className={s.metricValue}>{overview.totals.events}</strong>
         </article>
         <article className={s.metricCard}>
-          <span className={s.metricLabel}>Anonymous</span>
-          <strong className={s.metricValue}>{overview.totals.anonymous}</strong>
+          <span className={s.metricLabel}>Anonymous Visitors</span>
+          <strong className={s.metricValue}>{overview.totals.anonymousVisitors}</strong>
         </article>
         <article className={s.metricCard}>
-          <span className={s.metricLabel}>Free</span>
-          <strong className={s.metricValue}>{overview.totals.free}</strong>
+          <span className={s.metricLabel}>Free Visitors</span>
+          <strong className={s.metricValue}>{overview.totals.freeVisitors}</strong>
         </article>
         <article className={s.metricCard}>
-          <span className={s.metricLabel}>Paid</span>
-          <strong className={s.metricValue}>{overview.totals.paid}</strong>
+          <span className={s.metricLabel}>Paid Users</span>
+          <strong className={s.metricValue}>{overview.totals.paidUsers}</strong>
         </article>
       </section>
 
