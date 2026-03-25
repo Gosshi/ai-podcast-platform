@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { requireAdmin } from "@/app/lib/adminGuard";
 import { createServiceRoleClient } from "@/app/lib/supabaseClients";
 import { buildAnalyticsOverview, type AnalyticsEventRow } from "@/src/lib/analytics";
-import styles from "./page.module.css";
+import s from "../admin.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -20,10 +19,7 @@ const loadAnalyticsEvents = async (): Promise<{ rows: AnalyticsEventRow[]; error
       .limit(5000);
 
     if (error) {
-      return {
-        rows: [],
-        error: error.message
-      };
+      return { rows: [], error: error.message };
     }
 
     return {
@@ -44,47 +40,39 @@ export default async function AdminAnalyticsPage() {
   const overview = buildAnalyticsOverview(rows, WINDOW_DAYS);
 
   return (
-    <main className={styles.page}>
-      <div className={styles.headerRow}>
-        <div>
-          <p className={styles.eyebrow}>Admin Analytics</p>
-          <h1>Product Analytics Foundation</h1>
-          <p className={styles.caption}>
-            直近{WINDOW_DAYS}日間のイベントを軽く確認し、conversion / engagement / retention の基礎指標を追います。
-          </p>
-        </div>
-        <div className={styles.navRow}>
-          <Link href="/admin/trends">/admin/trends</Link>
-          <Link href="/admin/job-runs">/admin/job-runs</Link>
-          <Link href="/admin/manual-publish">/admin/manual-publish</Link>
-        </div>
+    <main className={s.container}>
+      <div className={s.pageHeader}>
+        <h1 className={s.pageTitle}>Analytics</h1>
+        <p className={s.pageCaption}>
+          直近{WINDOW_DAYS}日間のイベントを確認し、conversion / engagement の基礎指標を追います。
+        </p>
       </div>
 
-      {error ? <p className={styles.errorText}>analytics load error: {error}</p> : null}
+      {error ? <p className={s.errorText}>analytics load error: {error}</p> : null}
 
-      <section className={styles.summaryGrid}>
-        <article className={styles.metricCard}>
-          <span className={styles.metricLabel}>Events</span>
-          <strong>{overview.totals.events}</strong>
+      <section className={s.metricGrid}>
+        <article className={s.metricCard}>
+          <span className={s.metricLabel}>Events</span>
+          <strong className={s.metricValue}>{overview.totals.events}</strong>
         </article>
-        <article className={styles.metricCard}>
-          <span className={styles.metricLabel}>Anonymous</span>
-          <strong>{overview.totals.anonymous}</strong>
+        <article className={s.metricCard}>
+          <span className={s.metricLabel}>Anonymous</span>
+          <strong className={s.metricValue}>{overview.totals.anonymous}</strong>
         </article>
-        <article className={styles.metricCard}>
-          <span className={styles.metricLabel}>Free</span>
-          <strong>{overview.totals.free}</strong>
+        <article className={s.metricCard}>
+          <span className={s.metricLabel}>Free</span>
+          <strong className={s.metricValue}>{overview.totals.free}</strong>
         </article>
-        <article className={styles.metricCard}>
-          <span className={styles.metricLabel}>Paid</span>
-          <strong>{overview.totals.paid}</strong>
+        <article className={s.metricCard}>
+          <span className={s.metricLabel}>Paid</span>
+          <strong className={s.metricValue}>{overview.totals.paid}</strong>
         </article>
       </section>
 
-      <section className={styles.panel}>
-        <h2>Conversion Funnel</h2>
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
+      <section className={s.card}>
+        <h2 className={s.cardHeader}>Conversion Funnel</h2>
+        <div className={s.tableWrap}>
+          <table className={s.table}>
             <thead>
               <tr>
                 <th>metric</th>
@@ -107,10 +95,10 @@ export default async function AdminAnalyticsPage() {
         </div>
       </section>
 
-      <section className={styles.panel}>
-        <h2>Engagement</h2>
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
+      <section className={s.card}>
+        <h2 className={s.cardHeader}>Engagement</h2>
+        <div className={s.tableWrap}>
+          <table className={s.table}>
             <thead>
               <tr>
                 <th>metric</th>
@@ -133,15 +121,15 @@ export default async function AdminAnalyticsPage() {
         </div>
       </section>
 
-      <section className={styles.grid}>
-        <article className={styles.panel}>
-          <h2>Page Views</h2>
+      <section className={s.grid2}>
+        <article className={s.card}>
+          <h2 className={s.cardHeader}>Page Views</h2>
           {overview.pageViews.length === 0 ? (
-            <p className={styles.emptyText}>page view data is empty</p>
+            <p className={s.emptyText}>page view data is empty</p>
           ) : (
-            <ul className={styles.list}>
+            <ul className={s.list}>
               {overview.pageViews.map((item) => (
-                <li key={item.page}>
+                <li key={item.page} className={s.listItem}>
                   <span>{item.page}</span>
                   <strong>{item.total}</strong>
                 </li>
@@ -150,14 +138,14 @@ export default async function AdminAnalyticsPage() {
           )}
         </article>
 
-        <article className={styles.panel}>
-          <h2>Top Events</h2>
+        <article className={s.card}>
+          <h2 className={s.cardHeader}>Top Events</h2>
           {overview.topEvents.length === 0 ? (
-            <p className={styles.emptyText}>event data is empty</p>
+            <p className={s.emptyText}>event data is empty</p>
           ) : (
-            <ul className={styles.list}>
+            <ul className={s.list}>
               {overview.topEvents.slice(0, 12).map((item) => (
-                <li key={item.eventName}>
+                <li key={item.eventName} className={s.listItem}>
                   <span>{item.eventName}</span>
                   <strong>{item.total}</strong>
                 </li>

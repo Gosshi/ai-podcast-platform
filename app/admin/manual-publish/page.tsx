@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { requireAdmin } from "@/app/lib/adminGuard";
 import ManualPublishJaPanel from "./ManualPublishJaPanel";
-import styles from "./page.module.css";
+import s from "../admin.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -18,28 +17,20 @@ export default async function AdminManualPublishPage() {
   await requireAdmin("/admin/manual-publish");
 
   return (
-    <main className={styles.page}>
-      <div className={styles.headerRow}>
-        <div>
-          <p className={styles.eyebrow}>Admin Publish</p>
-          <h1>Manual Public Episode</h1>
-          <p className={styles.caption}>
-            JA の公開回を admin 上から登録し、judgment card 同期、TTS、published 反映までまとめて実行します。
-          </p>
-        </div>
-        <div className={styles.navRow}>
-          <Link href="/admin/trends">/admin/trends</Link>
-          <Link href="/admin/job-runs">/admin/job-runs</Link>
-          <Link href="/admin/analytics">/admin/analytics</Link>
-        </div>
+    <main className={s.container}>
+      <div className={s.pageHeader}>
+        <h1 className={s.pageTitle}>Manual Publish</h1>
+        <p className={s.pageCaption}>
+          JA の公開回を admin 上から登録し、judgment card 同期、TTS、published 反映までまとめて実行します。
+        </p>
       </div>
 
-      <section className={styles.panel}>
-        <h2>Scope</h2>
-        <ul className={styles.list}>
+      <section className={s.card}>
+        <h2 className={s.cardHeader}>Scope</h2>
+        <ul className={s.scopeList}>
           <li>soft launch 中の JA 公開回を手動で本番 feed に載せるための admin ツールです。</li>
-          <li>入力は `title / description / preview / script / episodeDate / genre` を基本とします。</li>
-          <li>既存の episode を上書きしたい場合だけ `existingEpisodeId` を指定してください。</li>
+          <li>入力は title / description / preview / script / episodeDate / genre を基本とします。</li>
+          <li>既存の episode を上書きしたい場合だけ existingEpisodeId を指定してください。</li>
         </ul>
       </section>
 
