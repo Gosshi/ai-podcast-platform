@@ -46,6 +46,9 @@ export default async function AdminAnalyticsPage() {
         <p className={s.pageCaption}>
           直近{WINDOW_DAYS}日間のイベントを確認し、conversion / engagement の基礎指標を追います。
         </p>
+        <p className={s.pageCaption}>
+          上段カードはユニーク主体の件数、下の表はイベント件数です。
+        </p>
       </div>
 
       {error ? <p className={s.errorText}>analytics load error: {error}</p> : null}
@@ -56,16 +59,16 @@ export default async function AdminAnalyticsPage() {
           <strong className={s.metricValue}>{overview.totals.events}</strong>
         </article>
         <article className={s.metricCard}>
-          <span className={s.metricLabel}>Anonymous</span>
-          <strong className={s.metricValue}>{overview.totals.anonymous}</strong>
+          <span className={s.metricLabel}>Anonymous Visitors</span>
+          <strong className={s.metricValue}>{overview.totals.anonymousVisitors}</strong>
         </article>
         <article className={s.metricCard}>
-          <span className={s.metricLabel}>Free</span>
-          <strong className={s.metricValue}>{overview.totals.free}</strong>
+          <span className={s.metricLabel}>Free Visitors</span>
+          <strong className={s.metricValue}>{overview.totals.freeVisitors}</strong>
         </article>
         <article className={s.metricCard}>
-          <span className={s.metricLabel}>Paid</span>
-          <strong className={s.metricValue}>{overview.totals.paid}</strong>
+          <span className={s.metricLabel}>Paid Users</span>
+          <strong className={s.metricValue}>{overview.totals.paidUsers}</strong>
         </article>
       </section>
 

@@ -171,9 +171,9 @@ test("buildAnalyticsOverview summarizes funnel, engagement, and page views", () 
   );
 
   assert.equal(overview.totals.events, 15);
-  assert.equal(overview.totals.anonymous, 1);
-  assert.equal(overview.totals.free, 7);
-  assert.equal(overview.totals.paid, 8);
+  assert.equal(overview.totals.anonymousVisitors, 1);
+  assert.equal(overview.totals.freeVisitors, 2);
+  assert.equal(overview.totals.paidUsers, 1);
   assert.equal(overview.pageViews[0]?.page, "/decisions");
   assert.equal(overview.pageViews[0]?.total, 1);
   assert.equal(overview.funnel.find((item) => item.eventName === "checkout_completed")?.paid, 1);

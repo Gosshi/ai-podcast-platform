@@ -14,9 +14,9 @@ export type AnalyticsOverview = {
   windowDays: number;
   totals: {
     events: number;
-    anonymous: number;
-    free: number;
-    paid: number;
+    anonymousVisitors: number;
+    freeVisitors: number;
+    paidUsers: number;
   };
   funnel: Array<{
     eventName: AnalyticsEventName;
@@ -65,6 +65,7 @@ const ENGAGEMENT_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: stri
   { eventName: "onboarding_step_complete", label: "Onboarding Step Completions" },
   { eventName: "onboarding_complete", label: "Onboarding Completions" },
   { eventName: "preference_update", label: "Preference Updates" },
+  { eventName: "judgment_card_impression", label: "Judgment Card Impressions" },
   { eventName: "judgment_card_click", label: "Judgment Card Clicks" },
   { eventName: "library_view", label: "Library Views" },
   { eventName: "watchlist_view", label: "Watchlist Views" },
@@ -106,13 +107,58 @@ const countByPlan = (rows: AnalyticsEventRow[], eventName: AnalyticsEventName) =
   };
 };
 
+const countUniqueAnonymousVisitors = (rows: AnalyticsEventRow[]): number => {
+  const anonymousIds = new Set<string>();
+
+  for (const row of rows) {
+    if (!row.user_id && row.anonymous_id) {
+      anonymousIds.add(row.anonymous_id);
+    }
+  }
+
+  return anonymousIds.size;
+};
+
+const countUniqueFreeVisitors = (rows: AnalyticsEventRow[]): number => {
+  const actorIds = new Set<string>();
+
+  for (const row of rows) {
+    if (row.is_paid) {
+      continue;
+    }
+
+    if (row.user_id) {
+      actorIds.add(`user:${row.user_id}`);
+      continue;
+    }
+
+    if (row.anonymous_id) {
+      actorIds.add(`anon:${row.anonymous_id}`);
+    }
+  }
+
+  return actorIds.size;
+};
+
+const countUniquePaidUsers = (rows: AnalyticsEventRow[]): number => {
+  const userIds = new Set<string>();
+
+  for (const row of rows) {
+    if (row.is_paid && row.user_id) {
+      userIds.add(row.user_id);
+    }
+  }
+
+  return userIds.size;
+};
+
 export const buildAnalyticsOverview = (
   rows: AnalyticsEventRow[],
   windowDays: number
 ): AnalyticsOverview => {
-  const anonymous = rows.filter((row) => !row.user_id && row.anonymous_id).length;
-  const free = rows.filter((row) => !row.is_paid).length;
-  const paid = rows.filter((row) => row.is_paid).length;
+  const anonymousVisitors = countUniqueAnonymousVisitors(rows);
+  const freeVisitors = countUniqueFreeVisitors(rows);
+  const paidUsers = countUniquePaidUsers(rows);
 
   const pageViews = Array.from(
     rows
@@ -147,9 +193,9 @@ export const buildAnalyticsOverview = (
     windowDays,
     totals: {
       events: rows.length,
-      anonymous,
-      free,
-      paid
+      anonymousVisitors,
+      freeVisitors,
+      paidUsers
     },
     funnel: FUNNEL_DEFINITIONS.map((definition) => ({
       eventName: definition.eventName,
