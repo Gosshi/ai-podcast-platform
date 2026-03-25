@@ -105,7 +105,7 @@
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #c2410c;
+  color: var(--color-brand-dark);
 }
 
 .heroCopy h1,
@@ -162,14 +162,14 @@
   border-radius: 999px;
   text-decoration: none;
   font-weight: 800;
-  background: #0f172a;
-  color: #f8fafc;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-page);
 }
 
 .secondaryHeroLink {
-  background: #ffffff;
+  background: var(--color-bg-card);
   color: var(--color-text-primary);
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border);
 }
 
 .heroBadge,
@@ -186,8 +186,8 @@
 .heroBadge {
   min-height: 2rem;
   padding: 0 0.85rem;
-  background: #0f172a;
-  color: #f8fafc;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-page);
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -208,7 +208,7 @@
   padding: 1.25rem 1.4rem;
   border-radius: 24px;
   background: linear-gradient(120deg, #111827 0%, #1e293b 100%);
-  color: #e2e8f0;
+  color: var(--color-bg-muted);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -223,7 +223,7 @@
 
 .paywallLink {
   color: var(--color-text-primary);
-  background: #f8fafc;
+  background: var(--color-bg-page);
   text-decoration: none;
   font-weight: 700;
   padding: 0.85rem 1.1rem;
@@ -342,18 +342,18 @@
 }
 
 .judgmentBadge_use_now {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .judgmentBadge_watch {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .judgmentBadge_skip {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
 }
 
 .card_use_now {
@@ -399,22 +399,22 @@
 }
 
 .urgencyBadge_critical {
-  background: #fee2e2;
+  background: var(--color-error-bg);
   color: var(--color-error);
 }
 
 .urgencyBadge_high {
   background: #ffedd5;
-  color: #c2410c;
+  color: var(--color-brand-dark);
 }
 
 .urgencyBadge_medium {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .urgencyBadge_low {
-  background: #e2e8f0;
+  background: var(--color-bg-muted);
   color: var(--color-text-secondary);
 }
 
@@ -448,7 +448,7 @@
   padding: 1rem 1.1rem;
   border-radius: 20px;
   background: rgba(15, 23, 42, 0.96);
-  color: #e2e8f0;
+  color: var(--color-bg-muted);
 }
 
 .recommendationFootnote h3,
@@ -470,7 +470,7 @@
   display: inline-flex;
   margin-top: 0.9rem;
   color: var(--color-text-primary);
-  background: #f8fafc;
+  background: var(--color-bg-page);
   text-decoration: none;
   font-weight: 800;
   padding: 0.7rem 1rem;
@@ -516,7 +516,7 @@
 .sectionCount {
   min-height: 2rem;
   padding: 0 0.85rem;
-  background: #e2e8f0;
+  background: var(--color-bg-muted);
   color: var(--color-text-primary);
   font-size: 0.9rem;
   font-weight: 700;
@@ -534,7 +534,7 @@
   gap: 1rem;
   padding: 1.15rem;
   border-radius: 24px;
-  background: #ffffff;
+  background: var(--color-bg-card);
   border: 1px solid rgba(148, 163, 184, 0.22);
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
   transition:
@@ -576,17 +576,17 @@
 }
 
 .badge_use_now {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .badge_watch {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .badge_skip {
-  background: #fee2e2;
+  background: var(--color-error-bg);
   color: var(--color-error);
 }
 
@@ -641,19 +641,19 @@
 .personalHint_positive {
   background: #f0fdf4;
   border-color: rgba(34, 197, 94, 0.2);
-  color: #166534;
+  color: var(--color-success);
 }
 
 .personalHint_neutral {
-  background: #eff6ff;
+  background: var(--color-info-bg);
   border-color: rgba(59, 130, 246, 0.2);
-  color: #1d4ed8;
+  color: var(--color-info);
 }
 
 .personalHint_caution {
-  background: #fff7ed;
+  background: var(--color-warning-bg);
   border-color: rgba(249, 115, 22, 0.2);
-  color: #c2410c;
+  color: var(--color-brand-dark);
 }
 
 .metaList {
@@ -670,13 +670,13 @@
 .metaList dt {
   font-size: 0.78rem;
   font-weight: 700;
-  color: #94a3b8;
+  color: var(--color-text-muted);
   letter-spacing: 0.02em;
 }
 
 .metaList dd {
   margin: 0;
-  color: #1e293b;
+  color: var(--color-surface-dark-subtle);
   font-weight: 600;
 }
 
@@ -697,7 +697,7 @@
   margin-top: 0.9rem;
   border-radius: 16px;
   border: 1px dashed rgba(249, 115, 22, 0.35);
-  background: #fff7ed;
+  background: var(--color-warning-bg);
   padding: 0.85rem 0.9rem;
   display: grid;
   gap: 0.3rem;
@@ -705,14 +705,14 @@
 
 .lockedPanel p {
   margin: 0;
-  color: #9a3412;
+  color: var(--color-warning-text);
   line-height: 1.55;
 }
 
 .lockedNote {
   display: inline-block;
   margin-top: 0.85rem;
-  color: #c2410c;
+  color: var(--color-brand-dark);
   font-size: 0.84rem;
   font-weight: 700;
 }

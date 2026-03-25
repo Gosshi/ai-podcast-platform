@@ -45,7 +45,7 @@
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #c2410c;
+  color: var(--color-brand-dark);
 }
 
 .heroCopy h1,
@@ -83,7 +83,7 @@
 }
 
 .inlineLink {
-  color: #0f172a;
+  color: var(--color-text-primary);
   font-size: 0.92rem;
   font-weight: 700;
   text-decoration: none;
@@ -97,7 +97,7 @@
 }
 
 .listenLabel {
-  color: #475569;
+  color: var(--color-text-secondary);
   font-size: 0.84rem;
   font-weight: 700;
 }
@@ -111,7 +111,7 @@
   border-radius: 999px;
   border: 1px solid rgba(15, 23, 42, 0.1);
   background: rgba(255, 255, 255, 0.9);
-  color: #0f172a;
+  color: var(--color-text-primary);
   font-size: 0.86rem;
   font-weight: 700;
   text-decoration: none;
@@ -136,14 +136,14 @@
 }
 
 .primaryLink {
-  background: #0f172a;
-  color: #ffffff;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-card);
 }
 
 .secondaryLink {
   background: rgba(255, 255, 255, 0.92);
   color: var(--color-text-primary);
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border);
 }
 
 .stats {
@@ -168,7 +168,7 @@
 }
 
 .stat span {
-  color: #c2410c;
+  color: var(--color-brand-dark);
   font-size: 0.82rem;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -186,7 +186,7 @@
   background:
     radial-gradient(circle at top left, rgba(249, 115, 22, 0.18), transparent 34%),
     linear-gradient(160deg, #0f172a 0%, #1e293b 100%);
-  color: #f8fafc;
+  color: var(--color-bg-page);
   box-shadow: 0 28px 58px rgba(15, 23, 42, 0.18);
   display: grid;
   gap: 1rem;
@@ -205,7 +205,7 @@
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #f97316;
+  color: var(--color-brand);
 }
 
 .sampleBadge,
@@ -222,7 +222,7 @@
 .sampleBadge {
   padding: 0.42rem 0.8rem;
   background: rgba(249, 115, 22, 0.2);
-  color: #f97316;
+  color: var(--color-brand);
 }
 
 .sampleSummary {
@@ -242,7 +242,7 @@
 .waveBar {
   width: 3px;
   border-radius: 2px;
-  background: #f97316;
+  background: var(--color-brand);
   animation: wave 1.2s ease-in-out infinite;
 }
 
@@ -366,7 +366,7 @@
 }
 
 .discoveryLabel {
-  color: #c2410c;
+  color: var(--color-brand-dark);
   font-size: 0.82rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -415,8 +415,8 @@
   min-height: 2rem;
   padding: 0 0.8rem;
   border-radius: 999px;
-  background: #0f172a;
-  color: #f8fafc;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-page);
   font-size: 0.82rem;
   font-weight: 700;
 }
@@ -430,7 +430,7 @@
 }
 
 .membershipCardHighlighted {
-  border: 2px solid #f97316;
+  border: 2px solid var(--color-brand);
   box-shadow: 0 8px 32px rgba(249, 115, 22, 0.12);
 }
 
@@ -482,8 +482,8 @@
   width: fit-content;
   padding: 0.35rem 0.85rem;
   border-radius: 999px;
-  background: #fff7ed;
-  color: #c2410c;
+  background: var(--color-warning-bg);
+  color: var(--color-brand-dark);
   font-size: 0.82rem;
   font-weight: 700;
 }
@@ -497,8 +497,8 @@
   padding: 0.82rem 1.25rem;
   font-weight: 700;
   text-decoration: none;
-  background: #0f172a;
-  color: #ffffff;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-card);
   text-align: center;
 }
 
@@ -515,13 +515,13 @@
 
 .samplePanelBadge {
   padding: 0.4rem 0.8rem;
-  background: #f97316;
-  color: #ffffff;
+  background: var(--color-brand);
+  color: var(--color-bg-card);
 }
 
 .samplePanelGenre {
   padding: 0.35rem 0.75rem;
-  background: #e2e8f0;
+  background: var(--color-bg-muted);
   color: var(--color-text-primary);
 }
 

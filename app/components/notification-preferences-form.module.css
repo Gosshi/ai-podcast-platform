@@ -8,7 +8,7 @@
   gap: 0.85rem;
   align-items: start;
   border-radius: 18px;
-  border: 1px solid #dbe4f0;
+  border: 1px solid var(--color-border-subtle);
   background: #f8fbff;
   padding: 0.95rem 1rem;
 }
@@ -24,13 +24,13 @@
 }
 
 .option h3 {
-  color: #0f172a;
+  color: var(--color-text-primary);
   font-size: 0.98rem;
 }
 
 .option p,
 .status {
-  color: #475569;
+  color: var(--color-text-secondary);
   line-height: 1.6;
 }
 
@@ -48,8 +48,8 @@
   min-height: 2.6rem;
   border-radius: 999px;
   padding: 0 1.1rem;
-  background: #0f172a;
-  color: #ffffff;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-card);
   border: 0;
   font-weight: 700;
   cursor: pointer;

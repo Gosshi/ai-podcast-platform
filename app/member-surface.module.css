@@ -173,13 +173,13 @@
 }
 
 .primaryLink {
-  background: #0f172a;
-  color: #ffffff;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-card);
 }
 
 .secondaryLink {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 @media (max-width: 900px) {

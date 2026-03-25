@@ -28,7 +28,7 @@
 }
 
 .brandEyebrow {
-  color: #c2410c;
+  color: var(--color-brand-dark);
   font-size: 0.66rem;
   font-weight: 900;
   letter-spacing: 0.16em;
@@ -73,8 +73,8 @@
 }
 
 .linkActive {
-  background: #0f172a;
-  color: #f8fafc;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-page);
 }
 
 @media (max-width: 720px) {
@@ -163,7 +163,7 @@
   }
 
   .mobileLinkActive {
-    background: #f8fafc;
+    background: var(--color-bg-page);
     color: var(--color-text-primary);
   }
 

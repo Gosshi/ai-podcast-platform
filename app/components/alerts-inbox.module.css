@@ -28,14 +28,14 @@
 
 .panelHeader h2 {
   margin: 0;
-  color: #0f172a;
+  color: var(--color-text-primary);
 }
 
 .lead,
 .emptyCopy,
 .errorText {
   margin: 0;
-  color: #475569;
+  color: var(--color-text-secondary);
   line-height: 1.65;
 }
 
@@ -58,13 +58,13 @@
 
 .countBadge {
   padding: 0 0.85rem;
-  background: #0f172a;
-  color: #f8fafc;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-page);
 }
 
 .viewAllLink {
   padding: 0 0.95rem;
-  background: #e0f2fe;
+  background: var(--color-accent-light);
   color: #0f4c81;
 }
 
@@ -97,7 +97,7 @@
 .itemTop h3 {
   margin: 0.2rem 0 0;
   font-size: 1.05rem;
-  color: #0f172a;
+  color: var(--color-text-primary);
 }
 
 .badgeRow,
@@ -123,18 +123,18 @@
 }
 
 .typeBadge {
-  background: #e2e8f0;
-  color: #334155;
+  background: var(--color-bg-muted);
+  color: var(--color-text-body);
 }
 
 .urgency_critical {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--color-error-bg);
+  color: var(--color-error);
 }
 
 .urgency_high {
   background: #ffedd5;
-  color: #c2410c;
+  color: var(--color-brand-dark);
 }
 
 .urgency_medium {
@@ -143,19 +143,19 @@
 }
 
 .urgency_low {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .metaPill {
-  background: #f8fafc;
-  color: #475569;
-  border: 1px solid #dbe4f0;
+  background: var(--color-bg-page);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-subtle);
 }
 
 .summary {
   margin: 0;
-  color: #334155;
+  color: var(--color-text-body);
   line-height: 1.7;
 }
 
@@ -185,19 +185,19 @@
 }
 
 .primaryLink {
-  background: #0f172a;
-  color: #ffffff;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-card);
 }
 
 .secondaryLink {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .actionButton {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #334155;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text-body);
 }
 
 .actionButton:disabled {
@@ -209,7 +209,7 @@
 .emptyState {
   border-radius: 22px;
   padding: 1.1rem;
-  border: 1px dashed #cbd5e1;
+  border: 1px dashed var(--color-border);
   background: rgba(248, 250, 252, 0.92);
   display: grid;
   gap: 0.45rem;
@@ -217,7 +217,7 @@
 
 .emptyState h3 {
   margin: 0;
-  color: #0f172a;
+  color: var(--color-text-primary);
 }
 
 @media (max-width: 720px) {

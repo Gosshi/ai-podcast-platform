@@ -56,23 +56,23 @@
 }
 
 .iconListen {
-  background: #0f172a;
-  color: #f8fafc;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-page);
 }
 
 .iconCards {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .iconConsult {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .iconPlan {
-  background: #fff7ed;
-  color: #c2410c;
+  background: var(--color-warning-bg);
+  color: var(--color-brand-dark);
 }
 
 .sectionBody {
@@ -112,8 +112,8 @@
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 999px;
-  background: #0f172a;
-  color: #f8fafc;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-page);
   font-size: 0.8rem;
   font-weight: 800;
   flex-shrink: 0;
@@ -161,20 +161,20 @@
 }
 
 .judgmentUseNow {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-success-bg);
+  color: var(--color-success);
   border: 1px solid rgba(22, 163, 74, 0.2);
 }
 
 .judgmentWatch {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--color-info-bg);
+  color: var(--color-info);
   border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 .judgmentSkip {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
@@ -236,7 +236,7 @@
   padding: 1.5rem;
   border-radius: 24px;
   background: linear-gradient(135deg, #0f172a, #1e293b);
-  color: #e2e8f0;
+  color: var(--color-bg-muted);
   text-align: center;
 }
 
@@ -247,7 +247,7 @@
 
 .ctaSection p {
   margin: 0.5rem 0 1rem;
-  color: #94a3b8;
+  color: var(--color-text-muted);
 }
 
 .ctaButton {
@@ -257,15 +257,15 @@
   min-height: 2.75rem;
   padding: 0 1.5rem;
   border-radius: 999px;
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
   text-decoration: none;
   font-weight: 800;
   font-size: 0.95rem;
 }
 
 .ctaButton:hover {
-  background: #e2e8f0;
+  background: var(--color-bg-muted);
 }
 
 @media (max-width: 600px) {

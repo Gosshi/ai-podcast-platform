@@ -4,7 +4,7 @@
     radial-gradient(circle at top left, rgba(14, 165, 233, 0.2), transparent 28%),
     radial-gradient(circle at 80% 0%, rgba(249, 115, 22, 0.18), transparent 24%),
     linear-gradient(180deg, #f8fafc 0%, #fff7ed 100%);
-  color: #0f172a;
+  color: var(--color-text-primary);
 }
 
 .shell {
@@ -33,7 +33,7 @@
   font-size: 0.76rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #475569;
+  color: var(--color-text-secondary);
 }
 
 .copy h1,
@@ -51,7 +51,7 @@
 .lead,
 .stepHeader p {
   margin: 0;
-  color: #334155;
+  color: var(--color-text-body);
   line-height: 1.75;
   max-width: 46rem;
 }
@@ -79,7 +79,7 @@
 
 .metaCard span {
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--color-text-tertiary);
 }
 
 .metaCard strong {
@@ -111,7 +111,7 @@
   width: 0.8rem;
   height: 0.8rem;
   border-radius: 999px;
-  background: #cbd5e1;
+  background: var(--color-border);
   transition: transform 180ms ease, background-color 180ms ease;
 }
 
@@ -163,8 +163,8 @@
   align-items: center;
   border-radius: 999px;
   padding: 0.35rem 0.8rem;
-  background: #fff7ed;
-  color: #9a3412;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
   border: 1px solid rgba(234, 88, 12, 0.18);
   font-size: 0.82rem;
   font-weight: 800;
@@ -178,7 +178,7 @@
   cursor: pointer;
   display: grid;
   gap: 0.35rem;
-  color: #0f172a;
+  color: var(--color-text-primary);
   transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -192,7 +192,7 @@
 }
 
 .optionCard span {
-  color: #64748b;
+  color: var(--color-text-tertiary);
   font-size: 0.88rem;
 }
 
@@ -206,8 +206,8 @@
   margin: 0;
   border-radius: 16px;
   padding: 0.95rem 1rem;
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
   font-weight: 700;
 }
 
@@ -228,14 +228,14 @@
 }
 
 .primaryButton {
-  background: #0f172a;
-  color: #ffffff;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-card);
 }
 
 .secondaryButton {
-  background: #ffffff;
-  color: #0f172a;
-  border: 1px solid #cbd5e1;
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
 }
 
 .primaryButton:disabled,

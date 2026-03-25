@@ -10,7 +10,7 @@
 }
 
 .sectionHighlight {
-  border-color: #0369a1;
+  border-color: var(--color-accent);
   box-shadow: 0 0 0 3px rgba(3, 105, 161, 0.15), 0 18px 40px rgba(15, 23, 42, 0.06);
   animation: highlightPulse 2s ease-in-out;
 }
@@ -78,7 +78,7 @@
   padding: 0.85rem 1rem;
   border-radius: 16px;
   border: 1px solid rgba(148, 163, 184, 0.35);
-  background: #ffffff;
+  background: var(--color-bg-card);
   color: var(--color-text-primary);
   font-size: 1rem;
   font-family: inherit;
@@ -112,8 +112,8 @@
   padding: 0 1.25rem;
   border-radius: 999px;
   border: none;
-  background: #0f172a;
-  color: #f8fafc;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-page);
   font-size: 0.95rem;
   font-weight: 800;
   cursor: pointer;
@@ -191,17 +191,17 @@
 }
 
 .badge_use_now {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .badge_watch {
   background: #dbeafe;
-  color: #1d4ed8;
+  color: var(--color-info);
 }
 
 .badge_skip {
-  background: #fee2e2;
+  background: var(--color-error-bg);
   color: var(--color-error);
 }
 
@@ -256,7 +256,7 @@
 
 .metaDd {
   margin: 0;
-  color: #1e293b;
+  color: var(--color-surface-dark-subtle);
   font-weight: 600;
 }
 
@@ -284,8 +284,8 @@
   min-height: 2.5rem;
   padding: 0 1rem;
   border-radius: 999px;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
   color: var(--color-text-primary);
   font-size: 0.88rem;
   font-weight: 700;
@@ -295,7 +295,7 @@
 
 .actionButton:hover {
   background: var(--color-bg-subtle);
-  border-color: #94a3b8;
+  border-color: var(--color-text-muted);
 }
 
 .actionButton:disabled {
@@ -304,13 +304,13 @@
 }
 
 .actionButtonPrimary {
-  background: #0f172a;
-  color: #f8fafc;
-  border-color: #0f172a;
+  background: var(--color-surface-dark);
+  color: var(--color-bg-page);
+  border-color: var(--color-surface-dark);
 }
 
 .actionButtonPrimary:hover {
-  background: #1e293b;
+  background: var(--color-surface-dark-subtle);
 }
 
 .outcomeBadge {
@@ -324,8 +324,8 @@
 }
 
 .outcome_success {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .outcome_neutral {
@@ -334,7 +334,7 @@
 }
 
 .outcome_regret {
-  background: #fee2e2;
+  background: var(--color-error-bg);
   color: var(--color-error);
 }
 
