@@ -13,7 +13,7 @@ type ShareButtonProps = {
   episodeId?: string;
 };
 
-export default function ShareButton({ title, text, url, page, source, episodeId }: ShareButtonProps) {
+export default function ShareButton({ title, url, page, source, episodeId }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
 
   const handleShare = useCallback(async () => {
@@ -21,7 +21,7 @@ export default function ShareButton({ title, text, url, page, source, episodeId 
       typeof window !== "undefined"
         ? new URL(url, window.location.origin).toString()
         : url;
-    const shareData = { title, text: text ?? title, url: resolvedUrl };
+    const shareData = { title, url: resolvedUrl };
 
     track("share_click", {
       page,
@@ -48,7 +48,7 @@ export default function ShareButton({ title, text, url, page, source, episodeId 
     } catch {
       // Clipboard unavailable
     }
-  }, [title, text, url, page, source, episodeId]);
+  }, [title, url, page, source, episodeId]);
 
   return (
     <button type="button" className={styles.button} onClick={() => void handleShare()}>
