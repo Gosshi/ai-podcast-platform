@@ -65,6 +65,7 @@ const ENGAGEMENT_DEFINITIONS: Array<{ eventName: AnalyticsEventName; label: stri
   { eventName: "onboarding_step_complete", label: "Onboarding Step Completions" },
   { eventName: "onboarding_complete", label: "Onboarding Completions" },
   { eventName: "preference_update", label: "Preference Updates" },
+  { eventName: "judgment_card_impression", label: "Judgment Card Impressions" },
   { eventName: "judgment_card_click", label: "Judgment Card Clicks" },
   { eventName: "library_view", label: "Library Views" },
   { eventName: "watchlist_view", label: "Watchlist Views" },

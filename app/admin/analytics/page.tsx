@@ -46,6 +46,9 @@ export default async function AdminAnalyticsPage() {
         <p className={s.pageCaption}>
           直近{WINDOW_DAYS}日間のイベントを確認し、conversion / engagement の基礎指標を追います。
         </p>
+        <p className={s.pageCaption}>
+          上段カードはユニーク主体の件数、下の表はイベント件数です。
+        </p>
       </div>
 
       {error ? <p className={s.errorText}>analytics load error: {error}</p> : null}
