@@ -320,6 +320,7 @@ const invokeStep = async (
     throw new Error("authorization header is required");
   }
 
+  const stepTimeoutMs = 30 * 60 * 1000; // 30 minutes
   const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
@@ -330,7 +331,8 @@ const invokeStep = async (
           Authorization: authorization,
           ...(apikey ? { apikey } : {})
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(stepTimeoutMs)
       });
 
       const body = (await response.json().catch(() => ({}))) as InvokeResult;
@@ -348,6 +350,10 @@ const invokeStep = async (
         throw new Error(`step_failed:${step}:${response.status}:${responseError}`);
       }
     } catch (error) {
+      const isTimeout = error instanceof DOMException && error.name === "TimeoutError";
+      if (isTimeout) {
+        throw new Error(`step_timeout:${step}:exceeded_${stepTimeoutMs}ms`);
+      }
       if (attempt === maxAttempts) {
         if (error instanceof Error && error.message.startsWith("step_failed:")) {
           throw error;
