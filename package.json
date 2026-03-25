@@ -11,6 +11,7 @@
     "ai:verify": "bash scripts/ai-loop.sh verify",
     "ai:issue-fix": "bash scripts/ai-loop.sh issue-fix",
     "seed:demo": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/seed-demo-data.mts",
+    "episode:register:ja": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/register-manual-ja-episode.mts",
     "lint": "eslint app src --ext .ts,.tsx",
     "test": "node --experimental-strip-types --experimental-specifier-resolution=node --test tests/**/*.test.mts",
     "test:e2e": "npx playwright test",
