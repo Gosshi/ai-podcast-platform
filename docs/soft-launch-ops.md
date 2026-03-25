@@ -242,6 +242,27 @@ soft launch の 6 週間で、
 - 勝ち筋が出るまでは価格をいじらない
 - 広告や自動化は、trial 開始率の傾向が見えるまで入れない
 
+## 手動公開コマンド
+
+公開回を手動で登録する時は、config JSON を 1 つ作り、次の 1 コマンドで回す。
+
+```bash
+npm run episode:register:ja -- docs/manual-episode-config-2026-03-23-ai-tools.json
+```
+
+このコマンドでやること:
+
+- `episodes` に JA episode を作成または更新する
+- script から `episode_judgment_cards` を同期する
+- `/api/tts` で `mp3` 音声を作る
+- `audio_url` と `duration_sec` を反映し、`published` まで上げる
+
+補足:
+
+- dry run は `npm run episode:register:ja -- docs/manual-episode-config-2026-03-23-ai-tools.json --dry-run`
+- 例の config は [docs/manual-episode-config-2026-03-23-ai-tools.json](/Users/gota/Documents/src/ai-podcast-platform/docs/manual-episode-config-2026-03-23-ai-tools.json)
+- script は [docs/public-episode-script-draft-2026-03-23-ai-tools.txt](/Users/gota/Documents/src/ai-podcast-platform/docs/public-episode-script-draft-2026-03-23-ai-tools.txt)
+
 ## 続行判断
 
 ### 続行
