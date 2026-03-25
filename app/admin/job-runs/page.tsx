@@ -485,6 +485,10 @@ export default async function JobRunsPage({
       <p className={styles.caption}>{t.caption}</p>
       <p className={styles.filter}>
         <Link href="/admin/trends">/admin/trends</Link>
+        {" · "}
+        <Link href="/admin/manual-publish">/admin/manual-publish</Link>
+        {" · "}
+        <Link href="/admin/analytics">/admin/analytics</Link>
       </p>
 
       <p className={styles.filter}>

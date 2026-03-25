@@ -56,6 +56,7 @@ export default async function AdminAnalyticsPage() {
         <div className={styles.navRow}>
           <Link href="/admin/trends">/admin/trends</Link>
           <Link href="/admin/job-runs">/admin/job-runs</Link>
+          <Link href="/admin/manual-publish">/admin/manual-publish</Link>
         </div>
       </div>
 
