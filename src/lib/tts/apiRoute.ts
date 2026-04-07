@@ -83,7 +83,10 @@ const jsonErrorResponse = (errorType: string, message: string, status: number): 
 
 const hasValidApiKey = (request: Request): boolean => {
   const configured = process.env.LOCAL_TTS_API_KEY?.trim();
-  if (!configured) return true;
+  if (!configured) {
+    // Key not configured: allow in development, deny in production
+    return process.env.NODE_ENV !== "production";
+  }
   const requestKey = request.headers.get("x-local-tts-api-key")?.trim();
   return requestKey === configured;
 };
