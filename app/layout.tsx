@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import AppNavigation from "@/app/components/AppNavigation";
 import SiteFooter from "@/app/components/SiteFooter";
-import { DEFAULT_SITE_URL, SITE_NAME } from "@/src/lib/brand";
+import { DEFAULT_SITE_URL, SITE_DESCRIPTION, SITE_NAME } from "@/src/lib/brand";
 import "./globals.css";
 
-const SITE_DESCRIPTION =
-  "AIが毎朝ポッドキャストを自動生成。通勤中に聴くだけで、サブスク・買い物・エンタメの判断が整理される。";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL;
 
 export const metadata: Metadata = {

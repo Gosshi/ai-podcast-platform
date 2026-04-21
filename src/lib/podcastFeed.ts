@@ -1,12 +1,11 @@
-import { DEFAULT_SITE_URL, PRODUCT_NAME, SITE_NAME } from "./brand.ts";
+import { DEFAULT_SITE_URL, PRODUCT_NAME, SITE_DESCRIPTION, SITE_NAME } from "./brand.ts";
 import { resolveEpisodeDescription } from "./episodeDescriptions.ts";
 import { buildPublicEpisodePath } from "./episodeLinks.ts";
 import { resolveDisplayEpisodeTitle } from "./episodeTitles.ts";
 
 export const PODCAST_FEED_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL;
 export const PODCAST_FEED_TITLE = SITE_NAME;
-export const PODCAST_FEED_DESCRIPTION =
-  "AIが毎朝ポッドキャストを自動生成。通勤中に聴くだけで、サブスク・買い物・エンタメの判断が整理される。";
+export const PODCAST_FEED_DESCRIPTION = SITE_DESCRIPTION;
 export const PODCAST_FEED_AUTHOR = PRODUCT_NAME;
 export const PODCAST_FEED_EMAIL =
   process.env.PODCAST_FEED_OWNER_EMAIL?.trim() || "hello@signal-move.com";

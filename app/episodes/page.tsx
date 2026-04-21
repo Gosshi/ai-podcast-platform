@@ -6,7 +6,7 @@ import {
   normalizeGenre,
   resolveAllowedGenres
 } from "@/src/lib/genre/allowedGenres";
-import { DEFAULT_SITE_URL, PRODUCT_NAME, SITE_NAME } from "@/src/lib/brand";
+import { DEFAULT_SITE_URL, PRODUCT_NAME, SITE_DESCRIPTION, SITE_NAME } from "@/src/lib/brand";
 import type { Metadata } from "next";
 import EpisodesView from "./EpisodesView";
 import type { ViewLang } from "./types";
@@ -69,8 +69,7 @@ export default async function EpisodesPage({
     "@context": "https://schema.org",
     "@type": "PodcastSeries",
     name: PRODUCT_NAME,
-    description:
-      "AIが毎朝ポッドキャストを自動生成。通勤中に聴くだけで、サブスク・買い物・エンタメの判断が整理される。",
+    description: SITE_DESCRIPTION,
     url: `${siteUrl}/episodes`,
     inLanguage: "ja",
     genre: ["テクノロジー", "ゲーム", "配信", "アニメ", "映画"],
